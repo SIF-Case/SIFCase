@@ -1,0 +1,22 @@
+{
+  "name": "allsif",
+  "version": "1.0.0",
+  "description": "India’s verified SIF research and investment platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "specialized-investment-funds",
+    "wealthtech",
+    "finance",
+    "investment",
+    "mutual-funds",
+    "nav",
+    "amfi",
+    "comparison",
+    "research-platform"
+  ],
+  "author": "aureva-capital",
+  "license": "ISC"
+}
