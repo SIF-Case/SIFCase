@@ -28,7 +28,7 @@ out/
 .env*.local
 *.env
 
-# AI / IDE tool directories
+# AI / IDE tool directories and config files
 .claude/
 .cursor/
 .kiro/
@@ -46,6 +46,10 @@ out/
 .mcp.json
 .cursorrules
 .windsurfrules
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+QODER.md
 
 # Editor directories
 .vscode/
