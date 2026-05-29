@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight } from "lucide-react";
+import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2 } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { ImageUploader } from "./ImageUploader";
 
 type ArticleData = {
   _id?: string;
+  slug?: string;
   title: string;
   excerpt: string;
   content: string;
@@ -18,13 +19,24 @@ type ArticleData = {
   tags: string;
   status: "draft" | "published";
   authorName: string;
+  authorBio: string;
   readTime: number;
+  // SEO
+  seoTitle: string;
+  metaDescription: string;
+  canonicalUrl: string;
+  robotsIndex: boolean;
+  ogImage: string;
+  primaryKeyword: string;
+  focusKeyphrase: string;
 };
 
 const DEFAULTS: ArticleData = {
   title: "", excerpt: "", content: "", coverDesktop: "", coverMobile: "",
   useSeparateMobile: false, category: "General", tags: "", status: "draft",
-  authorName: "SIFcase Team", readTime: 3,
+  authorName: "SIFcase Team", authorBio: "", readTime: 3,
+  seoTitle: "", metaDescription: "", canonicalUrl: "", robotsIndex: true,
+  ogImage: "", primaryKeyword: "", focusKeyphrase: "",
 };
 
 const CATEGORIES = ["General", "Market Insights", "SIF Education", "Strategy", "Regulatory", "Interviews"];
@@ -205,6 +217,13 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
             </div>
 
             <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Author Bio</label>
+              <textarea value={form.authorBio} onChange={(e) => set("authorBio", e.target.value)}
+                rows={2} placeholder="Short bio shown below article…"
+                className="w-full px-3 py-2 rounded-[8px] border border-rule bg-white text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Read time (min)</label>
               <input type="number" min={1} value={form.readTime} onChange={(e) => set("readTime", parseInt(e.target.value) || 1)}
                 className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -222,6 +241,122 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* SEO Panel */}
+          <div className="bg-white rounded-[14px] border border-rule shadow-card p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Search className="size-3.5 text-primary" />
+              <p className="text-[12px] font-semibold text-heading uppercase tracking-widest text-muted">SEO</p>
+            </div>
+
+            {/* SERP preview */}
+            <div className="rounded-[10px] border border-rule bg-surface p-3">
+              <p className="text-[9px] font-mono uppercase tracking-widest text-faint mb-2">Google Preview</p>
+              <p className="text-[14px] text-[#1a0dab] font-medium leading-snug truncate">
+                {form.seoTitle || form.title || "Page Title"}
+              </p>
+              <p className="text-[11px] text-[#006621] truncate">sifcase.in/read/{form.slug ?? "article-slug"}</p>
+              <p className="text-[11px] text-[#545454] line-clamp-2 mt-0.5">
+                {form.metaDescription || form.excerpt || "Meta description will appear here…"}
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-medium text-muted">Title Tag <span className="text-faint">(50–60 chars)</span></label>
+                <span className={`text-[10px] font-mono ${form.seoTitle.length > 60 ? "text-loss" : form.seoTitle.length >= 50 ? "text-gain" : "text-muted"}`}>
+                  {form.seoTitle.length}/60
+                </span>
+              </div>
+              <input value={form.seoTitle} onChange={(e) => set("seoTitle", e.target.value)}
+                placeholder={form.title || "SEO title…"}
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-medium text-muted">Meta Description <span className="text-faint">(150–160)</span></label>
+                <span className={`text-[10px] font-mono ${form.metaDescription.length > 160 ? "text-loss" : form.metaDescription.length >= 150 ? "text-gain" : "text-muted"}`}>
+                  {form.metaDescription.length}/160
+                </span>
+              </div>
+              <textarea value={form.metaDescription} onChange={(e) => set("metaDescription", e.target.value)}
+                rows={3} placeholder={form.excerpt || "Meta description…"}
+                className="w-full px-3 py-2 rounded-[8px] border border-rule bg-white text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Focus Keyphrase</label>
+              <input value={form.focusKeyphrase} onChange={(e) => set("focusKeyphrase", e.target.value)}
+                placeholder="e.g. Specialised Investment Fund"
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Primary Keyword</label>
+              <input value={form.primaryKeyword} onChange={(e) => set("primaryKeyword", e.target.value)}
+                placeholder="e.g. SIF returns India"
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">OG Image URL <span className="text-faint">(defaults to cover)</span></label>
+              <input value={form.ogImage} onChange={(e) => set("ogImage", e.target.value)}
+                placeholder="Leave blank to use desktop cover"
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Canonical URL <span className="text-faint">(optional)</span></label>
+              <input value={form.canonicalUrl} onChange={(e) => set("canonicalUrl", e.target.value)}
+                placeholder="https://sifcase.in/read/…"
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            </div>
+
+            {/* Robots + OG preview */}
+            <div className="flex items-center justify-between py-2 border-t border-rule">
+              <div className="flex items-center gap-2">
+                <Globe className="size-3.5 text-muted" />
+                <span className="text-[11px] font-medium text-muted">Robots</span>
+              </div>
+              <button type="button" onClick={() => set("robotsIndex", !form.robotsIndex)}
+                className={`flex items-center gap-1.5 text-[11px] font-semibold transition-colors ${form.robotsIndex ? "text-gain" : "text-loss"}`}>
+                {form.robotsIndex
+                  ? <><CheckCircle2 className="size-3.5" /> index, follow</>
+                  : <><AlertCircle className="size-3.5" /> noindex</>}
+              </button>
+            </div>
+
+            {/* SEO checklist */}
+            {form.focusKeyphrase && (() => {
+              const kw = form.focusKeyphrase.toLowerCase();
+              const checks = [
+                { label: "Keyphrase in title", ok: form.title.toLowerCase().includes(kw) },
+                { label: "Keyphrase in meta description", ok: form.metaDescription.toLowerCase().includes(kw) },
+                { label: "Keyphrase in slug", ok: (form.slug ?? "").toLowerCase().includes(kw.replace(/\s+/g, "-")) },
+                { label: "Meta description filled", ok: form.metaDescription.length >= 50 },
+                { label: "SEO title set", ok: form.seoTitle.length > 0 },
+                { label: "Cover image set", ok: !!form.coverDesktop },
+              ];
+              const score = checks.filter((c) => c.ok).length;
+              return (
+                <div className="border-t border-rule pt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted">SEO Score</p>
+                    <span className={`text-[12px] font-bold ${score >= 5 ? "text-gain" : score >= 3 ? "text-amber-500" : "text-loss"}`}>{score}/{checks.length}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {checks.map((c) => (
+                      <div key={c.label} className="flex items-center gap-2">
+                        {c.ok ? <CheckCircle2 className="size-3 text-gain shrink-0" /> : <AlertCircle className="size-3 text-muted shrink-0" />}
+                        <span className={`text-[11px] ${c.ok ? "text-body" : "text-muted"}`}>{c.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

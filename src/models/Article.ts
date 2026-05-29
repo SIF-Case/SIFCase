@@ -4,18 +4,27 @@ export interface IArticle extends Document {
   title: string;
   slug: string;
   excerpt: string;
-  content: string; // HTML from TipTap
-  coverDesktop: string; // URL
-  coverMobile: string;  // URL (optional)
+  content: string;
+  coverDesktop: string;
+  coverMobile: string;
   useSeparateMobile: boolean;
   category: string;
   tags: string[];
   status: "draft" | "published";
   authorName: string;
-  readTime: number; // minutes
+  authorBio: string;
+  readTime: number;
   publishedAt: Date | null;
-  createdAt: Date;
   updatedAt: Date;
+  // SEO fields
+  seoTitle: string;
+  metaDescription: string;
+  canonicalUrl: string;
+  robotsIndex: boolean;
+  ogImage: string;
+  primaryKeyword: string;
+  focusKeyphrase: string;
+  createdAt: Date;
 }
 
 const ArticleSchema = new Schema<IArticle>(
@@ -31,8 +40,17 @@ const ArticleSchema = new Schema<IArticle>(
     tags: [String],
     status: { type: String, enum: ["draft", "published"], default: "draft" },
     authorName: { type: String, default: "SIFcase Team" },
+    authorBio: { type: String, default: "" },
     readTime: { type: Number, default: 3 },
     publishedAt: { type: Date, default: null },
+    // SEO
+    seoTitle: { type: String, default: "" },
+    metaDescription: { type: String, default: "" },
+    canonicalUrl: { type: String, default: "" },
+    robotsIndex: { type: Boolean, default: true },
+    ogImage: { type: String, default: "" },
+    primaryKeyword: { type: String, default: "" },
+    focusKeyphrase: { type: String, default: "" },
   },
   { timestamps: true },
 );

@@ -14,12 +14,35 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   await connectDB();
-  const article = await Article.findOne({ slug, status: "published" }).lean();
-  if (!article) return { title: "Not found" };
+  const a = await Article.findOne({ slug, status: "published" }).lean();
+  if (!a) return { title: "Not found" };
+
+  const title = a.seoTitle || a.title;
+  const description = a.metaDescription || a.excerpt;
+  const ogImg = a.ogImage || a.coverDesktop;
+  const url = `https://sifcase.in/read/${slug}`;
+
   return {
-    title: `${article.title} — SIFcase`,
-    description: article.excerpt,
-    openGraph: { images: article.coverDesktop ? [article.coverDesktop] : [] },
+    title: `${title} — SIFcase`,
+    description,
+    robots: a.robotsIndex ? "index, follow" : "noindex, nofollow",
+    alternates: { canonical: a.canonicalUrl || url },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      publishedTime: a.publishedAt?.toISOString(),
+      modifiedTime: a.updatedAt?.toISOString(),
+      authors: [a.authorName],
+      images: ogImg ? [{ url: ogImg, width: 1200, height: 630, alt: title }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImg ? [ogImg] : [],
+    },
   };
 }
 
@@ -33,8 +56,29 @@ export default async function ArticlePage({ params }: Props) {
     ? new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
+  const pageUrl = `https://sifcase.in/read/${slug}`;
+  const ogImg = article.ogImage || article.coverDesktop;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.seoTitle || article.title,
+    description: article.metaDescription || article.excerpt,
+    image: ogImg || undefined,
+    author: { "@type": "Person", name: article.authorName },
+    publisher: { "@type": "Organization", name: "SIFcase", logo: { "@type": "ImageObject", url: "https://sifcase.in/logo.png" } },
+    datePublished: article.publishedAt?.toISOString(),
+    dateModified: article.updatedAt?.toISOString(),
+    mainEntityOfPage: { "@type": "WebPage", "@id": article.canonicalUrl || pageUrl },
+    keywords: [...(article.tags ?? []), article.primaryKeyword, article.focusKeyphrase].filter(Boolean).join(", "),
+    articleSection: article.category,
+    wordCount: article.content.replace(/<[^>]+>/g, "").split(/\s+/).length,
+    timeRequired: `PT${article.readTime}M`,
+  };
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Navbar />
 
       {/* Article */}
@@ -99,6 +143,21 @@ export default async function ArticlePage({ params }: Props) {
           className="max-w-[1000px] mx-auto px-6 pb-16 article-body"
           dangerouslySetInnerHTML={{ __html: article.content }}
         />
+
+        {/* Author bio */}
+        {article.authorBio && (
+          <div className="max-w-[1000px] mx-auto px-6 pb-8">
+            <div className="border-t border-[#E5E5E5] pt-8 flex items-start gap-4">
+              <div className="size-12 rounded-full bg-brand-navy flex items-center justify-center text-white text-[16px] font-bold shrink-0">
+                {article.authorName[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="text-[14px] font-semibold text-[#1a1a1a]">{article.authorName}</p>
+                <p className="text-[14px] text-[#6B6B6B] leading-relaxed mt-0.5">{article.authorBio}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tags */}
         {article.tags?.length > 0 && (
