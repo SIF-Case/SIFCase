@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Bookmark, Check, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -267,9 +268,58 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
                 <span className="text-[12px] text-body">{s.name}</span>
               </div>
             ))}
+            <SaveCompareBtn picked={picked} period={period} />
           </div>
           <p className="text-[10px] font-mono uppercase tracking-widest text-muted">{viewLabel} · AMFI NAV data</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }) {
+  const { data: session } = useSession();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [name, setName] = useState("");
+  const [open, setOpen] = useState(false);
+
+  if (!session?.user || picked.length === 0) return null;
+
+  async function save() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await fetch("/api/user/compares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), schemeCodes: picked, period }),
+    });
+    setSaving(false); setSaved(true); setOpen(false); setName("");
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-[12px] text-muted hover:text-primary transition-colors">
+        {saved ? <Check className="size-3.5 text-gain" /> : <Bookmark className="size-3.5" />}
+        {saved ? "Saved!" : "Save comparison"}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full mb-2 left-0 z-20 bg-white border border-rule rounded-[12px] shadow-premium p-3 w-64">
+            <p className="text-[12px] font-semibold text-heading mb-2">Save this comparison</p>
+            <input value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Top Hybrid Funds"
+              className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary mb-2"
+              onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />
+            <button onClick={save} disabled={saving || !name.trim()}
+              className="w-full h-9 rounded-[8px] bg-primary text-white text-[12.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2">
+              {saving && <Loader2 className="size-3.5 animate-spin" />} Save
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

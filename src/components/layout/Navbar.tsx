@@ -73,6 +73,10 @@ export function Navbar() {
                           <p className="text-[12px] font-semibold text-heading truncate">{user.name ?? "Account"}</p>
                           <p className="text-[11px] text-muted truncate">{user.email ?? (session.user as { phone?: string }).phone ?? ""}</p>
                         </div>
+                        <a href="/dashboard"
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-body hover:bg-surface transition-colors">
+                          <User className="size-3.5" /> My Dashboard
+                        </a>
                         <button onClick={() => { signOut(); setMenuOpen(false); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-loss hover:bg-surface transition-colors">
                           <LogOut className="size-3.5" /> Sign out
