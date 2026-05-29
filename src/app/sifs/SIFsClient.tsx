@@ -1,0 +1,285 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
+import Link from "next/link";
+import type { FundRow, PeriodKey } from "@/lib/sifData";
+import { Sparkline } from "@/components/ui/Sparkline";
+import { useCompareTray } from "@/components/ui/CompareTray";
+import { Plus, Check } from "lucide-react";
+
+const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
+const CATEGORIES = ["All", "Equity", "Hybrid"] as const;
+type SortKey = "return" | "sharpe" | "drawdown" | "nav" | "name";
+
+function shortName(name: string) {
+  return name
+    .replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "")
+    .replace(/\s*-\s*Growth\s*Option.*/i, "")
+    .replace(/\s*(SIF|Fund)\s*$/i, "")
+    .trim();
+}
+
+function ReturnBadge({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-[12px] text-muted">—</span>;
+  const pos = value >= 0;
+  return (
+    <span className={`text-[13px] font-semibold nums ${pos ? "text-gain" : "text-loss"}`}>
+      {pos ? "+" : ""}{value.toFixed(2)}%
+    </span>
+  );
+}
+
+function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
+  const { has, toggle } = useCompareTray();
+  const inTray = has(fund.schemeCode);
+  const spark = fund.sparklines[period];
+  const ret = fund.returns[period];
+  const pos = ret === null ? true : ret >= 0;
+
+  return (
+    <div className="group grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors"
+      style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 80px 80px 80px 100px 72px" }}>
+
+      {/* Name */}
+      <div className="min-w-0">
+        <Link href={`/sifs/${fund.schemeCode.toLowerCase()}`}
+          className="text-[13.5px] font-semibold text-heading hover:text-primary truncate block leading-snug">
+          {shortName(fund.name)}
+        </Link>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px] text-muted truncate">{fund.amc}</span>
+          <span className="text-rule">·</span>
+          <span className="text-[10px] font-mono uppercase tracking-widest text-primary">{fund.strategy.replace(" Long-Short", "")}</span>
+        </div>
+      </div>
+
+      {/* NAV */}
+      <div className="text-right">
+        <p className="text-[13.5px] font-bold text-heading nums">₹{fund.nav.toFixed(4)}</p>
+        <p className="text-[10px] text-muted">{fund.navDate}</p>
+      </div>
+
+      {/* Period return */}
+      <div className="text-right"><ReturnBadge value={fund.returns[period]} /></div>
+
+      {/* Sharpe */}
+      <div className="text-right">
+        {(() => {
+          const s = fund.sharpes[period];
+          return <span className={`text-[13px] font-semibold nums ${s === null ? "text-muted" : s >= 1 ? "text-gain" : s >= 0 ? "text-amber-500" : "text-loss"}`}>
+            {s !== null ? s.toFixed(2) : "—"}
+          </span>;
+        })()}
+      </div>
+
+      {/* Drawdown */}
+      <div className="text-right">
+        {(() => {
+          const dd = fund.drawdowns[period];
+          return <span className={`text-[13px] font-semibold nums ${dd === null ? "text-muted" : dd < 0 ? "text-loss" : "text-muted"}`}>
+            {dd !== null ? `${dd.toFixed(2)}%` : "—"}
+          </span>;
+        })()}
+      </div>
+
+      {/* Sparkline */}
+      <div className="h-8">
+        {spark.length > 1
+          ? <Sparkline data={spark} stroke={pos ? "var(--color-gain)" : "var(--color-loss)"} />
+          : <span className="text-[10px] text-muted">No data</span>}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1.5 justify-end">
+        <button
+          onClick={() => toggle(fund.schemeCode)}
+          title={inTray ? "Remove from compare" : "Add to compare"}
+          className={`size-7 inline-flex items-center justify-center rounded-full border transition shrink-0 ${
+            inTray ? "border-primary bg-primary/10 text-primary" : "border-rule hover:border-rule-strong text-muted hover:text-body"
+          }`}>
+          {inTray ? <Check className="size-3" /> : <Plus className="size-3" />}
+        </button>
+        <Link href={`/sifs/${fund.schemeCode.toLowerCase()}`}
+          className="h-7 px-2.5 inline-flex items-center rounded-full bg-primary text-white text-[11px] font-semibold hover:bg-primary-hover transition">
+          View
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function SIFsClient({ funds }: { funds: FundRow[] }) {
+  const [search, setSearch] = useState("");
+  const [period, setPeriod] = useState<PeriodKey>("SI");
+  const [category, setCategory] = useState<typeof CATEGORIES[number]>("All");
+  const [sortKey, setSortKey] = useState<SortKey>("return");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [strategyFilter, setStrategyFilter] = useState("All");
+
+  const strategies = useMemo(() =>
+    ["All", ...Array.from(new Set(funds.map((f) => f.strategy))).sort()],
+    [funds]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortAsc((a) => !a);
+    else { setSortKey(key); setSortAsc(false); }
+  }
+
+  const filtered = useMemo(() => {
+    let list = funds.filter((f) => {
+      if (category !== "All" && f.category !== category) return false;
+      if (strategyFilter !== "All" && f.strategy !== strategyFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return f.name.toLowerCase().includes(q) || f.amc.toLowerCase().includes(q) || f.strategy.toLowerCase().includes(q);
+      }
+      return true;
+    });
+
+    list = [...list].sort((a, b) => {
+      let va: number, vb: number;
+      switch (sortKey) {
+        case "return":   va = a.returns[period] ?? -Infinity;  vb = b.returns[period] ?? -Infinity; break;
+        case "sharpe":   va = a.sharpes[period] ?? -Infinity;  vb = b.sharpes[period] ?? -Infinity; break;
+        case "drawdown": va = a.drawdowns[period] ?? Infinity; vb = b.drawdowns[period] ?? Infinity; break;
+        case "nav":      va = a.nav; vb = b.nav; break;
+        case "name":     return sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      }
+      return sortAsc ? va - vb : vb - va;
+    });
+
+    return list;
+  }, [funds, search, period, category, strategyFilter, sortKey, sortAsc]);
+
+  const stats = useMemo(() => {
+    const withRet = filtered.filter((f) => f.returns[period] !== null);
+    const avg = withRet.length ? withRet.reduce((s, f) => s + f.returns[period]!, 0) / withRet.length : null;
+    const best = withRet.length ? Math.max(...withRet.map((f) => f.returns[period]!)) : null;
+    const worst = withRet.length ? Math.min(...withRet.map((f) => f.returns[period]!)) : null;
+    return { avg, best, worst, count: filtered.length };
+  }, [filtered, period]);
+
+  function SortBtn({ col, label }: { col: SortKey; label: string }) {
+    const active = sortKey === col;
+    return (
+      <button onClick={() => toggleSort(col)}
+        className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest transition-colors ${active ? "text-primary" : "text-muted hover:text-body"}`}>
+        {label}
+        <ArrowUpDown className={`size-3 ${active ? "opacity-100" : "opacity-40"}`} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-10 w-full">
+
+      {/* Header */}
+      <div className="mb-8">
+        <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Universe</p>
+        <h1 className="text-[32px] font-bold text-heading tracking-[-0.3px] mb-1">All SIFs</h1>
+        <p className="text-[15px] text-muted">Every Specialised Investment Fund — verified NAV, returns, and risk from AMFI.</p>
+      </div>
+
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Funds shown", value: stats.count.toString() },
+          { label: `Best ${period}`, value: stats.best !== null ? `+${stats.best.toFixed(2)}%` : "—", cls: "text-gain" },
+          { label: `Worst ${period}`, value: stats.worst !== null ? `${stats.worst.toFixed(2)}%` : "—", cls: "text-loss" },
+          { label: `Avg ${period}`, value: stats.avg !== null ? `${stats.avg >= 0 ? "+" : ""}${stats.avg.toFixed(2)}%` : "—" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-[14px] border border-rule px-4 py-3 shadow-card">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted">{s.label}</p>
+            <p className={`text-[20px] font-bold nums mt-0.5 ${s.cls ?? "text-heading"}`}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div className="bg-white border border-rule rounded-[16px] shadow-card mb-4">
+        <div className="px-4 py-3 flex flex-wrap items-center gap-3 border-b border-rule">
+          {/* Search */}
+          <div className="flex items-center gap-2 flex-1 min-w-[200px] border border-rule rounded-[10px] px-3 h-9 bg-surface">
+            <Search className="size-3.5 text-muted shrink-0" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search fund, AMC, strategy…"
+              className="flex-1 text-[13px] bg-transparent outline-none text-body placeholder:text-faint" />
+            {search && <button onClick={() => setSearch("")}><X className="size-3.5 text-muted" /></button>}
+          </div>
+
+          {/* Period */}
+          <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
+            {PERIODS.map((p) => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${period === p ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Category */}
+          <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
+            {CATEGORIES.map((c) => (
+              <button key={c} onClick={() => setCategory(c)}
+                className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${category === c ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* More filters */}
+          <button onClick={() => setShowFilters((v) => !v)}
+            className={`h-9 px-3.5 rounded-[10px] border text-[12.5px] font-semibold flex items-center gap-2 transition-colors ${showFilters ? "border-primary text-primary bg-primary/5" : "border-rule text-muted hover:text-body"}`}>
+            <SlidersHorizontal className="size-3.5" />
+            Filters
+          </button>
+        </div>
+
+        {/* Extended filters */}
+        {showFilters && (
+          <div className="px-4 py-3 border-b border-rule flex flex-wrap items-center gap-3">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Strategy</p>
+              <div className="flex flex-wrap gap-1.5">
+                {strategies.map((s) => (
+                  <button key={s} onClick={() => setStrategyFilter(s)}
+                    className={`h-7 px-3 text-[11px] font-medium rounded-full border transition-colors ${strategyFilter === s ? "border-primary bg-primary/10 text-primary" : "border-rule text-muted hover:text-body"}`}>
+                    {s === "All" ? "All strategies" : s.replace(" Long-Short", "")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Table header */}
+        <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted"
+          style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 80px 80px 80px 100px 72px" }}>
+          <SortBtn col="name" label="Fund" />
+          <div className="text-right"><SortBtn col="nav" label="NAV" /></div>
+          <div className="text-right"><SortBtn col="return" label={period} /></div>
+          <div className="text-right"><SortBtn col="sharpe" label="Sharpe" /></div>
+          <div className="text-right"><SortBtn col="drawdown" label="Drawdown" /></div>
+          <div>Trend</div>
+          <div />
+        </div>
+
+        {/* Rows */}
+        <div>
+          {filtered.length === 0 ? (
+            <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
+          ) : (
+            filtered.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-rule flex items-center justify-between text-[11px] font-mono text-muted">
+          <span>{filtered.length} fund{filtered.length !== 1 ? "s" : ""} · Source: AMFI NAV data · Returns calculated by SIFcase</span>
+          <span>Updated daily</span>
+        </div>
+      </div>
+    </div>
+  );
+}
