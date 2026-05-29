@@ -23,7 +23,7 @@ export default async function ComparePage({ searchParams }: Props) {
   return (
     <Providers funds={allFunds}>
       <div className="min-h-screen flex flex-col">
-        <Navbar variant="light" />
+        <Navbar />
         <main className="flex-1 bg-white">
           <ComparePageClient funds={allFunds} initialCodes={initialCodes} />
         </main>

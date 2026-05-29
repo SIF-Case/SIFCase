@@ -38,7 +38,7 @@ export default async function HomePage() {
     <Providers funds={topFunds}>
       <main className="flex flex-col min-h-screen">
         <TickerRibbon navItems={tickerNavs} />
-        <Navbar variant="light" />
+        <Navbar />
         <Hero />
         <TrustStrip />
         <MarketSnapshot stats={stats} />

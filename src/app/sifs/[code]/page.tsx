@@ -100,7 +100,7 @@ export default async function FundDetailPage({ params }: Props) {
 
   return (
     <>
-      <Navbar variant="light" />
+      <Navbar />
       <main>
         {/* ── HERO HEADER ────────────────────────────────────────────────── */}
         <div className="bg-brand-navy text-white">

@@ -19,7 +19,7 @@ export default async function SIFsPage() {
     <Providers funds={funds}>
       <main className="flex flex-col min-h-screen bg-surface">
         <TickerRibbon navItems={tickerNavs} />
-        <Navbar variant="light" />
+        <Navbar />
         <SIFsClient funds={funds} />
         <Footer />
       </main>
