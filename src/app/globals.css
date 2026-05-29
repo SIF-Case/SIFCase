@@ -45,6 +45,16 @@
   --shadow-card:    0 14px 40px rgba(11,31,58,0.06);
   --shadow-premium: 0 24px 70px rgba(11,31,58,0.10);
   --shadow-btn:     0 12px 28px rgba(30,78,216,0.22);
+
+  /* ── Component aliases (Lovable-compatible names) ── */
+  --color-positive:        #0FAF75;
+  --color-negative:        #DC2626;
+  --color-gold:            #F59E0B;
+  --color-border:          #D8E2EC;
+  --color-border-strong:   #B8C7D6;
+  --color-muted-foreground:#64748B;
+  --color-foreground:      #334155;
+  --color-surface-2:       #F7FAFC;
 }
 
 /* ── Base ─────────────────────────────────────────── */
@@ -65,7 +75,7 @@ button, a, [role="button"], input, select {
 }
 
 /* Tabular numerals for all financial figures */
-.nums {
+.nums, .tabular {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }

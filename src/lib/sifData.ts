@@ -1,0 +1,641 @@
+import { connectDB } from "./mongodb";
+import mongoose from "mongoose";
+
+export interface SnapshotStats {
+  totalSchemes: number;
+  totalRegular: number;
+  uniqueAMCs: number;
+  latestNavDate: string;
+  totalNavRecords: number;
+}
+
+export interface SIFRow {
+  schemeCode: string;
+  name: string;
+  amc: string;
+  companyName: string;
+  strategy: string;
+  plan: "Regular" | "Direct";
+  option: string;
+  nav: string;
+  navDate: string;
+  return1m: string | null;
+  return3m: string | null;
+  return6m: string | null;
+  return1y: string | null;
+  returnSI: string | null;
+}
+
+export type PeriodKey = "1M" | "3M" | "6M" | "1Y" | "SI";
+
+export interface FundRow {
+  schemeCode: string;
+  name: string;
+  amc: string;
+  companyName: string;
+  strategy: string;
+  category: "Equity" | "Hybrid";
+  plan: "Regular" | "Direct";
+  nav: number;
+  navDate: string;
+  aum: number | null;
+  returns: Record<PeriodKey, number | null>;
+  sharpes: Record<PeriodKey, number | null>;
+  drawdowns: Record<PeriodKey, number | null>;
+  sparklines: Record<PeriodKey, number[]>;
+  sparklineDates: Record<PeriodKey, string[]>;
+}
+
+export interface TickerNav {
+  label: string;
+  value: string;
+  change: string;
+  neg: boolean;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// Returns index of the last record whose navDate <= cutoff.
+// If cutoff falls on a weekend/holiday, this gives the last trading day before it.
+function lastIdxOnOrBefore(records: { navDate: Date }[], cutoff: Date): number {
+  let idx = -1;
+  for (let i = 0; i < records.length; i++) {
+    if (records[i].navDate <= cutoff) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+// Safe month/year subtraction — clamps to last day of month to avoid JS Date overflow
+// e.g. May 31 - 1 month → April 30, not May 1
+function subMonths(date: Date, months: number): Date {
+  const d = new Date(date);
+  const targetMonth = d.getMonth() - months;
+  d.setMonth(targetMonth);
+  // If day overflowed (e.g. Jan 31 - 1 month → Feb 31 → Mar 3), roll back to last day of intended month
+  const expected = ((targetMonth % 12) + 12) % 12;
+  if (d.getMonth() !== expected) d.setDate(0);
+  return d;
+}
+
+function subYears(date: Date, years: number): Date {
+  return subMonths(date, years * 12);
+}
+
+function pct(current: number, base: number): number {
+  return +((( current - base) / base) * 100).toFixed(2);
+}
+
+function fmtReturn(val: number | null): string | null {
+  if (val === null) return null;
+  return (val >= 0 ? "+" : "") + val.toFixed(2);
+}
+
+// For a sorted array of nav records, find the record closest to a target date
+function navClosestTo(
+  sorted: { navDate: Date; nav: number }[],
+  target: Date
+): { nav: number } | null {
+  if (sorted.length === 0) return null;
+  let best = sorted[0];
+  let bestDiff = Math.abs(sorted[0].navDate.getTime() - target.getTime());
+  for (const r of sorted) {
+    const diff = Math.abs(r.navDate.getTime() - target.getTime());
+    if (diff < bestDiff) { bestDiff = diff; best = r; }
+  }
+  return best;
+}
+
+function strategyToCategory(strategy: string): "Equity" | "Hybrid" {
+  if (/hybrid/i.test(strategy) || /active\s*asset/i.test(strategy)) return "Hybrid";
+  return "Equity";
+}
+
+function computeSharpe(records: { nav: number; navDate: Date }[], riskFreeAnnual = 0.065): number | null {
+  if (records.length < 15) return null;
+
+  // Standard mutual fund Sharpe: treat each consecutive NAV pair as a 1-trading-day return.
+  // Do NOT normalise by calendar day gap — NAVs are only published on trading days,
+  // so each observation is already one trading day regardless of weekend/holiday gaps.
+  // Skip zero returns (duplicate NAV entries in DB).
+  const returns: number[] = [];
+  for (let i = 1; i < records.length; i++) {
+    const r = (records[i].nav - records[i - 1].nav) / records[i - 1].nav;
+    returns.push(r);
+  }
+
+  if (returns.length < 10) return null;
+
+  const n = returns.length;
+  const mean = returns.reduce((a, b) => a + b, 0) / n;
+  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1); // sample std dev
+  const stdDev = Math.sqrt(variance);
+  if (stdDev === 0) return null;
+
+  return +((mean - riskFreeAnnual / 252) / stdDev * Math.sqrt(252)).toFixed(2);
+}
+
+function computeMaxDrawdown(records: { nav: number }[]): number | null {
+  if (records.length < 2) return null;
+  let peak = records[0].nav;
+  let maxDD = 0;
+  for (const r of records) {
+    if (r.nav > peak) peak = r.nav;
+    const dd = (r.nav - peak) / peak * 100;
+    if (dd < maxDD) maxDD = dd;
+  }
+  return +maxDD.toFixed(2);
+}
+
+// ── DB queries ────────────────────────────────────────────────────────────────
+
+async function getCollections() {
+  await connectDB();
+  const db = mongoose.connection.db!;
+  return {
+    schemes: db.collection("sifschemes"),
+    navs: db.collection("sifnavs"),
+  };
+}
+
+export async function getSnapshotStats(): Promise<SnapshotStats> {
+  const { schemes, navs } = await getCollections();
+
+  const [totalSchemes, totalRegular, totalNavRecords, amcList, latestNavRecord] =
+    await Promise.all([
+      schemes.countDocuments(),
+      schemes.countDocuments({ plan: "Regular" }),
+      navs.countDocuments(),
+      schemes.distinct("amc"),
+      navs.findOne({}, { sort: { navDate: -1 } }),
+    ]);
+
+  return {
+    totalSchemes,
+    totalRegular,
+    uniqueAMCs: amcList.length,
+    latestNavDate: latestNavRecord
+      ? formatDate(latestNavRecord.navDate)
+      : "—",
+    totalNavRecords,
+  };
+}
+
+export async function getSIFsWithReturns(plan?: "Regular" | "Direct"): Promise<SIFRow[]> {
+  const { schemes, navs } = await getCollections();
+
+  const filter = plan ? { plan } : {};
+  const allSchemes = await schemes
+    .find(filter, { projection: { _id: 0 } })
+    .sort({ amc: 1, schemeName: 1 })
+    .toArray();
+
+  if (allSchemes.length === 0) return [];
+
+  const codes = allSchemes.map((s) => s.schemeCode as string);
+
+  // Fetch all NAV records for these schemes in one query
+  const allNavRecords = await navs
+    .find({ schemeCode: { $in: codes } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
+    .sort({ navDate: 1 })
+    .toArray();
+
+  // Group by schemeCode
+  const navsByCode = new Map<string, { nav: number; navDate: Date }[]>();
+  for (const r of allNavRecords) {
+    const code = r.schemeCode as string;
+    if (!navsByCode.has(code)) navsByCode.set(code, []);
+    navsByCode.get(code)!.push({ nav: r.nav as number, navDate: r.navDate as Date });
+  }
+
+  const rows: SIFRow[] = [];
+
+  for (const s of allSchemes) {
+    const code = s.schemeCode as string;
+    const records = navsByCode.get(code) ?? [];
+    if (records.length === 0) continue;
+
+    const latest = records[records.length - 1];
+    const first = records[0];
+
+    const latestDate = new Date(latest.navDate);
+    const ago1m = subMonths(latestDate, 1);
+    const ago3m = subMonths(latestDate, 3);
+    const ago6m = subMonths(latestDate, 6);
+    const ago1y = subYears(latestDate, 1);
+
+    const idx1m = lastIdxOnOrBefore(records, ago1m);
+    const idx3m = lastIdxOnOrBefore(records, ago3m);
+    const idx6m = lastIdxOnOrBefore(records, ago6m);
+    const idx1y = lastIdxOnOrBefore(records, ago1y);
+
+    rows.push({
+      schemeCode: code,
+      name: s.schemeName as string,
+      amc: s.amc as string,
+      companyName: (s.companyName as string) || (s.amc as string),
+      strategy: s.strategy as string,
+      plan: s.plan as "Regular" | "Direct",
+      option: s.option as string,
+      nav: (latest.nav as number).toFixed(4),
+      navDate: formatDate(latestDate),
+      return1m:
+        idx1m >= 0 && records.length >= 20
+          ? fmtReturn(pct(latest.nav, records[idx1m].nav))
+          : null,
+      return3m:
+        idx3m >= 0 && records.length >= 60
+          ? fmtReturn(pct(latest.nav, records[idx3m].nav))
+          : null,
+      return6m:
+        idx6m >= 0 && records.length >= 120
+          ? fmtReturn(pct(latest.nav, records[idx6m].nav))
+          : null,
+      return1y:
+        idx1y >= 0 && records.length >= 240
+          ? fmtReturn(pct(latest.nav, records[idx1y].nav))
+          : null,
+      returnSI:
+        first.nav !== latest.nav || records.length > 1
+          ? fmtReturn(pct(latest.nav, first.nav))
+          : null,
+    });
+  }
+
+  return rows;
+}
+
+export async function getTopFunds(): Promise<FundRow[]> {
+  const sifs = await getSIFsWithReturns("Regular");
+
+  // Only show Growth funds — filter by name since some IDCW funds have incorrect option="Growth" in DB
+  const growthOnly = sifs.filter((s) => {
+    const n = s.name.toLowerCase();
+    return !n.includes("idcw") && !n.includes("income distribution") && !n.includes("withdrawal") && !n.includes("dividend");
+  });
+
+  // Sort by SI return descending
+  const sorted = [...growthOnly].sort((a, b) => {
+    const ra = a.returnSI ? parseFloat(a.returnSI) : -Infinity;
+    const rb = b.returnSI ? parseFloat(b.returnSI) : -Infinity;
+    return rb - ra;
+  });
+
+  const { navs } = await getCollections();
+  const codes = sorted.map((s) => s.schemeCode);
+
+  // Batch fetch all NAVs in one query
+  const allNavRecords = await navs
+    .find({ schemeCode: { $in: codes } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
+    .sort({ navDate: 1 })
+    .toArray();
+
+  const navsByCode = new Map<string, { nav: number; navDate: Date }[]>();
+  for (const r of allNavRecords) {
+    const code = r.schemeCode as string;
+    if (!navsByCode.has(code)) navsByCode.set(code, []);
+    navsByCode.get(code)!.push({ nav: r.nav as number, navDate: new Date(r.navDate) });
+  }
+
+  const funds: FundRow[] = sorted.map((s) => {
+      const allHistory = navsByCode.get(s.schemeCode) ?? [];
+
+      const latestDate = allHistory.length ? allHistory[allHistory.length - 1].navDate : new Date();
+
+      const cutoffs: Record<string, Date> = {
+        "1M": subMonths(latestDate, 1),
+        "3M": subMonths(latestDate, 3),
+        "6M": subMonths(latestDate, 6),
+        "1Y": subYears(latestDate, 1),
+      };
+
+      // Start from the last trading day ON OR BEFORE the cutoff so the first
+      // return in the window captures the weekend/holiday gap correctly.
+      const sliceFor = (cutoff: Date) => {
+        const idx = lastIdxOnOrBefore(allHistory, cutoff);
+        return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
+      };
+
+      const sharpes: Record<PeriodKey, number | null> = {
+        "1M": computeSharpe(sliceFor(cutoffs["1M"])),
+        "3M": computeSharpe(sliceFor(cutoffs["3M"])),
+        "6M": computeSharpe(sliceFor(cutoffs["6M"])),
+        "1Y": computeSharpe(sliceFor(cutoffs["1Y"])),
+        "SI": computeSharpe(allHistory),
+      };
+
+      const drawdowns: Record<PeriodKey, number | null> = {
+        "1M": computeMaxDrawdown(sliceFor(cutoffs["1M"])),
+        "3M": computeMaxDrawdown(sliceFor(cutoffs["3M"])),
+        "6M": computeMaxDrawdown(sliceFor(cutoffs["6M"])),
+        "1Y": computeMaxDrawdown(sliceFor(cutoffs["1Y"])),
+        "SI": computeMaxDrawdown(allHistory),
+      };
+
+      const sparklines = {
+        "1M": sliceFor(cutoffs["1M"]).map((r) => r.nav),
+        "3M": sliceFor(cutoffs["3M"]).map((r) => r.nav),
+        "6M": sliceFor(cutoffs["6M"]).map((r) => r.nav),
+        "1Y": sliceFor(cutoffs["1Y"]).map((r) => r.nav),
+        "SI": allHistory.map((r) => r.nav),
+      } as Record<PeriodKey, number[]>;
+
+      const sparklineDates = {
+        "1M": sliceFor(cutoffs["1M"]).map((r) => formatDate(r.navDate)),
+        "3M": sliceFor(cutoffs["3M"]).map((r) => formatDate(r.navDate)),
+        "6M": sliceFor(cutoffs["6M"]).map((r) => formatDate(r.navDate)),
+        "1Y": sliceFor(cutoffs["1Y"]).map((r) => formatDate(r.navDate)),
+        "SI": allHistory.map((r) => formatDate(r.navDate)),
+      } as Record<PeriodKey, string[]>;
+
+      return {
+        schemeCode: s.schemeCode,
+        name: s.name,
+        amc: s.amc,
+        companyName: s.companyName,
+        strategy: s.strategy,
+        category: strategyToCategory(s.strategy),
+        plan: s.plan,
+        nav: parseFloat(s.nav),
+        navDate: s.navDate,
+        aum: (s as any).aum ?? null,
+        returns: {
+          "1M": s.return1m ? parseFloat(s.return1m) : null,
+          "3M": s.return3m ? parseFloat(s.return3m) : null,
+          "6M": s.return6m ? parseFloat(s.return6m) : null,
+          "1Y": s.return1y ? parseFloat(s.return1y) : null,
+          "SI": allHistory.length > 1
+            ? pct(allHistory[allHistory.length - 1].nav, allHistory[0].nav)
+            : null,
+        },
+        sharpes,
+        drawdowns,
+        sparklines,
+        sparklineDates,
+      };
+    });
+
+  return funds;
+}
+
+export async function getTickerNavs(): Promise<TickerNav[]> {
+  const { schemes, navs } = await getCollections();
+
+  // Pick a few Regular plan Growth schemes for the ticker
+  const regularSchemes = await schemes
+    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, amc: 1 } })
+    .limit(8)
+    .toArray();
+
+  const items: TickerNav[] = [];
+
+  for (const s of regularSchemes) {
+    const code = s.schemeCode as string;
+
+    // Latest two NAV records to compute daily change
+    const recent = await navs
+      .find({ schemeCode: code }, { projection: { nav: 1, navDate: 1 } })
+      .sort({ navDate: -1 })
+      .limit(2)
+      .toArray();
+
+    if (recent.length === 0) continue;
+
+    const latest = recent[0].nav as number;
+    const prev = recent.length > 1 ? (recent[1].nav as number) : latest;
+    const change = pct(latest, prev);
+    const name = (s.schemeName as string)
+      .replace(/- Growth.*$/i, "")
+      .replace(/- Regular Plan$/i, "")
+      .trim()
+      .toUpperCase()
+      .slice(0, 22);
+
+    items.push({
+      label: name,
+      value: latest.toFixed(4),
+      change: (change >= 0 ? "+" : "") + change.toFixed(2) + "%",
+      neg: change < 0,
+    });
+  }
+
+  return items;
+}
+
+// ── Monthly Heatmap ───────────────────────────────────────────────────────────
+
+export interface MonthlyHeatmapFund {
+  schemeCode: string;
+  name: string;
+  strategy: string;
+  category: "Equity" | "Hybrid";
+  months: (number | null)[];
+}
+
+export async function getMonthlyHeatmapData(monthsBack = 7): Promise<{
+  funds: MonthlyHeatmapFund[];
+  monthLabels: string[];
+}> {
+  const { schemes, navs } = await getCollections();
+
+  const now = new Date();
+  const periods: { start: Date; end: Date; label: string }[] = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth() - i;
+    const start = new Date(Date.UTC(year, month, 1));
+    const end = new Date(Date.UTC(year, month + 1, 0));
+    periods.push({
+      start,
+      end,
+      label: start.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }).replace(" ", " '"),
+    });
+  }
+
+  const allSchemes = await schemes
+    .find({ plan: "Regular" }, { projection: { schemeCode: 1, schemeName: 1, strategy: 1 } })
+    .sort({ amc: 1 })
+    .toArray();
+
+  if (allSchemes.length === 0) return { funds: [], monthLabels: periods.map((p) => p.label) };
+
+  const codes = allSchemes.map((s) => s.schemeCode as string);
+  const rangeStart = periods[0].start;
+
+  const allNavRecords = await navs
+    .find(
+      { schemeCode: { $in: codes }, navDate: { $gte: rangeStart } },
+      { projection: { schemeCode: 1, nav: 1, navDate: 1 } },
+    )
+    .sort({ navDate: 1 })
+    .toArray();
+
+  const navsByCode = new Map<string, { nav: number; navDate: Date }[]>();
+  for (const r of allNavRecords) {
+    const code = r.schemeCode as string;
+    if (!navsByCode.has(code)) navsByCode.set(code, []);
+    navsByCode.get(code)!.push({ nav: r.nav as number, navDate: new Date(r.navDate) });
+  }
+
+  const funds: MonthlyHeatmapFund[] = [];
+  for (const s of allSchemes) {
+    const code = s.schemeCode as string;
+    const records = navsByCode.get(code) ?? [];
+
+    const monthReturns: (number | null)[] = periods.map(({ start, end }) => {
+      const inMonth = records.filter((r) => r.navDate >= start && r.navDate <= end);
+      if (inMonth.length < 2) return null;
+      return pct(inMonth[inMonth.length - 1].nav, inMonth[0].nav);
+    });
+
+    if (monthReturns.every((v) => v === null)) continue;
+
+    funds.push({
+      schemeCode: code,
+      name: s.schemeName as string,
+      strategy: s.strategy as string,
+      category: strategyToCategory(s.strategy as string),
+      months: monthReturns,
+    });
+  }
+
+  return { funds, monthLabels: periods.map((p) => p.label) };
+}
+
+// ── Fund Detail ───────────────────────────────────────────────────────────────
+
+export interface FundDetail {
+  schemeCode: string;
+  name: string;
+  amc: string;
+  companyName: string;
+  strategy: string;
+  category: "Equity" | "Hybrid";
+  plan: "Regular" | "Direct";
+  option: string;
+  nav: number;
+  navDate: string;
+  launchDate: string;
+  aum: number | null;
+  expenseRatio: number | null;
+  benchmark: string | null;
+  navHistory: { date: string; nav: number }[];
+  returns: { YTD: number | null; "1M": number | null; "3M": number | null; "6M": number | null; "1Y": number | null; SI: number | null };
+  sharpes: Record<PeriodKey, number | null>;
+  drawdowns: Record<PeriodKey, number | null>;
+  volatilities: Record<PeriodKey, number | null>;
+}
+
+function computeVolatility(records: { nav: number }[]): number | null {
+  if (records.length < 15) return null;
+  const rets: number[] = [];
+  for (let i = 1; i < records.length; i++) {
+    rets.push((records[i].nav - records[i - 1].nav) / records[i - 1].nav);
+  }
+  if (rets.length < 10) return null;
+  const n = rets.length;
+  const mean = rets.reduce((a, b) => a + b, 0) / n;
+  const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1);
+  return +(Math.sqrt(variance) * Math.sqrt(252) * 100).toFixed(2);
+}
+
+export async function getFundDetail(code: string): Promise<FundDetail | null> {
+  const { schemes, navs } = await getCollections();
+
+  const upperCode = code.toUpperCase();
+  const scheme = await schemes.findOne({ schemeCode: upperCode }, { projection: { _id: 0 } });
+  if (!scheme) return null;
+
+  const schemeCode = scheme.schemeCode as string;
+
+  const rawNavs = await navs
+    .find({ schemeCode }, { projection: { nav: 1, navDate: 1, _id: 0 } })
+    .sort({ navDate: 1 })
+    .toArray();
+
+  if (rawNavs.length === 0) return null;
+
+  const allHistory = rawNavs.map((r) => ({
+    nav: r.nav as number,
+    navDate: new Date(r.navDate),
+  }));
+
+  const latest = allHistory[allHistory.length - 1];
+  const first = allHistory[0];
+  const latestDate = latest.navDate;
+
+  const cutoffs = {
+    "1M": subMonths(latestDate, 1),
+    "3M": subMonths(latestDate, 3),
+    "6M": subMonths(latestDate, 6),
+    "1Y": subYears(latestDate, 1),
+  };
+
+  const sliceFor = (cutoff: Date) => {
+    const idx = lastIdxOnOrBefore(allHistory, cutoff);
+    return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
+  };
+
+  const ytdCutoff = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1));
+  const ytdIdx = lastIdxOnOrBefore(allHistory, ytdCutoff);
+  const ytdSlice = ytdIdx >= 0 ? allHistory.slice(ytdIdx) : allHistory;
+
+  const slice1m = sliceFor(cutoffs["1M"]);
+  const slice3m = sliceFor(cutoffs["3M"]);
+  const slice6m = sliceFor(cutoffs["6M"]);
+  const slice1y = sliceFor(cutoffs["1Y"]);
+
+  const computeReturn = (slice: typeof allHistory): number | null =>
+    slice.length >= 2 ? pct(slice[slice.length - 1].nav, slice[0].nav) : null;
+
+  return {
+    schemeCode,
+    name: scheme.schemeName as string,
+    amc: scheme.amc as string,
+    companyName: (scheme.companyName as string) || (scheme.amc as string),
+    strategy: scheme.strategy as string,
+    category: strategyToCategory(scheme.strategy as string),
+    plan: scheme.plan as "Regular" | "Direct",
+    option: scheme.option as string,
+    nav: latest.nav,
+    navDate: formatDate(latestDate),
+    launchDate: formatDate(first.navDate),
+    aum: (scheme as any).aum ?? null,
+    expenseRatio: null,
+    benchmark: null,
+    navHistory: allHistory.map((r) => ({ date: formatDate(r.navDate), nav: r.nav })),
+    returns: {
+      YTD: computeReturn(ytdSlice),
+      "1M": computeReturn(slice1m),
+      "3M": computeReturn(slice3m),
+      "6M": computeReturn(slice6m),
+      "1Y": computeReturn(slice1y),
+      SI: pct(latest.nav, first.nav),
+    },
+    sharpes: {
+      "1M": computeSharpe(slice1m),
+      "3M": computeSharpe(slice3m),
+      "6M": computeSharpe(slice6m),
+      "1Y": computeSharpe(slice1y),
+      SI: computeSharpe(allHistory),
+    },
+    drawdowns: {
+      "1M": computeMaxDrawdown(slice1m),
+      "3M": computeMaxDrawdown(slice3m),
+      "6M": computeMaxDrawdown(slice6m),
+      "1Y": computeMaxDrawdown(slice1y),
+      SI: computeMaxDrawdown(allHistory),
+    },
+    volatilities: {
+      "1M": computeVolatility(slice1m),
+      "3M": computeVolatility(slice3m),
+      "6M": computeVolatility(slice6m),
+      "1Y": computeVolatility(slice1y),
+      SI: computeVolatility(allHistory),
+    },
+  };
+}

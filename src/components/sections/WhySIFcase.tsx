@@ -29,6 +29,7 @@ export function WhySIFcase() {
       <div className="max-w-[1320px] mx-auto px-6 lg:px-8">
         {/* Header */}
         <div className="max-w-xl mb-12">
+          <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Our Approach</p>
           <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-3">
             Why SIFcase is different
           </h2>

@@ -1,5 +1,11 @@
 import { ArrowRight, Clock } from "lucide-react";
-import { KNOWLEDGE_ARTICLES } from "@/lib/staticData";
+
+const KNOWLEDGE_ARTICLES = [
+  { title: "What is a Specialized Investment Fund?", category: "Basics", readTime: "5 min read", summary: "A clear explanation of what SIFs are, how they differ from mutual funds, and who they are designed for." },
+  { title: "SIF vs Mutual Fund vs PMS — Key Differences", category: "Comparison", readTime: "7 min read", summary: "A side-by-side breakdown of SIFs, mutual funds, and PMS on regulation, minimum investment, strategy flexibility, and investor eligibility." },
+  { title: "How to read a SIF ISID document", category: "Documents", readTime: "6 min read", summary: "The Investment Strategy Information Document contains strategy rules, risk details, and benchmark data. Here's how to read it." },
+  { title: "What is long-short investing?", category: "Strategy", readTime: "8 min read", summary: "Long-short strategies hold both buy and short positions. This article explains the mechanics, risk profile, and what to look for in an ISID." },
+];
 
 const CATEGORY_COLORS: Record<string, string> = {
   Basics: "bg-primary-tint text-primary",
@@ -15,6 +21,7 @@ export function LearnSection() {
         {/* Header */}
         <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
           <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Knowledge Hub</p>
             <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-1">
               Understand SIFs before you compare
             </h2>

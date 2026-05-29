@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/cron/fetch-nav", "schedule": "30 20 * * *" },
+    { "path": "/api/cron/fetch-nav", "schedule": "30 23 * * *" },
+    { "path": "/api/cron/fetch-nav", "schedule": "30 3 * * *"  }
+  ]
+}
