@@ -38,8 +38,8 @@ function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
   const pos = ret === null ? true : ret >= 0;
 
   return (
-    <div className="group grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors"
-      style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 80px 80px 80px 100px 72px" }}>
+    <div className="group grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[780px]"
+      style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 80px" }}>
 
       {/* Name */}
       <div className="min-w-0">
@@ -254,25 +254,28 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
           </div>
         )}
 
-        {/* Table header */}
-        <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted"
-          style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 80px 80px 80px 100px 72px" }}>
-          <SortBtn col="name" label="Fund" />
-          <div className="text-right"><SortBtn col="nav" label="NAV" /></div>
-          <div className="text-right"><SortBtn col="return" label={period} /></div>
-          <div className="text-right"><SortBtn col="sharpe" label="Sharpe" /></div>
-          <div className="text-right"><SortBtn col="drawdown" label="Drawdown" /></div>
-          <div>Trend</div>
-          <div />
-        </div>
+        {/* Table — scrollable on small screens */}
+        <div className="overflow-x-auto">
+          {/* Table header */}
+          <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[780px]"
+            style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 80px" }}>
+            <SortBtn col="name" label="Fund" />
+            <div className="text-right"><SortBtn col="nav" label="NAV" /></div>
+            <div className="text-right"><SortBtn col="return" label={period} /></div>
+            <div className="text-right"><SortBtn col="sharpe" label="Sharpe" /></div>
+            <div className="text-right"><SortBtn col="drawdown" label="Drawdown" /></div>
+            <div>Trend</div>
+            <div />
+          </div>
 
-        {/* Rows */}
-        <div>
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
-          ) : (
-            filtered.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
-          )}
+          {/* Rows */}
+          <div className="min-w-[780px]">
+            {filtered.length === 0 ? (
+              <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
+            ) : (
+              filtered.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
+            )}
+          </div>
         </div>
 
         <div className="px-5 py-3 border-t border-rule flex items-center justify-between text-[11px] font-mono text-muted">
