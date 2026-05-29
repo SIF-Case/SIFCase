@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
-import { X, Loader2 } from "lucide-react";
-import { PhoneFlow } from "./PhoneFlow";
+import { X, Loader2, Phone, Mail, ArrowLeft } from "lucide-react";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
-type Tab = "google" | "email" | "phone";
-type EmailMode = "signin" | "signup";
+type Stage =
+  | "phone"      // enter phone number
+  | "otp"        // enter OTP
+  | "link";      // phone verified — choose Google or email/password
 
 function GoogleIcon() {
   return (
@@ -19,21 +22,86 @@ function GoogleIcon() {
   );
 }
 
-function EmailForm({ onSuccess }: { onSuccess: () => void }) {
-  const [mode, setMode] = useState<EmailMode>("signin");
+type Props = { open: boolean; onClose: () => void };
+
+export function AuthModal({ open, onClose }: Props) {
+  const [stage, setStage] = useState<Stage>("phone");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+
+  // email/password form state
+  const [emailMode, setEmailMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  async function submit() {
+  const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
+  const captchaContainerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !captchaContainerRef.current || recaptchaRef.current) return;
+    recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, captchaContainerRef.current, { size: "invisible" });
+    return () => { recaptchaRef.current?.clear(); recaptchaRef.current = null; };
+  }, [open]);
+
+  function reset() {
+    setStage("phone");
+    setPhone(""); setOtp(""); setError(""); setLoading(false);
+    setShowEmailForm(false); setEmail(""); setPassword(""); setName("");
+  }
+
+  function handleClose() { reset(); onClose(); }
+
+  async function sendOtp() {
+    setError("");
+    if (!phone.match(/^\+\d{7,15}$/)) {
+      setError("Include country code — e.g. +91 98765 43210");
+      return;
+    }
+    setLoading(true);
+    try {
+      confirmationRef.current = await signInWithPhoneNumber(firebaseAuth, phone, recaptchaRef.current!);
+      setStage("otp");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyOtp() {
+    setError("");
+    if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
+    setLoading(true);
+    try {
+      const result = await confirmationRef.current!.confirm(otp);
+      const idToken = await result.user.getIdToken();
+      const res = await signIn("phone", { idToken, redirect: false });
+      if (res?.error) throw new Error(res.error);
+      setStage("link");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Invalid code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitEmail() {
     setError("");
     if (!email || !password) { setError("Fill in all fields"); return; }
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
-
-    if (mode === "signup") {
+    if (emailMode === "signup") {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,147 +110,171 @@ function EmailForm({ onSuccess }: { onSuccess: () => void }) {
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Registration failed"); setLoading(false); return; }
     }
-
     const res = await signIn("email-password", { email, password, redirect: false });
     if (res?.error) {
-      setError(mode === "signin" ? "Invalid email or password" : "Could not sign in after registration");
+      setError(emailMode === "signin" ? "Invalid email or password" : "Sign-in after registration failed");
     } else {
-      onSuccess();
+      handleClose();
     }
     setLoading(false);
   }
 
-  return (
-    <div className="space-y-3">
-      {mode === "signup" && (
-        <div>
-          <label className="block text-[12px] font-medium text-muted mb-1.5">Name</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
-        </div>
-      )}
-      <div>
-        <label className="block text-[12px] font-medium text-muted mb-1.5">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-        />
-      </div>
-      <div>
-        <label className="block text-[12px] font-medium text-muted mb-1.5">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-        />
-      </div>
-      {error && <p className="text-[12px] text-loss">{error}</p>}
-      <button
-        onClick={submit}
-        disabled={loading}
-        className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
-      >
-        {loading && <Loader2 className="size-4 animate-spin" />}
-        {mode === "signin" ? "Sign in" : "Create account"}
-      </button>
-      <p className="text-center text-[12px] text-muted">
-        {mode === "signin" ? "No account?" : "Already have one?"}{" "}
-        <button
-          onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); }}
-          className="text-primary font-medium hover:underline"
-        >
-          {mode === "signin" ? "Sign up" : "Sign in"}
-        </button>
-      </p>
-    </div>
-  );
-}
-
-type Props = { open: boolean; onClose: () => void };
-
-export function AuthModal({ open, onClose }: Props) {
-  const [tab, setTab] = useState<Tab>("google");
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
   if (!open) return null;
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "google", label: "Google" },
-    { id: "email", label: "Email" },
-    { id: "phone", label: "Phone" },
-  ];
 
   return (
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onClick={(e) => { if (e.target === overlayRef.current) handleClose(); }}
     >
       <div className="w-full max-w-[400px] bg-white rounded-[20px] shadow-premium p-6 relative">
+        <div ref={captchaContainerRef} />
+
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 p-1.5 rounded-full text-muted hover:text-heading hover:bg-surface transition-colors"
         >
           <X className="size-4" />
         </button>
 
+        {/* Logo + title */}
         <div className="mb-6">
           <div className="w-8 h-8 rounded-[8px] bg-brand-navy flex items-center justify-center text-white text-xs font-bold mb-3">S</div>
-          <h2 className="text-[20px] font-bold text-heading tracking-[-0.3px]">Sign in to SIFcase</h2>
-          <p className="text-[13px] text-muted mt-1">Access watchlists, compare saves, and more.</p>
+          <h2 className="text-[20px] font-bold text-heading tracking-[-0.3px]">
+            {stage === "phone" && "Sign in to SIFcase"}
+            {stage === "otp" && "Enter your OTP"}
+            {stage === "link" && "You're verified!"}
+          </h2>
+          <p className="text-[13px] text-muted mt-1">
+            {stage === "phone" && "Enter your phone number to get started."}
+            {stage === "otp" && `Code sent to ${phone}`}
+            {stage === "link" && "Choose how you'd like to continue."}
+          </p>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex gap-1 bg-surface border border-rule rounded-[10px] p-1 mb-5">
-          {tabs.map((t) => (
+        {/* ── Stage 1: Phone ── */}
+        {stage === "phone" && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[12px] font-medium text-muted mb-1.5">Phone Number</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                autoFocus
+                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                onKeyDown={(e) => e.key === "Enter" && sendOtp()}
+              />
+            </div>
+            {error && <p className="text-[12px] text-loss">{error}</p>}
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 h-8 rounded-[7px] text-[12.5px] font-semibold transition-all ${
-                tab === t.id ? "bg-white shadow-sm text-heading" : "text-muted hover:text-body"
-              }`}
+              onClick={sendOtp}
+              disabled={loading}
+              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {t.label}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              Send OTP
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {tab === "google" && (
+        {/* ── Stage 2: OTP ── */}
+        {stage === "otp" && (
+          <div className="space-y-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              autoFocus
+              className="w-full h-12 px-3 rounded-[10px] border border-rule bg-white text-[20px] text-heading tracking-[0.3em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
+            />
+            {error && <p className="text-[12px] text-loss">{error}</p>}
+            <button
+              onClick={verifyOtp}
+              disabled={loading}
+              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              Verify
+            </button>
+            <button onClick={() => { setStage("phone"); setOtp(""); setError(""); }} className="w-full flex items-center justify-center gap-1.5 text-[12px] text-muted hover:text-body">
+              <ArrowLeft className="size-3" /> Change number
+            </button>
+          </div>
+        )}
+
+        {/* ── Stage 3: Link account ── */}
+        {stage === "link" && !showEmailForm && (
           <div className="space-y-3">
             <button
-              onClick={() => signIn("google", { redirect: false }).then(onClose)}
+              onClick={() => signIn("google", { redirect: false }).then(handleClose)}
               className="w-full h-11 rounded-[10px] border border-rule bg-white hover:bg-surface text-[13.5px] font-semibold text-heading flex items-center justify-center gap-3 transition-colors shadow-sm"
             >
               <GoogleIcon />
               Continue with Google
             </button>
-            <p className="text-center text-[11.5px] text-faint">
-              You&apos;ll be redirected to Google to sign in.
+            <button
+              onClick={() => setShowEmailForm(true)}
+              className="w-full h-11 rounded-[10px] border border-rule bg-white hover:bg-surface text-[13.5px] font-semibold text-heading flex items-center justify-center gap-3 transition-colors shadow-sm"
+            >
+              <Mail className="size-4 text-muted" />
+              Continue with Email
+            </button>
+            <button
+              onClick={handleClose}
+              className="w-full text-center text-[12px] text-muted hover:text-body pt-1"
+            >
+              Skip for now
+            </button>
+          </div>
+        )}
+
+        {/* ── Stage 3b: Email form ── */}
+        {stage === "link" && showEmailForm && (
+          <div className="space-y-3">
+            <button onClick={() => { setShowEmailForm(false); setError(""); }} className="flex items-center gap-1.5 text-[12px] text-muted hover:text-body mb-1">
+              <ArrowLeft className="size-3" /> Back
+            </button>
+            {emailMode === "signup" && (
+              <div>
+                <label className="block text-[12px] font-medium text-muted mb-1.5">Name</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
+                  className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+              </div>
+            )}
+            <div>
+              <label className="block text-[12px] font-medium text-muted mb-1.5">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium text-muted mb-1.5">Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                onKeyDown={(e) => e.key === "Enter" && submitEmail()} />
+            </div>
+            {error && <p className="text-[12px] text-loss">{error}</p>}
+            <button onClick={submitEmail} disabled={loading}
+              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2">
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              {emailMode === "signin" ? "Sign in" : "Create account"}
+            </button>
+            <p className="text-center text-[12px] text-muted">
+              {emailMode === "signin" ? "No account?" : "Already have one?"}{" "}
+              <button onClick={() => { setEmailMode(emailMode === "signin" ? "signup" : "signin"); setError(""); }} className="text-primary font-medium hover:underline">
+                {emailMode === "signin" ? "Sign up" : "Sign in"}
+              </button>
             </p>
           </div>
         )}
 
-        {tab === "email" && <EmailForm onSuccess={onClose} />}
-
-        {tab === "phone" && <PhoneFlow onSuccess={onClose} />}
-
         <p className="mt-5 text-center text-[11px] text-faint">
-          By signing in you agree to our Terms & Privacy Policy.
+          By continuing you agree to our Terms & Privacy Policy.
         </p>
       </div>
     </div>
