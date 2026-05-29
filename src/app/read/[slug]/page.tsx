@@ -40,7 +40,7 @@ export default async function ArticlePage({ params }: Props) {
       {/* Article */}
       <div className="flex-1">
         {/* Header — centered, max 680px */}
-        <header className="max-w-[680px] mx-auto px-6 pt-12 pb-8">
+        <header className="max-w-[820px] mx-auto px-6 pt-12 pb-8">
           {/* Back + category */}
           <div className="flex items-center gap-3 mb-8">
             <Link href="/read" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-body transition-colors">
@@ -96,13 +96,13 @@ export default async function ArticlePage({ params }: Props) {
 
         {/* Body content */}
         <article
-          className="max-w-[680px] mx-auto px-6 pb-16 article-body"
+          className="max-w-[820px] mx-auto px-6 pb-16 article-body"
           dangerouslySetInnerHTML={{ __html: article.content }}
         />
 
         {/* Tags */}
         {article.tags?.length > 0 && (
-          <div className="max-w-[680px] mx-auto px-6 pb-12 flex flex-wrap gap-2 border-t border-[#E5E5E5] pt-8">
+          <div className="max-w-[820px] mx-auto px-6 pb-12 flex flex-wrap gap-2 border-t border-[#E5E5E5] pt-8">
             {article.tags.map((t) => (
               <span key={t} className="inline-flex items-center gap-1.5 text-[13px] px-3 py-1.5 rounded-full bg-[#F2F2F2] text-[#6B6B6B] hover:bg-[#E6E6E6] transition-colors cursor-pointer">
                 <Tag className="size-3" />{t}
