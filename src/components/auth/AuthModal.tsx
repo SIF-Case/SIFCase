@@ -6,6 +6,24 @@ import { X, Loader2, Phone, Mail, ArrowLeft } from "lucide-react";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
 
+const COUNTRIES = [
+  { code: "IN", dial: "+91",  flag: "🇮🇳", name: "India" },
+  { code: "US", dial: "+1",   flag: "🇺🇸", name: "United States" },
+  { code: "GB", dial: "+44",  flag: "🇬🇧", name: "United Kingdom" },
+  { code: "AE", dial: "+971", flag: "🇦🇪", name: "UAE" },
+  { code: "SG", dial: "+65",  flag: "🇸🇬", name: "Singapore" },
+  { code: "AU", dial: "+61",  flag: "🇦🇺", name: "Australia" },
+  { code: "CA", dial: "+1",   flag: "🇨🇦", name: "Canada" },
+  { code: "DE", dial: "+49",  flag: "🇩🇪", name: "Germany" },
+  { code: "FR", dial: "+33",  flag: "🇫🇷", name: "France" },
+  { code: "JP", dial: "+81",  flag: "🇯🇵", name: "Japan" },
+  { code: "CN", dial: "+86",  flag: "🇨🇳", name: "China" },
+  { code: "BR", dial: "+55",  flag: "🇧🇷", name: "Brazil" },
+  { code: "ZA", dial: "+27",  flag: "🇿🇦", name: "South Africa" },
+  { code: "NG", dial: "+234", flag: "🇳🇬", name: "Nigeria" },
+  { code: "KE", dial: "+254", flag: "🇰🇪", name: "Kenya" },
+];
+
 type Stage =
   | "phone"      // enter phone number
   | "otp"        // enter OTP
@@ -26,6 +44,8 @@ type Props = { open: boolean; onClose: () => void };
 
 export function AuthModal({ open, onClose }: Props) {
   const [stage, setStage] = useState<Stage>("phone");
+  const [country, setCountry] = useState(COUNTRIES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -64,13 +84,12 @@ export function AuthModal({ open, onClose }: Props) {
 
   async function sendOtp() {
     setError("");
-    if (!phone.match(/^\+\d{7,15}$/)) {
-      setError("Include country code — e.g. +91 98765 43210");
-      return;
-    }
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 7) { setError("Enter a valid phone number"); return; }
+    const fullPhone = `${country.dial}${digits}`;
     setLoading(true);
     try {
-      confirmationRef.current = await signInWithPhoneNumber(firebaseAuth, phone, recaptchaRef.current!);
+      confirmationRef.current = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
       setStage("otp");
     } catch (e: unknown) {
       setError((e as Error).message ?? "Failed to send OTP");
@@ -147,7 +166,7 @@ export function AuthModal({ open, onClose }: Props) {
           </h2>
           <p className="text-[13px] text-muted mt-1">
             {stage === "phone" && "Enter your phone number to get started."}
-            {stage === "otp" && `Code sent to ${phone}`}
+            {stage === "otp" && `Code sent to ${country.dial} ${phone}`}
             {stage === "link" && "Choose how you'd like to continue."}
           </p>
         </div>
@@ -157,15 +176,49 @@ export function AuthModal({ open, onClose }: Props) {
           <div className="space-y-3">
             <div>
               <label className="block text-[12px] font-medium text-muted mb-1.5">Phone Number</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                autoFocus
-                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                onKeyDown={(e) => e.key === "Enter" && sendOtp()}
-              />
+              <div className="flex gap-2">
+                {/* Country dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setCountryOpen((o) => !o)}
+                    className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading flex items-center gap-1.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap"
+                  >
+                    <span>{country.flag}</span>
+                    <span className="text-muted">{country.dial}</span>
+                    <span className="text-muted text-[10px]">▼</span>
+                  </button>
+                  {countryOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setCountryOpen(false)} />
+                      <div className="absolute z-20 top-full mt-1 left-0 w-56 bg-white border border-rule rounded-[12px] shadow-premium py-1 max-h-52 overflow-y-auto">
+                        {COUNTRIES.map((c) => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => { setCountry(c); setCountryOpen(false); }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] hover:bg-surface text-left transition-colors ${country.code === c.code ? "text-primary font-medium" : "text-body"}`}
+                          >
+                            <span>{c.flag}</span>
+                            <span className="flex-1 truncate">{c.name}</span>
+                            <span className="text-muted text-[11px]">{c.dial}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Number input */}
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s\-]/g, ""))}
+                  placeholder="98765 43210"
+                  autoFocus
+                  className="flex-1 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  onKeyDown={(e) => e.key === "Enter" && sendOtp()}
+                />
+              </div>
             </div>
             {error && <p className="text-[12px] text-loss">{error}</p>}
             <button
