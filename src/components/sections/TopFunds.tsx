@@ -248,13 +248,19 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
   }, [amcOpen]);
 
   // Reset visible count when filters change
-  useEffect(() => { setVisibleCount(6); }, [filter, amc]);
+  useEffect(() => { setVisibleCount(6); }, [filter, amc, period]);
 
-  const filtered = funds.filter((f) => {
-    if (filter !== "All" && f.category !== filter) return false;
-    if (amc !== "All" && f.amc !== amc) return false;
-    return true;
-  });
+  const filtered = funds
+    .filter((f) => {
+      if (filter !== "All" && f.category !== filter) return false;
+      if (amc !== "All" && f.amc !== amc) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const ra = a.returns[period] ?? -Infinity;
+      const rb = b.returns[period] ?? -Infinity;
+      return rb - ra;
+    });
   const visible = filtered.slice(0, visibleCount);
 
   return (
@@ -267,7 +273,7 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
               Best performing SIFs
             </h2>
             <p className="text-[15px] text-muted">
-              Regular plan funds ranked by return since inception
+              Regular plan funds ranked by {period === "SI" ? "return since inception" : `${period} return`}
             </p>
           </div>
 
