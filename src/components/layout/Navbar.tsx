@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { label: "Performance", href: "/performance" },
   { label: "Compare", href: "/compare" },
   { label: "NFOs", href: "/nfos" },
-  { label: "Learn", href: "/learn" },
+  { label: "Read", href: "/read" },
 ];
 
 export function Navbar() {

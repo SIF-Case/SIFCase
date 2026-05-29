@@ -9,7 +9,16 @@
     "import:historical": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/importHistorical.ts"
   },
   "dependencies": {
+    "@tiptap/extension-heading": "^3.23.6",
+    "@tiptap/extension-image": "^3.23.6",
+    "@tiptap/extension-link": "^3.23.6",
+    "@tiptap/extension-placeholder": "^3.23.6",
+    "@tiptap/extension-text-align": "^3.23.6",
+    "@tiptap/extension-underline": "^3.23.6",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
     "@types/bcryptjs": "^2.4.6",
+    "@vercel/blob": "^2.4.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -22,6 +31,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
+    "slugify": "^1.6.9",
     "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5"
   },

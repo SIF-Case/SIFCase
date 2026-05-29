@@ -1,11 +1,12 @@
 import { requireAdmin } from "@/lib/adminAuth";
 import Link from "next/link";
-import { LayoutDashboard, Users, Database, ScrollText, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, Database, ScrollText, LogOut, ShieldCheck, BookOpen } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/funds", label: "Funds & NAV", icon: Database },
+  { href: "/admin/articles", label: "Articles", icon: BookOpen },
   { href: "/admin/logs", label: "Cron Logs", icon: ScrollText },
 ];
 
