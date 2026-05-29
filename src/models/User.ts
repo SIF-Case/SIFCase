@@ -8,6 +8,8 @@ export interface IUser extends Document {
   phone?: string;
   passwordHash?: string;
   googleId?: string;
+  isAdmin: boolean;
+  isBlocked: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +23,8 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, sparse: true, unique: true },
     passwordHash: { type: String },
     googleId: { type: String, sparse: true, unique: true },
+    isAdmin: { type: Boolean, default: false },
+    isBlocked: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
