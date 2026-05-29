@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
   const existing = await Article.findOne({ slug });
   if (existing) slug = `${slug}-${Date.now()}`;
 
-  const wordCount = content?.replace(/<[^>]+>/g, "").split(/\s+/).length ?? 0;
-  const estimatedRead = Math.max(1, Math.round(wordCount / 200));
+  const wordCount = content?.replace(/<[^>]+>/g, "").trim().split(/\s+/).filter(Boolean).length ?? 0;
+  const estimatedRead = Math.max(1, Math.round(wordCount / 265));
 
   const article = await Article.create({
     title, slug, content, excerpt, coverDesktop, coverMobile,
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     tags: tags || [],
     status: status || "draft",
     authorName: authorName || "SIFcase Team",
-    readTime: readTime || estimatedRead,
+    readTime: estimatedRead,
     publishedAt: status === "published" ? new Date() : null,
   });
   return NextResponse.json({ ok: true, id: article._id, slug: article.slug });

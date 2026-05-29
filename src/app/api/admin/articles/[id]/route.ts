@@ -25,8 +25,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (existing && !existing.publishedAt) body.publishedAt = new Date();
   }
 
-  const wordCount = body.content?.replace(/<[^>]+>/g, "").split(/\s+/).length ?? 0;
-  body.readTime = body.readTime || Math.max(1, Math.round(wordCount / 200));
+  const wordCount = body.content?.replace(/<[^>]+>/g, "").trim().split(/\s+/).filter(Boolean).length ?? 0;
+  body.readTime = Math.max(1, Math.round(wordCount / 265));
 
   const article = await Article.findByIdAndUpdate(id, body, { new: true });
   return NextResponse.json({ ok: true, slug: article?.slug });
