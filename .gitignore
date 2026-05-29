@@ -117,6 +117,9 @@ firebase-admin-key.json
 google-credentials*.json
 *credentials*.json
 
+# Local image uploads (use Vercel Blob in production)
+public/uploads/
+
 # Data files
 AUREVA\ SIF\ DATA/
 sif-insight-lab-main/

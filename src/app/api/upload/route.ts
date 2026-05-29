@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { isAdminRequest } from "@/lib/adminAuth";
+import path from "path";
+import fs from "fs";
 
 export async function POST(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -14,8 +15,18 @@ export async function POST(req: NextRequest) {
   if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "Max 5MB" }, { status: 400 });
 
   const ext = file.name.split(".").pop() ?? "jpg";
-  const filename = `articles/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  const blob = await put(filename, file, { access: "public" });
-  return NextResponse.json({ url: blob.url });
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`articles/${filename}`, file, { access: "public" });
+    return NextResponse.json({ url: blob.url });
+  }
+
+  // Local fallback — save to public/uploads/
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+  const bytes = await file.arrayBuffer();
+  fs.writeFileSync(path.join(uploadDir, filename), Buffer.from(bytes));
+  return NextResponse.json({ url: `/uploads/${filename}` });
 }
