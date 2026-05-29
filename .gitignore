@@ -113,8 +113,14 @@ secrets/
 .secrets/
 serviceAccountKey.json
 firebase-adminsdk*.json
+firebase-admin-key.json
 google-credentials*.json
 *credentials*.json
+
+# Data files
+AUREVA\ SIF\ DATA/
+sif-insight-lab-main/
+*.xlsx
 
 # Database
 *.sqlite
