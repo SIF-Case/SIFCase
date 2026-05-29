@@ -8,10 +8,10 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import Highlight from "@tiptap/extension-highlight";
-import Table from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
 import { useEffect, useRef } from "react";
 import {
   Bold, Italic, UnderlineIcon, Strikethrough, Code, Link2, Image as ImageIcon,
