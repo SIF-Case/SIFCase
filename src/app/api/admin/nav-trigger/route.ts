@@ -2,29 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import CronLog from "@/models/CronLog";
+import { fetchAndStoreSIFNav } from "@/lib/navFetcher";
 
 export async function POST(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const start = Date.now();
   try {
-    const origin = new URL(req.url).origin;
-    const res = await fetch(`${origin}/api/cron/fetch-nav`, {
-      headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
-    });
-    const data = await res.json();
+    const data = await fetchAndStoreSIFNav();
     const duration = Date.now() - start;
+    const ok = data.errors.length === 0;
 
     await connectDB();
     await CronLog.create({
       job: "manual-nav-fetch",
-      status: res.ok ? "success" : "error",
-      message: res.ok ? `Manual trigger succeeded` : `HTTP ${res.status}`,
-      fundsUpdated: data.updated ?? 0,
+      status: ok ? "success" : "error",
+      message: ok ? `Manual trigger succeeded` : data.errors[0],
+      fundsUpdated: data.upserted ?? 0,
       duration,
     });
 
-    return NextResponse.json({ ok: res.ok, duration, ...data });
+    return NextResponse.json({ ok, duration, success: ok, ...data, timestamp: new Date().toISOString() });
   } catch (e: unknown) {
     await connectDB();
     await CronLog.create({
