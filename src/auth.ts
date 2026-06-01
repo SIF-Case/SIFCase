@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyFirebaseToken } from "@/lib/firebaseAdmin";
@@ -61,6 +62,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ account, profile }) {
       if (account?.provider === "google" && profile?.email) {
         await connectDB();
+        const cookieStore = await cookies();
+        const linkUserId = cookieStore.get("linking_user_id")?.value;
+
+        if (linkUserId) {
+          // Link Google to an existing phone-only account
+          const phoneUser = await User.findById(linkUserId);
+          if (phoneUser && !phoneUser.email) {
+            phoneUser.email = profile.email;
+            phoneUser.googleId = profile.sub as string | undefined;
+            phoneUser.image = (profile as { picture?: string }).picture ?? phoneUser.image;
+            phoneUser.emailVerified = new Date();
+            if (phoneUser.name === phoneUser.phone) {
+              phoneUser.name = profile.name ?? phoneUser.name;
+            }
+            await phoneUser.save();
+            cookieStore.delete("linking_user_id");
+            return true;
+          }
+        }
+
+        // Normal Google sign-in flow
         const existing = await User.findOne({ email: profile.email });
         if (!existing) {
           await User.create({
@@ -81,17 +103,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.phone = (user as { phone?: string }).phone;
+        if (user.name) token.name = user.name;
       }
       if (account?.provider === "google" && profile?.email) {
         await connectDB();
         const dbUser = await User.findOne({ email: profile.email }).lean();
-        if (dbUser) token.id = (dbUser._id as { toString(): string }).toString();
+        if (dbUser) {
+          token.id = (dbUser._id as { toString(): string }).toString();
+          if (dbUser.name) token.name = dbUser.name;
+        }
+        if (profile.name) token.name = profile.name;
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = token.id as string;
       (session.user as { phone?: string }).phone = token.phone as string | undefined;
+      if (token.name) session.user.name = token.name as string;
       return session;
     },
   },

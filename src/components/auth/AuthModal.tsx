@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession, useSession } from "next-auth/react";
 import { X, Loader2, Phone, Mail, ArrowLeft } from "lucide-react";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
@@ -25,8 +25,7 @@ const COUNTRIES = [
 ];
 
 type Stage =
-  | "phone"      // enter phone number
-  | "otp"        // enter OTP
+  | "phone"      // enter phone number (+ OTP shown inline after send)
   | "link";      // phone verified — choose Google or email/password
 
 function GoogleIcon() {
@@ -43,10 +42,12 @@ function GoogleIcon() {
 type Props = { open: boolean; onClose: () => void };
 
 export function AuthModal({ open, onClose }: Props) {
+  const { data: session } = useSession();
   const [stage, setStage] = useState<Stage>("phone");
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [countryOpen, setCountryOpen] = useState(false);
   const [phone, setPhone] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,7 +77,7 @@ export function AuthModal({ open, onClose }: Props) {
 
   function reset() {
     setStage("phone");
-    setPhone(""); setOtp(""); setError(""); setLoading(false);
+    setPhone(""); setOtp(""); setOtpSent(false); setError(""); setLoading(false);
     setShowEmailForm(false); setEmail(""); setPassword(""); setName("");
   }
 
@@ -90,7 +91,7 @@ export function AuthModal({ open, onClose }: Props) {
     setLoading(true);
     try {
       confirmationRef.current = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
-      setStage("otp");
+      setOtpSent(true);
     } catch (e: unknown) {
       setError((e as Error).message ?? "Failed to send OTP");
     } finally {
@@ -107,7 +108,13 @@ export function AuthModal({ open, onClose }: Props) {
       const idToken = await result.user.getIdToken();
       const res = await signIn("phone", { idToken, redirect: false });
       if (res?.error) throw new Error(res.error);
-      setStage("link");
+      // Check if user already has email linked — if so, login is complete
+      const session = await getSession();
+      if (session?.user?.email) {
+        handleClose();
+      } else {
+        setStage("link");
+      }
     } catch (e: unknown) {
       setError((e as Error).message ?? "Invalid code");
     } finally {
@@ -117,6 +124,7 @@ export function AuthModal({ open, onClose }: Props) {
 
   async function submitEmail() {
     setError("");
+    if (emailMode === "signup" && !name.trim()) { setError("Enter your name"); return; }
     if (!email || !password) { setError("Fill in all fields"); return; }
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
@@ -124,7 +132,7 @@ export function AuthModal({ open, onClose }: Props) {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, phoneUserId: session?.user?.id ?? null }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Registration failed"); setLoading(false); return; }
@@ -161,17 +169,16 @@ export function AuthModal({ open, onClose }: Props) {
           <div className="w-8 h-8 rounded-[8px] bg-brand-navy flex items-center justify-center text-white text-xs font-bold mb-3">S</div>
           <h2 className="text-[20px] font-bold text-heading tracking-[-0.3px]">
             {stage === "phone" && "Sign in to SIFcase"}
-            {stage === "otp" && "Enter your OTP"}
             {stage === "link" && "You're verified!"}
           </h2>
           <p className="text-[13px] text-muted mt-1">
-            {stage === "phone" && "Enter your phone number to get started."}
-            {stage === "otp" && `Code sent to ${country.dial} ${phone}`}
+            {stage === "phone" && !otpSent && "Enter your phone number to get started."}
+            {stage === "phone" && otpSent && `Code sent to ${country.dial} ${phone}`}
             {stage === "link" && "Choose how you'd like to continue."}
           </p>
         </div>
 
-        {/* ── Stage 1: Phone ── */}
+        {/* ── Stage 1: Phone + inline OTP ── */}
         {stage === "phone" && (
           <div className="space-y-3">
             <div>
@@ -181,14 +188,15 @@ export function AuthModal({ open, onClose }: Props) {
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setCountryOpen((o) => !o)}
-                    className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading flex items-center gap-1.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap"
+                    onClick={() => !otpSent && setCountryOpen((o) => !o)}
+                    disabled={otpSent}
+                    className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading flex items-center gap-1.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <span>{country.flag}</span>
                     <span className="text-muted">{country.dial}</span>
                     <span className="text-muted text-[10px]">▼</span>
                   </button>
-                  {countryOpen && (
+                  {countryOpen && !otpSent && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setCountryOpen(false)} />
                       <div className="absolute z-20 top-full mt-1 left-0 w-56 bg-white border border-rule rounded-[12px] shadow-premium py-1 max-h-52 overflow-y-auto">
@@ -212,52 +220,63 @@ export function AuthModal({ open, onClose }: Props) {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s\-]/g, ""))}
+                  onChange={(e) => !otpSent && setPhone(e.target.value.replace(/[^\d\s\-]/g, ""))}
+                  readOnly={otpSent}
                   placeholder="98765 43210"
                   autoFocus
-                  className="flex-1 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  onKeyDown={(e) => e.key === "Enter" && sendOtp()}
+                  className={`flex-1 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${otpSent ? "opacity-60 cursor-not-allowed" : ""}`}
+                  onKeyDown={(e) => !otpSent && e.key === "Enter" && sendOtp()}
                 />
               </div>
             </div>
-            {error && <p className="text-[12px] text-loss">{error}</p>}
-            <button
-              onClick={sendOtp}
-              disabled={loading}
-              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-              Send OTP
-            </button>
-          </div>
-        )}
 
-        {/* ── Stage 2: OTP ── */}
-        {stage === "otp" && (
-          <div className="space-y-3">
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              autoFocus
-              className="w-full h-12 px-3 rounded-[10px] border border-rule bg-white text-[20px] text-heading tracking-[0.3em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-              onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
-            />
+            {/* OTP field appears inline after send */}
+            {otpSent && (
+              <div>
+                <label className="block text-[12px] font-medium text-muted mb-1.5">OTP Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  autoFocus
+                  className="w-full h-12 px-3 rounded-[10px] border border-rule bg-white text-[20px] text-heading tracking-[0.3em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
+                />
+              </div>
+            )}
+
             {error && <p className="text-[12px] text-loss">{error}</p>}
-            <button
-              onClick={verifyOtp}
-              disabled={loading}
-              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {loading && <Loader2 className="size-4 animate-spin" />}
-              Verify
-            </button>
-            <button onClick={() => { setStage("phone"); setOtp(""); setError(""); }} className="w-full flex items-center justify-center gap-1.5 text-[12px] text-muted hover:text-body">
-              <ArrowLeft className="size-3" /> Change number
-            </button>
+
+            {!otpSent ? (
+              <button
+                onClick={sendOtp}
+                disabled={loading}
+                className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+                Send OTP
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={verifyOtp}
+                  disabled={loading}
+                  className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" />}
+                  Verify
+                </button>
+                <button
+                  onClick={() => { setOtpSent(false); setOtp(""); setError(""); }}
+                  className="w-full flex items-center justify-center gap-1.5 text-[12px] text-muted hover:text-body"
+                >
+                  <ArrowLeft className="size-3" /> Change number
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -265,7 +284,11 @@ export function AuthModal({ open, onClose }: Props) {
         {stage === "link" && !showEmailForm && (
           <div className="space-y-3">
             <button
-              onClick={() => signIn("google", { redirect: false }).then(handleClose)}
+              onClick={async () => {
+                // Mark this as a linking flow so the OAuth callback can merge accounts
+                await fetch("/api/auth/link-google-init", { method: "POST" });
+                signIn("google");
+              }}
               className="w-full h-11 rounded-[10px] border border-rule bg-white hover:bg-surface text-[13.5px] font-semibold text-heading flex items-center justify-center gap-3 transition-colors shadow-sm"
             >
               <GoogleIcon />
@@ -278,12 +301,6 @@ export function AuthModal({ open, onClose }: Props) {
               <Mail className="size-4 text-muted" />
               Continue with Email
             </button>
-            <button
-              onClick={handleClose}
-              className="w-full text-center text-[12px] text-muted hover:text-body pt-1"
-            >
-              Skip for now
-            </button>
           </div>
         )}
 
@@ -293,13 +310,11 @@ export function AuthModal({ open, onClose }: Props) {
             <button onClick={() => { setShowEmailForm(false); setError(""); }} className="flex items-center gap-1.5 text-[12px] text-muted hover:text-body mb-1">
               <ArrowLeft className="size-3" /> Back
             </button>
-            {emailMode === "signup" && (
-              <div>
-                <label className="block text-[12px] font-medium text-muted mb-1.5">Name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
-                  className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-              </div>
-            )}
+            <div>
+              <label className="block text-[12px] font-medium text-muted mb-1.5">Name</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
+                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+            </div>
             <div>
               <label className="block text-[12px] font-medium text-muted mb-1.5">Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"

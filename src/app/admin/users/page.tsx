@@ -80,8 +80,8 @@ export default function AdminUsers() {
 
       <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[minmax(0,2fr)_140px_100px_100px_120px] gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
-          <div>User</div><div>Joined</div><div>Admin</div><div>Status</div><div>Actions</div>
+        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_110px_100px_100px_120px] gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
+          <div>User</div><div>Email</div><div>Phone</div><div>Joined</div><div>Admin</div><div>Status</div><div>Actions</div>
         </div>
 
         {loading ? (
@@ -89,11 +89,16 @@ export default function AdminUsers() {
         ) : users.length === 0 ? (
           <div className="py-16 text-center text-muted text-[13px]">No users found.</div>
         ) : users.map((u) => (
-          <div key={u._id} className={`grid grid-cols-[minmax(0,2fr)_140px_100px_100px_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center ${u.isBlocked ? "bg-red-50/40" : "hover:bg-surface"}`}>
+          <div key={u._id} className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_110px_100px_100px_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center ${u.isBlocked ? "bg-red-50/40" : "hover:bg-surface"}`}>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-heading truncate">{u.name ?? "—"}</p>
-              <p className="text-[11px] text-muted truncate">{u.email ?? u.phone ?? "—"}</p>
-              <p className="text-[10px] font-mono text-faint">{badge(u)}</p>
+              <p className="text-[10px] font-mono text-faint mt-0.5">{badge(u)}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] text-body truncate">{u.email ?? <span className="text-faint">—</span>}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12px] text-body font-mono truncate">{u.phone ?? <span className="text-faint">—</span>}</p>
             </div>
             <div className="text-[12px] text-muted">{new Date(u.createdAt).toLocaleDateString("en-IN")}</div>
             <div>

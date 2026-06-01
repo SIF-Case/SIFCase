@@ -176,21 +176,21 @@ export default async function ArticlePage({ params }: Props) {
       {/* Medium-style article typography */}
       <style>{`
         .article-body {
-          font-family: charter, Georgia, Cambria, "Times New Roman", Times, serif;
-          font-size: 20px;
-          line-height: 1.68;
+          font-family: var(--font-inter), "Inter", sans-serif;
+          font-size: 18px;
+          line-height: 1.75;
           color: #1a1a1a;
-          letter-spacing: -0.003em;
+          letter-spacing: -0.01em;
         }
         .article-body p { margin: 0 0 1.4em; }
-        .article-body h1 { font-size: 36px; font-weight: 700; line-height: 1.2; margin: 1.8em 0 0.6em; letter-spacing: -0.4px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .article-body h2 { font-size: 28px; font-weight: 700; line-height: 1.25; margin: 1.8em 0 0.6em; letter-spacing: -0.3px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .article-body h3 { font-size: 22px; font-weight: 700; line-height: 1.3; margin: 1.6em 0 0.5em; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .article-body strong { font-weight: 700; color: #1a1a1a; }
+        .article-body h1 { font-size: 34px; font-weight: 700; line-height: 1.2; margin: 1.8em 0 0.6em; letter-spacing: -0.5px; font-family: var(--font-inter), "Inter", sans-serif; }
+        .article-body h2 { font-size: 26px; font-weight: 700; line-height: 1.25; margin: 1.8em 0 0.6em; letter-spacing: -0.3px; font-family: var(--font-inter), "Inter", sans-serif; }
+        .article-body h3 { font-size: 20px; font-weight: 700; line-height: 1.3; margin: 1.6em 0 0.5em; font-family: var(--font-inter), "Inter", sans-serif; }
+        .article-body strong { font-weight: 600; color: #1a1a1a; }
         .article-body em { font-style: italic; }
         .article-body a { color: inherit; text-decoration: underline; text-decoration-color: #999; text-underline-offset: 3px; }
         .article-body a:hover { text-decoration-color: #1a1a1a; }
-        .article-body blockquote { border-left: 3px solid #1a1a1a; margin: 2em 0; padding: 0 0 0 28px; font-style: italic; color: #3d3d3d; font-size: 22px; }
+        .article-body blockquote { border-left: 3px solid #1a1a1a; margin: 2em 0; padding: 0 0 0 28px; font-style: italic; color: #3d3d3d; font-size: 20px; }
         .article-body ul { list-style: disc; padding-left: 28px; margin: 1em 0 1.4em; }
         .article-body ol { list-style: decimal; padding-left: 28px; margin: 1em 0 1.4em; }
         .article-body li { margin-bottom: 0.4em; }
@@ -199,9 +199,9 @@ export default async function ArticlePage({ params }: Props) {
         .article-body img { max-width: 100%; border-radius: 4px; margin: 2em auto; display: block; }
         .article-body hr { border: none; border-top: 1px solid #E5E5E5; margin: 3em auto; width: 30%; }
         .article-body mark { background: #FFEB3B; padding: 0 2px; border-radius: 2px; }
-        .article-body table { border-collapse: collapse; width: 100%; margin: 1.5em 0; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .article-body table { border-collapse: collapse; width: 100%; margin: 1.5em 0; font-size: 16px; font-family: var(--font-inter), "Inter", sans-serif; }
         .article-body td, .article-body th { border: 1px solid #E5E5E5; padding: 10px 16px; vertical-align: top; text-align: left; }
-        .article-body th { background: #F8F8F8; font-weight: 700; color: #1a1a1a; }
+        .article-body th { background: #F8F8F8; font-weight: 600; color: #1a1a1a; }
         .article-body tr:nth-child(even) td { background: #FAFAFA; }
       `}</style>
     </main>
