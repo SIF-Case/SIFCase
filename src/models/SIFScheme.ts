@@ -33,6 +33,7 @@ export interface ISIFScheme extends Document {
 
 // ── Derived field helpers (re-exported from lib for client-safe imports) ──────
 export { deriveFundName, deriveCompanyNameShort, deriveBrandName } from "@/lib/schemeHelpers";
+import { deriveFundName, deriveCompanyNameShort, deriveBrandName } from "@/lib/schemeHelpers";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
