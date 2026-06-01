@@ -49,27 +49,46 @@ function Tray({
   if (ids.length === 0) return null;
   const items = ids.map((id) => funds.find((f) => f.schemeCode === id)).filter(Boolean) as FundRow[];
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[min(96vw,820px)] w-fit">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-24px)] sm:w-fit sm:max-w-[min(96vw,1000px)]">
       <div className="bg-white/95 backdrop-blur border border-rule-strong rounded-2xl shadow-premium px-3 py-2 flex items-center gap-2">
-        <div className="px-2.5 py-1 inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-primary">
-          <GitCompare className="size-3.5" /> Compare tray · {ids.length}/4
+
+        {/* Label — always visible */}
+        <div className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-primary whitespace-nowrap shrink-0">
+          <GitCompare className="size-3.5" />
+          <span className="hidden sm:inline">Compare tray ·</span>
+          <span>{ids.length}/4</span>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap max-w-[460px]">
+
+        {/* Chips — desktop only */}
+        <div className="hidden sm:flex items-center gap-1.5 flex-nowrap">
           {items.map((f) => (
             <span key={f.schemeCode} className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 text-[11px] rounded-full bg-surface border border-rule">
-              <span className="max-w-[140px] truncate">{f.name.replace(/\s*-\s*(Regular|Direct|Growth|IDCW).*$/i, "")}</span>
+              <span className="max-w-[100px] truncate">{f.name.replace(/\s*-\s*(Regular|Direct|Growth|IDCW).*$/i, "")}</span>
               <button onClick={() => toggle(f.schemeCode)} className="p-0.5 rounded hover:bg-rule-strong">
                 <X className="size-3" />
               </button>
             </span>
           ))}
         </div>
-        <button onClick={clear} className="text-[10px] font-mono uppercase tracking-widest text-muted hover:text-body px-2">
+
+        {/* Mobile: fund name list compact */}
+        <div className="flex sm:hidden flex-1 min-w-0 flex-col gap-0.5">
+          {items.map((f) => (
+            <div key={f.schemeCode} className="flex items-center gap-1 text-[11px] text-body">
+              <span className="truncate">{f.name.replace(/\s*-\s*(Regular|Direct|Growth|IDCW).*$/i, "")}</span>
+              <button onClick={() => toggle(f.schemeCode)} className="shrink-0 p-0.5 rounded hover:bg-rule">
+                <X className="size-3 text-muted" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={clear} className="text-[10px] font-mono uppercase tracking-widest text-muted hover:text-body px-2 whitespace-nowrap shrink-0">
           Clear
         </button>
         <Link
           href={`/compare?funds=${ids.join(",")}`}
-          className="h-8 px-4 inline-flex items-center rounded-full bg-primary text-white text-[12px] font-semibold hover:opacity-90"
+          className="h-8 px-4 inline-flex items-center rounded-full bg-primary text-white text-[12px] font-semibold hover:opacity-90 whitespace-nowrap shrink-0"
         >
           Compare →
         </Link>

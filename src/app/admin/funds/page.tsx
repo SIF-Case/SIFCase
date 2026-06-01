@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Search, RefreshCw, Play, Loader2, CheckCircle, XCircle, X, ExternalLink, TrendingUp } from "lucide-react";
 
 type Scheme = {
@@ -21,6 +21,93 @@ type FundDetail = {
 };
 
 type TriggerResult = { ok: boolean; updated?: number; duration?: number; error?: string } | null;
+
+function NavChart({ records }: { records: NavRecord[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; idx: number } | null>(null);
+
+  const W = 380, H = 110, PL = 8, PR = 8, PT = 12, PB = 22;
+  const sorted = [...records].sort((a, b) => new Date(a.navDate).getTime() - new Date(b.navDate).getTime());
+  const navs = sorted.map((r) => r.nav);
+  const min = Math.min(...navs), max = Math.max(...navs);
+  const range = max - min || 0.01;
+  const isPos = sorted[sorted.length - 1].nav >= sorted[0].nav;
+  const color = isPos ? "#16A34A" : "#DC2626";
+
+  const pts = sorted.map((_, i) => ({
+    x: PL + (i / (sorted.length - 1)) * (W - PL - PR),
+    y: PT + ((max - sorted[i].nav) / range) * (H - PT - PB),
+  }));
+
+  const linePath = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+    const prev = pts[i - 1];
+    const cpx = ((prev.x + p.x) / 2).toFixed(1);
+    return `${acc} C ${cpx} ${prev.y.toFixed(1)}, ${cpx} ${p.y.toFixed(1)}, ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+  }, "");
+  const areaPath = `${linePath} L ${pts[pts.length - 1].x.toFixed(1)} ${H - PB} L ${pts[0].x.toFixed(1)} ${H - PB} Z`;
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const rawX = ((e.clientX - rect.left) / rect.width) * W;
+    const frac = (rawX - PL) / (W - PL - PR);
+    const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(frac * (sorted.length - 1))));
+    setTip({ x: pts[idx].x, y: pts[idx].y, idx });
+  }
+
+  const anchorRight = tip ? tip.x > W * 0.6 : false;
+
+  return (
+    <div className="px-5 py-3 border-b border-rule relative">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full cursor-crosshair"
+        style={{ height: H }}
+        preserveAspectRatio="none"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setTip(null)}
+      >
+        <defs>
+          <linearGradient id="admin-nav-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#admin-nav-grad)" />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <text x={PL} y={PT + 5} fontSize="8" fill="#94A3B8">₹{max.toFixed(4)}</text>
+        <text x={PL} y={H - PB - 2} fontSize="8" fill="#94A3B8">₹{min.toFixed(4)}</text>
+        <text x={PL} y={H - 4} fontSize="8" fill="#94A3B8">{new Date(sorted[0].navDate).toLocaleDateString("en-IN")}</text>
+        <text x={W - PR} y={H - 4} fontSize="8" fill="#94A3B8" textAnchor="end">{new Date(sorted[sorted.length - 1].navDate).toLocaleDateString("en-IN")}</text>
+        {tip && (
+          <>
+            <line x1={tip.x} y1={PT} x2={tip.x} y2={H - PB} stroke={color} strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.5" />
+            <circle cx={tip.x} cy={tip.y} r="3.5" fill="white" stroke={color} strokeWidth="1.5" />
+          </>
+        )}
+      </svg>
+
+      {tip && (
+        <div
+          className="pointer-events-none absolute z-10 bg-[#1a1a1a] text-white text-[11px] font-semibold rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap"
+          style={{
+            bottom: `${H - tip.y + 10}px`,
+            ...(anchorRight
+              ? { right: `${(1 - tip.x / W) * 100}%` }
+              : { left: `${(tip.x / W) * 100}%` }),
+            transform: anchorRight ? "translateX(8px)" : "translateX(-50%)",
+          }}
+        >
+          <p className="font-mono">₹{sorted[tip.idx].nav.toFixed(4)}</p>
+          <p className="text-[9px] font-normal opacity-60 mt-0.5">{new Date(sorted[tip.idx].navDate).toLocaleDateString("en-IN")}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FundPanel({ code, onClose }: { code: string; onClose: () => void }) {
   const [detail, setDetail] = useState<FundDetail | null>(null);
@@ -118,6 +205,9 @@ function FundPanel({ code, onClose }: { code: string; onClose: () => void }) {
                 </div>
               );
             })()}
+
+            {/* NAV Chart */}
+            {detail.navRecords.length >= 2 && <NavChart records={detail.navRecords} />}
 
             {/* NAV history table */}
             <div className="px-5 py-4">

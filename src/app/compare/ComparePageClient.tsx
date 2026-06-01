@@ -17,7 +17,7 @@ const SECTION_ROWS: {
   {
     section: "Basic",
     rows: [
-      { label: "Scheme Code",   key: (f) => ({ text: f.schemeCode }) },
+      { label: "ISIN",           key: (f) => ({ text: f.isin ?? "—" }) },
       { label: "AMC",           key: (f) => ({ text: f.amc }) },
       { label: "Strategy",      key: (f) => ({ text: f.strategy }) },
       { label: "Category",      key: (f) => ({ text: f.category }) },
@@ -136,7 +136,7 @@ function FundPicker({
             </div>
           </div>
           {spark.length > 1 && (
-            <div className="w-16 h-8 shrink-0">
+            <div className="hidden sm:block w-16 h-8 shrink-0">
               <Sparkline data={spark} stroke={si !== null && si >= 0 ? "var(--color-gain)" : "var(--color-loss)"} />
             </div>
           )}
@@ -268,60 +268,64 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
           </div>
 
           <div className="rounded-[18px] border border-rule overflow-hidden shadow-card">
-            {/* Fund header row */}
-            <div className="grid bg-brand-navy text-white border-b border-white/10" style={{ gridTemplateColumns: `200px repeat(${selected.length}, 1fr)` }}>
-              <div className="px-5 py-4 text-[10px] font-mono uppercase tracking-widest text-white/40">Metric</div>
-              {selected.map((f, i) => (
-                <div key={f.schemeCode} className="px-5 py-4 border-l border-white/10">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="size-2 rounded-full shrink-0" style={{ background: PALETTE[i] }} />
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">{f.schemeCode}</span>
-                  </div>
-                  <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="text-[13px] font-semibold text-white leading-tight hover:text-primary-tint transition-colors block">
-                    {shortName(f.name)}
-                  </Link>
-                  <p className="text-[11px] text-white/50 mt-0.5">{f.amc}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Sections */}
-            {SECTION_ROWS.map(({ section, rows }) => (
-              <div key={section}>
-                {/* Section header */}
-                <div className="grid bg-mist border-y border-rule" style={{ gridTemplateColumns: `200px repeat(${selected.length}, 1fr)` }}>
-                  <div className="px-5 py-2.5 text-[10px] font-mono uppercase tracking-widest text-primary font-semibold col-span-full">
-                    {section}
-                  </div>
-                </div>
-
-                {/* Section rows */}
-                {rows.map(({ label, key }, ri) => {
-                  const cells = selected.map((f) => key(f, period));
-                  return (
-                    <div key={label} className={`grid border-b border-rule last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-surface/40"}`} style={{ gridTemplateColumns: `200px repeat(${selected.length}, 1fr)` }}>
-                      <div className="px-5 py-3.5 text-[12px] text-muted font-medium self-center">{label}</div>
-                      {cells.map((cell, ci) => (
-                        <div key={ci} className="px-5 py-3.5 border-l border-rule self-center">
-                          {section === "Data Confidence" ? (
-                            <SourceBadge
-                              variant={cell.text === "AMFI Verified" ? "amfi" : cell.text === "Calculated from NAV" ? "calculated" : "review"}
-                              className="text-[9.5px]"
-                            />
-                          ) : (
-                            <span className={`text-[13px] font-semibold tabular ${
-                              cell.tone === "gain" ? "text-gain" : cell.tone === "loss" ? "text-loss" : cell.tone === "muted" ? "text-muted" : "text-body"
-                            }`}>
-                              {cell.text}
-                            </span>
-                          )}
-                        </div>
-                      ))}
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: `${140 + selected.length * 160}px` }}>
+                {/* Fund header row */}
+                <div className="grid bg-brand-navy text-white border-b border-white/10" style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                  <div className="px-4 py-4 text-[10px] font-mono uppercase tracking-widest text-white/40">Metric</div>
+                  {selected.map((f, i) => (
+                    <div key={f.schemeCode} className="px-4 py-4 border-l border-white/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="size-2 rounded-full shrink-0" style={{ background: PALETTE[i] }} />
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">{f.isin ?? f.schemeCode}</span>
+                      </div>
+                      <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="text-[13px] font-semibold text-white leading-tight hover:text-primary-tint transition-colors block">
+                        {shortName(f.name)}
+                      </Link>
+                      <p className="text-[11px] text-white/50 mt-0.5">{f.amc}</p>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Sections */}
+                {SECTION_ROWS.map(({ section, rows }) => (
+                  <div key={section}>
+                    {/* Section header */}
+                    <div className="grid bg-mist border-y border-rule" style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                      <div className="px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest text-primary font-semibold col-span-full">
+                        {section}
+                      </div>
+                    </div>
+
+                    {/* Section rows */}
+                    {rows.map(({ label, key }, ri) => {
+                      const cells = selected.map((f) => key(f, period));
+                      return (
+                        <div key={label} className={`grid border-b border-rule last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-surface/40"}`} style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                          <div className="px-4 py-3.5 text-[11px] text-muted font-medium self-center">{label}</div>
+                          {cells.map((cell, ci) => (
+                            <div key={ci} className="px-4 py-3.5 border-l border-rule self-center">
+                              {section === "Data Confidence" ? (
+                                <SourceBadge
+                                  variant={cell.text === "AMFI Verified" ? "amfi" : cell.text === "Calculated from NAV" ? "calculated" : "review"}
+                                  className="text-[9.5px]"
+                                />
+                              ) : (
+                                <span className={`text-[12px] font-semibold tabular ${
+                                  cell.tone === "gain" ? "text-gain" : cell.tone === "loss" ? "text-loss" : cell.tone === "muted" ? "text-muted" : "text-body"
+                                }`}>
+                                  {cell.text}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </section>
       )}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
+import { Search, SlidersHorizontal, ArrowUpDown, X, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useCompareTray } from "@/components/ui/CompareTray";
@@ -31,22 +32,25 @@ function ReturnBadge({ value }: { value: number | null }) {
 }
 
 function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
+  const router = useRouter();
   const { has, toggle } = useCompareTray();
   const inTray = has(fund.schemeCode);
   const spark = fund.sparklines[period];
   const ret = fund.returns[period];
   const pos = ret === null ? true : ret >= 0;
+  const href = `/sifs/${fund.schemeCode.toLowerCase()}`;
 
   return (
-    <div className="group grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[780px]"
-      style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 80px" }}>
+    <div
+      onClick={() => router.push(href)}
+      className="group relative grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[840px] cursor-pointer"
+      style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 110px" }}>
 
       {/* Name */}
       <div className="min-w-0">
-        <Link href={`/sifs/${fund.schemeCode.toLowerCase()}`}
-          className="text-[13.5px] font-semibold text-heading hover:text-primary truncate block leading-snug">
-          {shortName(fund.name)}
-        </Link>
+        <p className="text-[13.5px] font-semibold text-heading group-hover:text-primary truncate block leading-snug transition-colors">
+          {fund.fundName || shortName(fund.name)}
+        </p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[11px] text-muted truncate">{fund.amc}</span>
           <span className="text-rule">·</span>
@@ -90,24 +94,22 @@ function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
           : <span className="text-[10px] text-muted">No data</span>}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1.5 justify-end">
+      {/* Compare button — stopPropagation so row click doesn't fire */}
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => toggle(fund.schemeCode)}
           title={inTray ? "Remove from compare" : "Add to compare"}
-          className={`size-7 inline-flex items-center justify-center rounded-full border transition shrink-0 ${
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium transition shrink-0 ${
             inTray ? "border-primary bg-primary/10 text-primary" : "border-rule hover:border-rule-strong text-muted hover:text-body"
           }`}>
-          {inTray ? <Check className="size-3" /> : <Plus className="size-3" />}
+          {inTray ? <><Check className="size-3" /><span>Added</span></> : <><Plus className="size-3" /><span>Compare</span></>}
         </button>
-        <Link href={`/sifs/${fund.schemeCode.toLowerCase()}`}
-          className="h-7 px-2.5 inline-flex items-center rounded-full bg-primary text-white text-[11px] font-semibold hover:bg-primary-hover transition">
-          View
-        </Link>
       </div>
     </div>
   );
 }
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 30, 50];
 
 export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const [search, setSearch] = useState("");
@@ -117,6 +119,8 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const [sortAsc, setSortAsc] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [strategyFilter, setStrategyFilter] = useState("All");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(1);
 
   const strategies = useMemo(() =>
     ["All", ...Array.from(new Set(funds.map((f) => f.strategy))).sort()],
@@ -125,6 +129,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc((a) => !a);
     else { setSortKey(key); setSortAsc(false); }
+    setPage(1);
   }
 
   const filtered = useMemo(() => {
@@ -152,6 +157,10 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
 
     return list;
   }, [funds, search, period, category, strategyFilter, sortKey, sortAsc]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const stats = useMemo(() => {
     const withRet = filtered.filter((f) => f.returns[period] !== null);
@@ -203,16 +212,16 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
           {/* Search */}
           <div className="flex items-center gap-2 flex-1 min-w-[200px] border border-rule rounded-[10px] px-3 h-9 bg-surface">
             <Search className="size-3.5 text-muted shrink-0" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)}
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search fund, AMC, strategy…"
               className="flex-1 text-[13px] bg-transparent outline-none text-body placeholder:text-faint" />
-            {search && <button onClick={() => setSearch("")}><X className="size-3.5 text-muted" /></button>}
+            {search && <button onClick={() => { setSearch(""); setPage(1); }}><X className="size-3.5 text-muted" /></button>}
           </div>
 
           {/* Period */}
           <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
             {PERIODS.map((p) => (
-              <button key={p} onClick={() => setPeriod(p)}
+              <button key={p} onClick={() => { setPeriod(p); setPage(1); }}
                 className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${period === p ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
                 {p}
               </button>
@@ -222,7 +231,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
           {/* Category */}
           <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
             {CATEGORIES.map((c) => (
-              <button key={c} onClick={() => setCategory(c)}
+              <button key={c} onClick={() => { setCategory(c); setPage(1); }}
                 className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${category === c ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
                 {c}
               </button>
@@ -244,7 +253,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
               <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Strategy</p>
               <div className="flex flex-wrap gap-1.5">
                 {strategies.map((s) => (
-                  <button key={s} onClick={() => setStrategyFilter(s)}
+                  <button key={s} onClick={() => { setStrategyFilter(s); setPage(1); }}
                     className={`h-7 px-3 text-[11px] font-medium rounded-full border transition-colors ${strategyFilter === s ? "border-primary bg-primary/10 text-primary" : "border-rule text-muted hover:text-body"}`}>
                     {s === "All" ? "All strategies" : s.replace(" Long-Short", "")}
                   </button>
@@ -257,30 +266,68 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
         {/* Table — scrollable on small screens */}
         <div className="overflow-x-auto">
           {/* Table header */}
-          <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[780px]"
-            style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 80px" }}>
+          <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[840px]"
+            style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 110px" }}>
             <SortBtn col="name" label="Fund" />
-            <div className="text-right"><SortBtn col="nav" label="NAV" /></div>
-            <div className="text-right"><SortBtn col="return" label={period} /></div>
-            <div className="text-right"><SortBtn col="sharpe" label="Sharpe" /></div>
-            <div className="text-right"><SortBtn col="drawdown" label="Drawdown" /></div>
+            <div className="flex justify-end"><SortBtn col="nav" label="NAV" /></div>
+            <div className="flex justify-end"><SortBtn col="return" label={period} /></div>
+            <div className="flex justify-end"><SortBtn col="sharpe" label="Sharpe" /></div>
+            <div className="flex justify-end"><SortBtn col="drawdown" label="Drawdown" /></div>
             <div>Trend</div>
             <div />
           </div>
 
           {/* Rows */}
-          <div className="min-w-[780px]">
+          <div className="min-w-[840px]">
             {filtered.length === 0 ? (
               <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
             ) : (
-              filtered.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
+              paginated.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
             )}
           </div>
         </div>
 
-        <div className="px-5 py-3 border-t border-rule flex items-center justify-between text-[11px] font-mono text-muted">
-          <span>{filtered.length} fund{filtered.length !== 1 ? "s" : ""} · Source: AMFI NAV data · Returns calculated by SIFcase</span>
-          <span>Updated daily</span>
+        {/* Pagination footer */}
+        <div className="px-5 py-3 border-t border-rule flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[11px] font-mono text-muted">
+            {filtered.length === 0 ? "0 funds" : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)} of ${filtered.length} fund${filtered.length !== 1 ? "s" : ""}`}
+            {" · "}Source: AMFI
+          </span>
+          <div className="flex items-center gap-3">
+            {/* Rows per page */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-mono text-muted">Rows</span>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                className="h-7 px-2 text-[12px] font-medium text-body border border-rule rounded-[8px] bg-white outline-none cursor-pointer hover:border-rule-strong"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            {/* Prev / page indicator / Next */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="size-7 inline-flex items-center justify-center rounded-[8px] border border-rule text-muted hover:text-body hover:border-rule-strong disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <span className="text-[12px] font-mono text-muted px-2">
+                {safePage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="size-7 inline-flex items-center justify-center rounded-[8px] border border-rule text-muted hover:text-body hover:border-rule-strong disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

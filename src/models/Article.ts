@@ -9,6 +9,7 @@ export interface IArticle extends Document {
   coverMobile: string;
   useSeparateMobile: boolean;
   category: string;
+  subcategory: string;
   tags: string[];
   status: "draft" | "published";
   authorName: string;
@@ -37,6 +38,7 @@ const ArticleSchema = new Schema<IArticle>(
     coverMobile: { type: String, default: "" },
     useSeparateMobile: { type: Boolean, default: false },
     category: { type: String, default: "General" },
+    subcategory: { type: String, default: "" },
     tags: [String],
     status: { type: String, enum: ["draft", "published"], default: "draft" },
     authorName: { type: String, default: "SIFcase Team" },

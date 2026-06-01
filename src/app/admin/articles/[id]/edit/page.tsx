@@ -21,6 +21,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
       coverMobile: article.coverMobile,
       useSeparateMobile: article.useSeparateMobile,
       category: article.category,
+      subcategory: (article as { subcategory?: string }).subcategory ?? "",
       tags: article.tags.join(", "),
       status: article.status,
       authorName: article.authorName,

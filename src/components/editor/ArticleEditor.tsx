@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2 } from "lucide-react";
 import { RichEditor } from "./RichEditor";
@@ -16,6 +16,7 @@ type ArticleData = {
   coverMobile: string;
   useSeparateMobile: boolean;
   category: string;
+  subcategory: string;
   tags: string;
   status: "draft" | "published";
   authorName: string;
@@ -33,13 +34,14 @@ type ArticleData = {
 
 const DEFAULTS: ArticleData = {
   title: "", excerpt: "", content: "", coverDesktop: "", coverMobile: "",
-  useSeparateMobile: false, category: "General", tags: "", status: "draft",
+  useSeparateMobile: false, category: "General", subcategory: "", tags: "", status: "draft",
   authorName: "SIFcase Team", authorBio: "", readTime: 3,
   seoTitle: "", metaDescription: "", canonicalUrl: "", robotsIndex: true,
   ogImage: "", primaryKeyword: "", focusKeyphrase: "",
 };
 
-const CATEGORIES = ["General", "Market Insights", "SIF Education", "Strategy", "Regulatory", "Interviews"];
+const TOP_CATEGORIES = ["General", "Fund Houses", "Interviews"];
+const GENERAL_SUBS = ["Market Insights", "SIF Education", "Strategy", "Regulatory"];
 
 async function uploadImage(file: File): Promise<string> {
   const form = new FormData();
@@ -60,9 +62,21 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [coverPreview, setCoverPreview] = useState<"desktop" | "mobile">("desktop");
+  const [fundHouses, setFundHouses] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/amcs")
+      .then((r) => r.json())
+      .then((d) => setFundHouses(d.amcs ?? []))
+      .catch(() => {});
+  }, []);
 
   function set<K extends keyof ArticleData>(key: K, val: ArticleData[K]) {
     setForm((f) => ({ ...f, [key]: val }));
+  }
+
+  function handleCategoryChange(cat: string) {
+    setForm((f) => ({ ...f, category: cat, subcategory: "" }));
   }
 
   async function save(status: "draft" | "published") {
@@ -197,11 +211,24 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
 
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Category</label>
-              <select value={form.category} onChange={(e) => set("category", e.target.value)}
+              <select value={form.category} onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
-                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {TOP_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
+
+            {form.category !== "Interviews" && (
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
+                <select value={form.subcategory} onChange={(e) => set("subcategory", e.target.value)}
+                  className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
+                  <option value="">— select —</option>
+                  {form.category === "General"
+                    ? GENERAL_SUBS.map((s) => <option key={s}>{s}</option>)
+                    : fundHouses.map((h) => <option key={h}>{h}</option>)}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Tags <span className="text-faint">(comma separated)</span></label>

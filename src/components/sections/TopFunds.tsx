@@ -160,7 +160,7 @@ function FundCard({ fund, period }: { fund: FundRow; period: PeriodKey }) {
     <div className="bg-white rounded-[16px] border border-rule shadow-card p-5 flex flex-col gap-4 hover:shadow-premium transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[14.5px] font-bold text-heading leading-tight">{fund.name}</p>
+          <p className="text-[14.5px] font-bold text-heading leading-tight">{fund.fundName || fund.name}</p>
           <p className="text-[12px] font-medium text-body mt-0.5">{fund.companyName}</p>
         </div>
         <div className="text-right flex-shrink-0">

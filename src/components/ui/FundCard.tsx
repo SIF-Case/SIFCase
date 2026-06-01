@@ -8,10 +8,6 @@ import { Sparkline } from "@/components/ui/Sparkline";
 import { RiskGauge } from "@/components/ui/RiskMeter";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 
-function shortName(name: string) {
-  return name.replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "").replace(/\s*(SIF|Fund)\s*$/i, "").trim();
-}
-
 export function FundCard({ f }: { f: FundRow }) {
   const siReturn = f.returns["SI"];
   const positive = siReturn !== null ? siReturn >= 0 : true;
@@ -27,7 +23,7 @@ export function FundCard({ f }: { f: FundRow }) {
             href={`/sifs/${f.schemeCode.toLowerCase()}`}
             className="block text-[16px] font-semibold text-heading leading-tight truncate group-hover:text-primary transition-colors"
           >
-            {shortName(f.name)}
+            {f.fundName}
           </Link>
           <div className="mt-1 text-[11px] text-muted truncate">By {f.amc}</div>
           <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-primary">{f.strategy}</div>

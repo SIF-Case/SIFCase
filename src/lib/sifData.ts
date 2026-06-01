@@ -12,6 +12,7 @@ export interface SnapshotStats {
 export interface SIFRow {
   schemeCode: string;
   name: string;
+  fundName: string;
   amc: string;
   companyName: string;
   strategy: string;
@@ -19,6 +20,7 @@ export interface SIFRow {
   option: string;
   nav: string;
   navDate: string;
+  isin: string | null;
   return1m: string | null;
   return3m: string | null;
   return6m: string | null;
@@ -31,6 +33,7 @@ export type PeriodKey = "1M" | "3M" | "6M" | "1Y" | "SI";
 export interface FundRow {
   schemeCode: string;
   name: string;
+  fundName: string;
   amc: string;
   companyName: string;
   strategy: string;
@@ -38,6 +41,7 @@ export interface FundRow {
   plan: "Regular" | "Direct";
   nav: number;
   navDate: string;
+  isin: string | null;
   aum: number | null;
   returns: Record<PeriodKey, number | null>;
   sharpes: Record<PeriodKey, number | null>;
@@ -185,10 +189,12 @@ export async function getSnapshotStats(): Promise<SnapshotStats> {
   };
 }
 
-export async function getSIFsWithReturns(plan?: "Regular" | "Direct"): Promise<SIFRow[]> {
+export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string): Promise<SIFRow[]> {
   const { schemes, navs } = await getCollections();
 
-  const filter = plan ? { plan } : {};
+  const filter: Record<string, string> = {};
+  if (plan) filter.plan = plan;
+  if (option) filter.option = option;
   const allSchemes = await schemes
     .find(filter, { projection: { _id: 0 } })
     .sort({ amc: 1, schemeName: 1 })
@@ -236,6 +242,7 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct"): Promise<S
     rows.push({
       schemeCode: code,
       name: s.schemeName as string,
+      fundName: (s.fundName as string) || (s.schemeName as string),
       amc: s.amc as string,
       companyName: (s.companyName as string) || (s.amc as string),
       strategy: s.strategy as string,
@@ -243,6 +250,7 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct"): Promise<S
       option: s.option as string,
       nav: (latest.nav as number).toFixed(4),
       navDate: formatDate(latestDate),
+      isin: (s.isinGrowth as string) || null,
       return1m:
         idx1m >= 0 && records.length >= 20
           ? fmtReturn(pct(latest.nav, records[idx1m].nav))
@@ -270,9 +278,9 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct"): Promise<S
 }
 
 export async function getTopFunds(): Promise<FundRow[]> {
-  const sifs = await getSIFsWithReturns("Regular");
+  const sifs = await getSIFsWithReturns("Regular", "Growth");
 
-  // Only show Growth funds — filter by name since some IDCW funds have incorrect option="Growth" in DB
+  // Belt-and-suspenders: drop any IDCW that slipped through via mis-tagged option field
   const growthOnly = sifs.filter((s) => {
     const n = s.name.toLowerCase();
     return !n.includes("idcw") && !n.includes("income distribution") && !n.includes("withdrawal") && !n.includes("dividend");
@@ -355,6 +363,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
       return {
         schemeCode: s.schemeCode,
         name: s.name,
+        fundName: s.fundName,
         amc: s.amc,
         companyName: s.companyName,
         strategy: s.strategy,
@@ -362,6 +371,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
         plan: s.plan,
         nav: parseFloat(s.nav),
         navDate: s.navDate,
+        isin: s.isin,
         aum: (s as any).aum ?? null,
         returns: {
           "1M": s.return1m ? parseFloat(s.return1m) : null,
@@ -457,7 +467,7 @@ export async function getMonthlyHeatmapData(monthsBack = 7): Promise<{
   }
 
   const allSchemes = await schemes
-    .find({ plan: "Regular" }, { projection: { schemeCode: 1, schemeName: 1, strategy: 1 } })
+    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, strategy: 1 } })
     .sort({ amc: 1 })
     .toArray();
 
@@ -508,9 +518,19 @@ export async function getMonthlyHeatmapData(monthsBack = 7): Promise<{
 
 // ── Fund Detail ───────────────────────────────────────────────────────────────
 
+export interface FundVariant {
+  schemeCode: string;
+  plan: string;
+  option: string;
+  nav: number;
+  isin: string | null;
+}
+
 export interface FundDetail {
   schemeCode: string;
   name: string;
+  fundName: string;
+  isin: string | null;
   amc: string;
   companyName: string;
   strategy: string;
@@ -528,6 +548,7 @@ export interface FundDetail {
   sharpes: Record<PeriodKey, number | null>;
   drawdowns: Record<PeriodKey, number | null>;
   volatilities: Record<PeriodKey, number | null>;
+  variants: FundVariant[];
 }
 
 function computeVolatility(records: { nav: number }[]): number | null {
@@ -592,9 +613,61 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
   const computeReturn = (slice: typeof allHistory): number | null =>
     slice.length >= 2 ? pct(slice[slice.length - 1].nav, slice[0].nav) : null;
 
+  const fundNameValue = (scheme.fundName as string) || (scheme.schemeName as string);
+
+  // Fetch all variants sharing the same fundName
+  const variantDocs = await schemes
+    .find({ fundName: fundNameValue }, { projection: { schemeCode: 1, plan: 1, option: 1, isinGrowth: 1, isinReinvestment: 1, _id: 0 } })
+    .toArray();
+
+  const variantNavs = await Promise.all(
+    variantDocs.map(async (v) => {
+      const latest = await navs.findOne(
+        { schemeCode: v.schemeCode as string },
+        { projection: { nav: 1, _id: 0 }, sort: { navDate: -1 } }
+      );
+      const navVal = latest ? (latest.nav as number) : 0;
+      const isinG = (v.isinGrowth as string) || null;
+      const isinR = (v.isinReinvestment as string) || null;
+      const entries: FundVariant[] = [
+        { schemeCode: v.schemeCode as string, plan: v.plan as string, option: v.option as string, nav: navVal, isin: isinG },
+      ];
+      // If this is an IDCW record with a reinvestment ISIN, add a virtual IDCW Reinvestment variant
+      if ((v.option as string).toLowerCase().includes("idcw") && !(v.option as string).toLowerCase().includes("reinvest") && isinR) {
+        entries.push({ schemeCode: v.schemeCode as string, plan: v.plan as string, option: "IDCW Reinvestment", nav: navVal, isin: isinR });
+      }
+      return entries;
+    })
+  );
+
+  const flatVariantNavs = variantNavs.flat();
+
+  // Filter to Regular plan only, dedupe by option (current scheme wins ties)
+  const regularVariants = flatVariantNavs.filter((v) => v.plan === "Regular");
+  regularVariants.sort((a, b) => (b.schemeCode === schemeCode ? 1 : 0) - (a.schemeCode === schemeCode ? 1 : 0));
+  const seen = new Set<string>();
+  const samePlanVariants = regularVariants.filter((v) => {
+    const key = v.option.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const OPTION_ORDER = ["Growth", "IDCW", "IDCW Reinvestment", "IDCW Reinvest"];
+  samePlanVariants.sort((a, b) => {
+    const ai = OPTION_ORDER.findIndex((o) => a.option.toLowerCase().includes(o.toLowerCase()));
+    const bi = OPTION_ORDER.findIndex((o) => b.option.toLowerCase().includes(o.toLowerCase()));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  // isinGrowth holds the primary ISIN for any record (Growth ISIN or IDCW ISIN)
+  // isinReinvestment is only for the virtual "IDCW Reinvestment" variant
+  const isin = (scheme.isinGrowth as string) || null;
+
   return {
     schemeCode,
     name: scheme.schemeName as string,
+    fundName: fundNameValue,
+    isin,
     amc: scheme.amc as string,
     companyName: (scheme.companyName as string) || (scheme.amc as string),
     strategy: scheme.strategy as string,
@@ -637,5 +710,6 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
       "1Y": computeVolatility(slice1y),
       SI: computeVolatility(allHistory),
     },
+    variants: samePlanVariants,
   };
 }

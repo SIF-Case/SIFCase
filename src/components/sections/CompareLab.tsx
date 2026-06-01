@@ -107,7 +107,7 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
       }
       return {
         id: f.schemeCode,
-        name: shortName(f.name),
+        name: f.fundName || shortName(f.name),
         color: COMPARE_PALETTE[i % COMPARE_PALETTE.length],
         data,
         dates: dates ?? [],

@@ -3,6 +3,9 @@ import SIFScheme, {
   parsePlanFromName,
   parseOptionFromName,
   parseStrategyFromName,
+  deriveCompanyNameShort,
+  deriveBrandName,
+  deriveFundName,
 } from "@/models/SIFScheme";
 import SIFNav from "@/models/SIFNav";
 
@@ -97,6 +100,10 @@ export async function fetchAndStoreSIFNav(): Promise<FetchResult> {
             plan: parsePlanFromName(name),
             option: parseOptionFromName(name),
             strategy: parseStrategyFromName(name),
+            brandName: deriveBrandName(name),
+            fundName: deriveFundName(name),
+            companyName: "",
+            companyName_short: "",
             isActive: true,
           },
         },

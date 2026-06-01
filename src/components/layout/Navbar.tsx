@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Menu, X, LogOut, User } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Menu, X, LogOut, User, ChevronDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { AuthModal } from "@/components/auth/AuthModal";
 
 const NAV_LINKS = [
   { label: "All SIFs", href: "/sifs" },
-  { label: "Performance", href: "/performance" },
+  { label: "Fund Houses", href: "/fund-house" },
   { label: "Compare", href: "/compare" },
   { label: "NFOs", href: "/nfos" },
   { label: "Read", href: "/read" },
@@ -17,7 +17,26 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fundHousesOpen, setFundHousesOpen] = useState(false);
+  const [brandNames, setBrandNames] = useState<{ brandName: string; companyName_short: string }[]>([]);
+  const fundHousesRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
+
+  async function loadBrandNames() {
+    if (brandNames.length > 0) return;
+    const res = await fetch("/api/fund-houses");
+    if (res.ok) setBrandNames(await res.json());
+  }
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (fundHousesRef.current && !fundHousesRef.current.contains(e.target as Node)) {
+        setFundHousesOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
   const loading = status === "loading";
   const user = session?.user;
 
@@ -37,12 +56,57 @@ export function Navbar() {
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-1">
-              {NAV_LINKS.map((link) => (
-                <a key={link.href} href={link.href}
-                  className="px-3.5 py-2 rounded-[8px] text-[13.5px] font-medium text-body hover:text-heading hover:bg-surface">
-                  {link.label}
-                </a>
-              ))}
+              {NAV_LINKS.map((link) =>
+                link.label === "Fund Houses" ? (
+                  <div key={link.href} ref={fundHousesRef} className="relative">
+                    <button
+                      onMouseEnter={() => { setFundHousesOpen(true); loadBrandNames(); }}
+                      onClick={() => { setFundHousesOpen((v) => !v); loadBrandNames(); }}
+                      className="flex items-center gap-1 px-3.5 py-2 rounded-[8px] text-[13.5px] font-medium text-body hover:text-heading hover:bg-surface"
+                    >
+                      {link.label}
+                      <ChevronDown className={`size-3.5 transition-transform ${fundHousesOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {fundHousesOpen && (
+                      <div
+                        className="absolute left-0 top-full mt-1 z-30 bg-white border border-rule rounded-[14px] shadow-premium py-1.5 w-[480px] max-h-80 overflow-y-auto"
+                        onMouseLeave={() => setFundHousesOpen(false)}
+                      >
+                        <a
+                          href={link.href}
+                          className="block px-4 py-2 text-[12px] font-semibold text-primary hover:bg-surface"
+                        >
+                          All Fund Houses →
+                        </a>
+                        <div className="border-t border-rule my-1" />
+                        {brandNames.length === 0 ? (
+                          <div className="px-4 py-2 text-[12px] text-muted">Loading…</div>
+                        ) : (
+                          <div className="grid grid-cols-2 px-2 pb-1">
+                            {brandNames.map(({ brandName, companyName_short }) => (
+                              <a
+                                key={brandName}
+                                href={`/fund-house/${encodeURIComponent(brandName.toLowerCase().replace(/\s+/g, "-"))}`}
+                                className="flex flex-col px-3 py-2 rounded-[8px] hover:bg-surface transition-colors"
+                              >
+                                <span className="text-[13px] font-medium text-heading leading-tight">{brandName}</span>
+                                {companyName_short && (
+                                  <span className="text-[11px] text-muted leading-tight mt-0.5">{companyName_short}</span>
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <a key={link.href} href={link.href}
+                    className="px-3.5 py-2 rounded-[8px] text-[13.5px] font-medium text-body hover:text-heading hover:bg-surface">
+                    {link.label}
+                  </a>
+                )
+              )}
             </nav>
 
             {/* Desktop auth */}

@@ -28,7 +28,7 @@ import {
 export default async function HomePage() {
   const [stats, sifs, topFunds, tickerNavs, heatmap] = await Promise.all([
     getSnapshotStats(),
-    getSIFsWithReturns("Regular"),
+    getSIFsWithReturns("Regular", "Growth"),
     getTopFunds(),
     getTickerNavs(),
     getMonthlyHeatmapData(),

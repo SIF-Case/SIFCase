@@ -101,7 +101,7 @@ export function BuildYourCompare({ funds }: Props) {
         case "Rolling":    data = toRolling(raw);    break;
         case "Volatility": data = toVolatility(raw); break;
       }
-      return { id: f.schemeCode, name: shortName(f.name), color: PALETTE[i % PALETTE.length], data, dates: dates ?? [] };
+      return { id: f.schemeCode, name: f.fundName || shortName(f.name), color: PALETTE[i % PALETTE.length], data, dates: dates ?? [] };
     }).filter(Boolean) as { id: string; name: string; color: string; data: number[]; dates: string[] }[];
   }, [selected, period, view]);
 

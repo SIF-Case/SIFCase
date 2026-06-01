@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, ShieldCheck, TrendingUp, MinusCircle, ExternalLink, CalendarDays, Info } from "lucide-react";
+import { Plus, ShieldCheck, TrendingUp, MinusCircle, ExternalLink, CalendarDays, Info } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
@@ -10,26 +10,32 @@ import type { Metadata } from "next";
 
 export const revalidate = 3600;
 
-type Props = { params: Promise<{ code: string }> };
+type Props = { params: Promise<{ code: string }>; searchParams: Promise<{ variant?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
   const fund = await getFundDetail(code);
   if (!fund) return { title: "Fund not found — SIFcase" };
   return {
-    title: `${fund.name} — SIFcase`,
+    title: `${fund.fundName} — SIFcase`,
     description: `${fund.strategy} SIF by ${fund.amc}. Latest NAV ₹${fund.nav.toFixed(4)} as of ${fund.navDate}. Source-verified returns and risk metrics.`,
   };
 }
 
-export default async function FundDetailPage({ params }: Props) {
+export default async function FundDetailPage({ params, searchParams }: Props) {
   const { code } = await params;
+  const { variant } = await searchParams;
+  const isReinvest = variant === "reinvest";
   const fund = await getFundDetail(code);
 
   if (!fund) notFound();
 
   const siReturn = fund.returns.SI;
   const positive = siReturn !== null ? siReturn >= 0 : true;
+
+  // When ?variant=reinvest, show the reinvestment ISIN instead
+  const reinvestVariant = fund.variants.find((v) => v.option === "IDCW Reinvestment" && v.schemeCode === fund.schemeCode);
+  const displayIsin = isReinvest && reinvestVariant?.isin ? reinvestVariant.isin : fund.isin;
 
   function fmtReturn(v: number | null) {
     if (v === null) return null;
@@ -111,7 +117,7 @@ export default async function FundDetailPage({ params }: Props) {
               <span>/</span>
               <Link href="/sifs" className="hover:text-white transition-colors">All SIFs</Link>
               <span>/</span>
-              <span className="text-white/80">{fund.schemeCode}</span>
+              <span className="text-white/80">{displayIsin || fund.schemeCode}</span>
             </div>
 
             <div className="grid lg:grid-cols-[1fr_320px] gap-10 items-start">
@@ -121,16 +127,13 @@ export default async function FundDetailPage({ params }: Props) {
                   <span className="text-[11px] font-mono uppercase tracking-widest bg-primary/20 text-primary-tint px-3 py-1 rounded-full border border-primary/30">
                     {fund.strategy}
                   </span>
-                  <span className="text-[11px] font-mono uppercase tracking-widest bg-white/10 text-white/60 px-3 py-1 rounded-full">
-                    {fund.plan} Plan · {fund.option}
-                  </span>
                   <span className="text-[11px] font-mono uppercase tracking-widest bg-verified/20 text-[#6EF0B6] px-3 py-1 rounded-full border border-verified/30">
                     Active
                   </span>
                 </div>
 
                 <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight tracking-tight mb-3">
-                  {fund.name}
+                  {fund.fundName}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-4 text-[13px] text-white/60">
@@ -139,9 +142,50 @@ export default async function FundDetailPage({ params }: Props) {
                   <span>{fund.category}</span>
                   <span className="text-white/30">·</span>
                   <span>Launched {fund.launchDate}</span>
-                  <span className="text-white/30">·</span>
-                  <span className="font-mono">{fund.schemeCode}</span>
+                  {displayIsin && (
+                    <>
+                      <span className="text-white/30">·</span>
+                      <span className="font-mono">{displayIsin}</span>
+                    </>
+                  )}
                 </div>
+
+                {/* Variant switcher */}
+                {fund.variants.length > 1 && (
+                  <div className="mt-5">
+                    <div className="text-[9.5px] font-mono uppercase tracking-[0.14em] text-white/40 mb-2">
+                      Plan &amp; Option
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {fund.variants.map((v) => {
+                        const key = `${v.schemeCode}-${v.option}`;
+                        const isVirtualReinvest = v.option === "IDCW Reinvestment";
+                        const isCurrent = isVirtualReinvest
+                          ? isReinvest && v.schemeCode === fund.schemeCode
+                          : !isReinvest && v.schemeCode === fund.schemeCode && v.option === fund.option;
+                        const href = isVirtualReinvest
+                          ? `/sifs/${v.schemeCode.toLowerCase()}?variant=reinvest`
+                          : `/sifs/${v.schemeCode.toLowerCase()}`;
+                        return isCurrent ? (
+                          <span
+                            key={key}
+                            className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-primary text-white border border-primary/60"
+                          >
+                            {v.option}
+                          </span>
+                        ) : (
+                          <Link
+                            key={key}
+                            href={href}
+                            className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/60 border border-white/15 hover:bg-white/20 hover:text-white transition-colors"
+                          >
+                            {v.option}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Trust strip */}
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-white/50">

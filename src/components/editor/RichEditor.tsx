@@ -15,7 +15,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { useEffect, useRef } from "react";
 import {
   Bold, Italic, UnderlineIcon, Strikethrough, Code, Link2, Image as ImageIcon,
-  AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Quote, Heading1, Heading2, Heading3,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Quote, Heading1, Heading2, Heading3,
   Undo, Redo, Minus, Highlighter, Table as TableIcon,
   Plus, Trash2,
 } from "lucide-react";
@@ -119,6 +119,7 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
         <button type="button" onClick={() => editor.chain().focus().setTextAlign("left").run()} className={btn(editor.isActive({ textAlign: "left" }))} title="Left"><AlignLeft className="size-3.5" /></button>
         <button type="button" onClick={() => editor.chain().focus().setTextAlign("center").run()} className={btn(editor.isActive({ textAlign: "center" }))} title="Center"><AlignCenter className="size-3.5" /></button>
         <button type="button" onClick={() => editor.chain().focus().setTextAlign("right").run()} className={btn(editor.isActive({ textAlign: "right" }))} title="Right"><AlignRight className="size-3.5" /></button>
+        <button type="button" onClick={() => editor.chain().focus().setTextAlign("justify").run()} className={btn(editor.isActive({ textAlign: "justify" }))} title="Justify"><AlignJustify className="size-3.5" /></button>
         <Sep />
 
         <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn(editor.isActive("bulletList"))} title="Bullet list"><List className="size-3.5" /></button>
