@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil } from "lucide-react";
+import { Save, Eye, Send, ArrowLeft, Loader2, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { ImageUploader } from "./ImageUploader";
 
@@ -196,7 +196,6 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [coverPreview, setCoverPreview] = useState<"desktop" | "mobile">("desktop");
   const [fundHouses, setFundHouses] = useState<string[]>([]);
 
   useEffect(() => {
@@ -234,8 +233,6 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
     if (!res.ok) { setError(data.error ?? "Save failed"); return; }
     router.push("/admin/articles");
   }
-
-  const coverShown = form.useSeparateMobile && coverPreview === "mobile" ? form.coverMobile : form.coverDesktop;
 
   return (
     <div className="h-screen flex flex-col bg-[#F4F6FA]">
@@ -289,31 +286,13 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
           </div>
 
           {/* Cover image */}
-          <div className="bg-white rounded-[14px] border border-rule shadow-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-[13px] font-semibold text-heading">Cover Image</p>
-              {/* Mobile/Desktop preview toggle */}
-              <div className="flex items-center gap-2 text-[11px] text-muted">
-                <Monitor className="size-3.5" />
-                <button onClick={() => setCoverPreview(coverPreview === "desktop" ? "mobile" : "desktop")}
-                  className="text-primary">
-                  {coverPreview === "desktop" ? "Viewing: Desktop" : "Viewing: Mobile"}
-                </button>
-                <Smartphone className="size-3.5" />
-              </div>
-            </div>
-
-            {/* Preview */}
-            {coverShown && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverShown} alt="Cover preview" className="w-full h-48 object-cover rounded-[10px] border border-rule" />
-            )}
-
+          <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
+            <p className="text-[13px] font-semibold text-heading mb-4">Cover Image</p>
             <div className="grid grid-cols-2 gap-4">
-              <ImageUploader label="Desktop Cover" value={form.coverDesktop} onChange={(url) => set("coverDesktop", url)} />
+              <ImageUploader label="Desktop Cover (1600 × 840px)" value={form.coverDesktop} onChange={(url) => set("coverDesktop", url)} />
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[12px] font-medium text-muted">Mobile Cover</p>
+                  <p className="text-[12px] font-medium text-muted">Mobile Cover (800 × 600px)</p>
                   <button
                     type="button"
                     onClick={() => set("useSeparateMobile", !form.useSeparateMobile)}
