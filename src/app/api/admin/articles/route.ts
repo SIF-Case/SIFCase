@@ -21,7 +21,11 @@ export async function POST(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const body = await req.json();
-  const { title, content, excerpt, coverDesktop, coverMobile, useSeparateMobile, category, subcategory, tags, status, authorName, readTime } = body;
+  const {
+    title, content, excerpt, coverDesktop, coverMobile, useSeparateMobile,
+    category, subcategory, tags, status, authorName, authorBio,
+    seoTitle, metaDescription, canonicalUrl, robotsIndex, ogImage, primaryKeyword, focusKeyphrase,
+  } = body;
   if (!title) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   let slug = slugify(title, { lower: true, strict: true });
@@ -39,8 +43,16 @@ export async function POST(req: NextRequest) {
     tags: tags || [],
     status: status || "draft",
     authorName: authorName || "SIFcase Team",
+    authorBio: authorBio || "",
     readTime: estimatedRead,
     publishedAt: status === "published" ? new Date() : null,
+    seoTitle: seoTitle || "",
+    metaDescription: metaDescription || "",
+    canonicalUrl: canonicalUrl || "",
+    robotsIndex: robotsIndex !== false,
+    ogImage: ogImage || "",
+    primaryKeyword: primaryKeyword || "",
+    focusKeyphrase: focusKeyphrase || "",
   });
   return NextResponse.json({ ok: true, id: article._id, slug: article.slug });
 }

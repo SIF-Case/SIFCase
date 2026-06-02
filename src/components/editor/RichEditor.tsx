@@ -37,6 +37,7 @@ function cleanWordPaste(html: string): string {
 
 export function RichEditor({ value, onChange, onImageUpload }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastHtmlRef = useRef(value);
 
   const editor = useEditor({
     extensions: [
@@ -53,7 +54,11 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
       TableCell,
     ],
     content: value,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      lastHtmlRef.current = html;
+      onChange(html);
+    },
     editorProps: {
       attributes: {
         class: "prose prose-slate max-w-none min-h-[400px] px-6 py-5 focus:outline-none text-[15px] leading-relaxed",
@@ -63,7 +68,10 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) editor.commands.setContent(value);
+    if (editor && value !== lastHtmlRef.current) {
+      lastHtmlRef.current = value;
+      editor.commands.setContent(value);
+    }
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,9 +104,9 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
   const Sep = () => <div className="w-px h-4 bg-rule mx-1 shrink-0" />;
 
   return (
-    <div className="border border-rule rounded-[14px] overflow-hidden bg-white">
+    <div className="border border-rule rounded-[14px] bg-white">
       {/* Toolbar */}
-      <div className="px-3 py-2 border-b border-rule bg-mist flex flex-wrap items-center gap-0.5">
+      <div className="sticky top-0 z-20 px-3 py-2 border-b border-rule bg-mist flex flex-wrap items-center gap-0.5 rounded-t-[14px]">
         <button type="button" onClick={() => editor.chain().focus().undo().run()} className={btn(false)} title="Undo"><Undo className="size-3.5" /></button>
         <button type="button" onClick={() => editor.chain().focus().redo().run()} className={btn(false)} title="Redo"><Redo className="size-3.5" /></button>
         <Sep />
@@ -155,16 +163,33 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
       {/* Editor area */}
       <EditorContent editor={editor} />
 
-      {/* Table styles */}
+      {/* Editor content styles — Tailwind v4 has no typography plugin so we define these explicitly */}
       <style>{`
-        .tiptap-table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-        .tiptap-table td, .tiptap-table th { border: 1px solid #CBD5E1; padding: 8px 12px; min-width: 80px; vertical-align: top; position: relative; }
-        .tiptap-table th { background: #F1F5F9; font-weight: 600; text-align: left; }
-        .tiptap-table .selectedCell:after { content: ""; position: absolute; inset: 0; background: rgba(30,78,216,0.08); pointer-events: none; }
-        .tiptap-table .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #1E4ED8; cursor: col-resize; }
+        .ProseMirror { font-size: 15px; line-height: 1.75; color: #334155; }
+        .ProseMirror p { margin: 0 0 0.85em; }
+        .ProseMirror p:last-child { margin-bottom: 0; }
+        .ProseMirror h1 { font-size: 2em; font-weight: 700; line-height: 1.2; margin: 1.4em 0 0.5em; color: #0B1F3A; letter-spacing: -0.3px; }
+        .ProseMirror h2 { font-size: 1.5em; font-weight: 700; line-height: 1.25; margin: 1.3em 0 0.5em; color: #0B1F3A; letter-spacing: -0.2px; }
+        .ProseMirror h3 { font-size: 1.2em; font-weight: 600; line-height: 1.3; margin: 1.2em 0 0.4em; color: #0B1F3A; }
+        .ProseMirror ul { list-style-type: disc; padding-left: 1.6em; margin: 0.6em 0 0.9em; }
+        .ProseMirror ol { list-style-type: decimal; padding-left: 1.6em; margin: 0.6em 0 0.9em; }
+        .ProseMirror li { margin-bottom: 0.3em; }
+        .ProseMirror li p { margin: 0; }
+        .ProseMirror blockquote { border-left: 3px solid #1E4ED8; margin: 1.5em 0; padding: 0.4em 0 0.4em 1.25em; color: #64748B; font-style: italic; }
+        .ProseMirror strong { font-weight: 600; color: #0B1F3A; }
+        .ProseMirror em { font-style: italic; }
+        .ProseMirror code { font-family: "Courier New", monospace; font-size: 0.85em; background: #F1F5F9; padding: 1px 5px; border-radius: 4px; color: #c7254e; }
+        .ProseMirror pre { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.6; margin: 1.25em 0; }
+        .ProseMirror pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+        .ProseMirror mark { background: #FEF08A; padding: 0 2px; border-radius: 2px; }
+        .ProseMirror hr { border: none; border-top: 2px solid #E2E8F0; margin: 2em 0; }
+        .ProseMirror a { color: #1E4ED8; text-decoration: underline; text-underline-offset: 2px; }
+        .ProseMirror img { max-width: 100%; border-radius: 12px; margin: 1rem 0; }
+        .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #94A3B8; pointer-events: none; height: 0; }
+
         .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-        .ProseMirror td, .ProseMirror th { border: 1px solid #CBD5E1; padding: 8px 12px; min-width: 80px; vertical-align: top; }
-        .ProseMirror th { background: #F1F5F9; font-weight: 600; }
+        .ProseMirror td, .ProseMirror th { border: 1px solid #CBD5E1; padding: 8px 12px; min-width: 80px; vertical-align: top; position: relative; }
+        .ProseMirror th { background: #F1F5F9; font-weight: 600; text-align: left; }
         .ProseMirror .selectedCell:after { content: ""; position: absolute; inset: 0; background: rgba(30,78,216,0.08); pointer-events: none; z-index: 2; }
         .ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background-color: #1E4ED8; pointer-events: none; }
         .ProseMirror-focused .tableWrapper { overflow-x: auto; }

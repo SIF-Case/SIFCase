@@ -1,10 +1,145 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Save, Eye, Send, ArrowLeft, Loader2, Monitor, Smartphone, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { ImageUploader } from "./ImageUploader";
+
+function ComboSelect({ value, options, placeholder, onChange, storageKey }: {
+  value: string; options: string[]; placeholder?: string;
+  onChange: (v: string) => void; storageKey: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [all, setAll] = useState<string[]>(options);
+  const [adding, setAdding] = useState(false);
+  const [newVal, setNewVal] = useState("");
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editVal, setEditVal] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
+      const merged = [...new Set([...options, ...saved])];
+      setAll(merged);
+    } catch { setAll(options); }
+  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false); setAdding(false); setNewVal("");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function addNew() {
+    const v = newVal.trim();
+    if (!v || all.includes(v)) { setAdding(false); setNewVal(""); return; }
+    const next = [...all, v];
+    setAll(next);
+    try {
+      const existing = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
+      localStorage.setItem(storageKey, JSON.stringify([...new Set([...existing, v])]));
+    } catch { /* ignore */ }
+    onChange(v);
+    setAdding(false); setNewVal(""); setOpen(false);
+  }
+
+  function startEdit(idx: number, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingIdx(idx);
+    setEditVal(all[idx]);
+    setAdding(false);
+  }
+
+  function commitEdit(idx: number) {
+    const v = editVal.trim();
+    if (!v || (v !== all[idx] && all.includes(v))) { setEditingIdx(null); return; }
+    const next = all.map((o, i) => (i === idx ? v : o));
+    setAll(next);
+    try {
+      const existing = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
+      const updated = existing.map((o) => (o === all[idx] ? v : o));
+      if (!updated.includes(v) && !options.includes(v)) updated.push(v);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch { /* ignore */ }
+    if (value === all[idx]) onChange(v);
+    setEditingIdx(null);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => { setOpen((o) => !o); setAdding(false); }}
+        className="w-full h-9 px-3 flex items-center justify-between rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <span className={value ? "text-body" : "text-faint"}>{value || placeholder || "— select —"}</span>
+        <ChevronDown className={`size-3.5 text-muted shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-rule rounded-[10px] shadow-premium overflow-hidden">
+          <div className="max-h-48 overflow-y-auto">
+            {placeholder && (
+              <button type="button" onClick={() => { onChange(""); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-[12px] text-faint hover:bg-surface">
+                — select —
+              </button>
+            )}
+            {all.map((o, idx) => (
+              <div key={o} className={`group flex items-center gap-1 px-2 transition-colors ${value === o ? "bg-primary/8" : "hover:bg-surface"}`}>
+                {editingIdx === idx ? (
+                  <div className="flex items-center gap-1.5 flex-1 py-1.5">
+                    <input autoFocus value={editVal} onChange={(e) => setEditVal(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitEdit(idx); if (e.key === "Escape") setEditingIdx(null); }}
+                      onBlur={() => commitEdit(idx)}
+                      className="flex-1 h-7 px-2 text-[12px] border border-primary rounded-[6px] outline-none"
+                    />
+                    <button type="button" onMouseDown={() => commitEdit(idx)}
+                      className="h-7 px-2 rounded-[6px] bg-primary text-white text-[11px] font-semibold shrink-0">Save</button>
+                  </div>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => { onChange(o); setOpen(false); }}
+                      className={`flex-1 text-left py-2 text-[13px] flex items-center gap-2 ${value === o ? "text-primary font-medium" : "text-body"}`}>
+                      {value === o ? <Check className="size-3 shrink-0" /> : <span className="size-3 shrink-0" />}
+                      {o}
+                    </button>
+                    <button type="button" onClick={(e) => startEdit(idx, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-[5px] text-muted hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                      title="Rename">
+                      <Pencil className="size-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Add new */}
+          <div className="border-t border-rule px-2 py-2">
+            {adding ? (
+              <div className="flex items-center gap-1.5">
+                <input autoFocus value={newVal} onChange={(e) => setNewVal(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addNew(); if (e.key === "Escape") { setAdding(false); setNewVal(""); } }}
+                  placeholder="New option…"
+                  className="flex-1 h-7 px-2 text-[12px] border border-primary rounded-[6px] outline-none" />
+                <button type="button" onClick={addNew}
+                  className="h-7 px-2.5 rounded-[6px] bg-primary text-white text-[11px] font-semibold">Add</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setAdding(true)}
+                className="flex items-center gap-1.5 w-full px-2 py-1 text-[12px] text-primary hover:bg-primary/5 rounded-[6px] font-medium">
+                <Plus className="size-3" /> Add new option
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type ArticleData = {
   _id?: string;
@@ -103,9 +238,9 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   const coverShown = form.useSeparateMobile && coverPreview === "mobile" ? form.coverMobile : form.coverDesktop;
 
   return (
-    <div className="min-h-screen bg-[#F4F6FA]">
+    <div className="h-screen flex flex-col bg-[#F4F6FA]">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-white border-b border-rule px-6 py-3 flex items-center justify-between gap-4">
+      <div className="shrink-0 bg-white border-b border-rule px-6 py-3 flex items-center justify-between gap-4 z-10">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push("/admin/articles")} className="flex items-center gap-1.5 text-[13px] text-muted hover:text-body">
             <ArrowLeft className="size-4" /> Articles
@@ -132,6 +267,7 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
         </div>
       </div>
 
+      <div className="flex-1 overflow-auto">
       <div className="max-w-[1200px] mx-auto px-6 py-8 grid grid-cols-[1fr_300px] gap-6 items-start">
         {/* Main editor */}
         <div className="space-y-5">
@@ -211,22 +347,24 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
 
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Category</label>
-              <select value={form.category} onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
-                {TOP_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-              </select>
+              <ComboSelect
+                value={form.category}
+                options={TOP_CATEGORIES}
+                onChange={handleCategoryChange}
+                storageKey="article_categories"
+              />
             </div>
 
             {form.category !== "Interviews" && (
               <div>
                 <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
-                <select value={form.subcategory} onChange={(e) => set("subcategory", e.target.value)}
-                  className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  <option value="">— select —</option>
-                  {form.category === "General"
-                    ? GENERAL_SUBS.map((s) => <option key={s}>{s}</option>)
-                    : fundHouses.map((h) => <option key={h}>{h}</option>)}
-                </select>
+                <ComboSelect
+                  value={form.subcategory}
+                  placeholder="— select —"
+                  options={form.category === "General" ? GENERAL_SUBS : fundHouses}
+                  onChange={(v) => set("subcategory", v)}
+                  storageKey={`article_subs_${form.category}`}
+                />
               </div>
             )}
 
@@ -387,6 +525,7 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
             })()}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
