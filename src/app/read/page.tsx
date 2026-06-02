@@ -40,7 +40,7 @@ function ArticleCard({ a }: { a: ArticleDoc }) {
       </div>
       <div className="flex flex-col flex-1 px-5 pt-4 pb-5">
         {a.subcategory && (
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.13em] text-primary mb-2.5">
+          <p className="text-[11.5px] font-mono font-semibold uppercase tracking-[0.13em] text-primary mb-2.5">
             {a.subcategory}
           </p>
         )}
@@ -103,7 +103,7 @@ export default async function ReadPage() {
             {order.map((sub) => (
               <section key={sub}>
                 {/* Plain dark sub-header */}
-                <h2 className="text-[20px] font-bold text-[#0B1F3A] tracking-[-0.3px] mb-6 pb-4 border-b border-[#E2E8F0]">
+                <h2 className="text-[20px] font-bold text-[#0B1F3A] tracking-[-0.3px] mb-6">
                   {sub}
                 </h2>
 

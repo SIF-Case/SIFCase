@@ -183,7 +183,7 @@ export default async function ArticlePage({ params }: Props) {
           letter-spacing: -0.01em;
         }
         .article-body p { margin: 0 0 1.4em; }
-        .article-body h1 { font-size: 34px; font-weight: 700; line-height: 1.2; margin: 1.8em 0 0.6em; letter-spacing: -0.5px; font-family: var(--font-inter), "Inter", sans-serif; }
+        .article-body h1 { font-size: 30px; font-weight: 700; line-height: 1.22; margin: 1.8em 0 0.6em; letter-spacing: -0.4px; font-family: var(--font-inter), "Inter", sans-serif; }
         .article-body h2 { font-size: 26px; font-weight: 700; line-height: 1.25; margin: 1.8em 0 0.6em; letter-spacing: -0.3px; font-family: var(--font-inter), "Inter", sans-serif; }
         .article-body h3 { font-size: 20px; font-weight: 700; line-height: 1.3; margin: 1.6em 0 0.5em; font-family: var(--font-inter), "Inter", sans-serif; }
         .article-body strong { font-weight: 600; color: #1a1a1a; }
