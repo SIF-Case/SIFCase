@@ -40,6 +40,7 @@ export function RichEditor({ value, onChange, onImageUpload }: Props) {
   const lastHtmlRef = useRef(value);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Underline,
