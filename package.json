@@ -9,6 +9,7 @@
     "import:historical": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/importHistorical.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.80",
     "@tiptap/extension-color": "^3.23.6",
     "@tiptap/extension-heading": "^3.23.6",
     "@tiptap/extension-highlight": "^3.23.6",
@@ -25,10 +26,13 @@
     "@tiptap/starter-kit": "^3.23.6",
     "@types/bcryptjs": "^2.4.6",
     "@vercel/blob": "^2.4.0",
+    "ai": "^6.0.195",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
+    "d3-hierarchy": "^3.1.2",
+    "d3-voronoi-treemap": "^1.1.2",
     "firebase": "^12.14.0",
     "firebase-admin": "^13.10.0",
     "lucide-react": "^1.16.0",
@@ -42,10 +46,12 @@
     "recharts": "^3.8.1",
     "slugify": "^1.6.9",
     "tailwind-merge": "^3.6.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-hierarchy": "^3.1.7",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",

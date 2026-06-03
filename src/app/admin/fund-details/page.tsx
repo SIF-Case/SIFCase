@@ -21,7 +21,6 @@ type FormState = {
   exitLoad: string;
   aumCurrent: string;
   aumAggregate: string;
-  aumEnd: string;
   minInvestment: string;
   additionalInvestment: string;
   fundManagers: Manager[];
@@ -41,7 +40,6 @@ type AiResult = Partial<{
   exitLoad: string | null;
   aumCurrent: number | null;
   aumAggregate: number | null;
-  aumEnd: number | null;
   minInvestment: number | null;
   additionalInvestment: number | null;
   fundManagers: { name: string; designation?: string }[];
@@ -58,7 +56,7 @@ type AiResult = Partial<{
 
 const EMPTY_FORM: FormState = {
   riskBand: "", schemeType: "", exitLoad: "",
-  aumCurrent: "", aumAggregate: "", aumEnd: "",
+  aumCurrent: "", aumAggregate: "",
   minInvestment: "1000000", additionalInvestment: "10000",
   fundManagers: [{ name: "", designation: "" }],
   benchmarkName: "", benchmarkRiskBand: "", benchmarkDetails: "",
@@ -72,8 +70,8 @@ const EMPTY_FORM: FormState = {
 type Provider = "groq" | "gemini" | "openrouter";
 
 const PROVIDERS: Record<Provider, { label: string; models: string[] }> = {
-  groq: { label: "Groq", models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "meta-llama/llama-4-maverick-17b-128e-instruct"] },
-  gemini: { label: "Gemini", models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"] },
+  groq: { label: "Groq", models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "meta-llama/llama-4-maverick-17b-128e-instruct", "openai/gpt-oss-20b"] },
+  gemini: { label: "Gemini", models: ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash"] },
   openrouter: { label: "OpenRouter", models: [] },
 };
 
@@ -97,6 +95,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 const inputCls = "w-full rounded-[8px] border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#0B1F3A] placeholder-[#CBD5E1] focus:outline-none focus:border-primary transition-colors";
+const inputFlexCls = "min-w-0 rounded-[8px] border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] text-[#0B1F3A] placeholder-[#CBD5E1] focus:outline-none focus:border-primary transition-colors";
 const textareaCls = `${inputCls} resize-none`;
 
 function AiValueBadge({ value, onApply }: { value: string; onApply: () => void }) {
@@ -191,7 +190,6 @@ export default function FundDetailsPage() {
           exitLoad: det.exitLoad || "",
           aumCurrent: det.aumCurrent != null ? String(det.aumCurrent) : "",
           aumAggregate: det.aumAggregate != null ? String(det.aumAggregate) : "",
-          aumEnd: det.aumEnd != null ? String(det.aumEnd) : "",
           minInvestment: det.minInvestment != null ? String(det.minInvestment) : "10000000",
           additionalInvestment: det.additionalInvestment != null ? String(det.additionalInvestment) : "10000",
           fundManagers: det.fundManagers?.length
@@ -322,7 +320,6 @@ export default function FundDetailsPage() {
           exitLoad: form.exitLoad,
           aumCurrent: form.aumCurrent !== "" ? Number(form.aumCurrent) : null,
           aumAggregate: form.aumAggregate !== "" ? Number(form.aumAggregate) : null,
-          aumEnd: form.aumEnd !== "" ? Number(form.aumEnd) : null,
           minInvestment: form.minInvestment !== "" ? Number(form.minInvestment) : 10_000_000,
           additionalInvestment: form.additionalInvestment !== "" ? Number(form.additionalInvestment) : 10_000,
           fundManagers: form.fundManagers.filter(m => m.name.trim()),
@@ -485,13 +482,9 @@ export default function FundDetailsPage() {
                     <input type="number" className={inputCls} value={form.aumCurrent} onChange={setField("aumCurrent")} placeholder="0.00" />
                     {aiResult?.aumCurrent != null && <AiValueBadge value={String(aiResult.aumCurrent)} onApply={() => applyField("aumCurrent")} />}
                   </FieldRow>
-                  <FieldRow label="Aggregate AUM">
+                  <FieldRow label="Monthly AAUM (₹ Cr)">
                     <input type="number" className={inputCls} value={form.aumAggregate} onChange={setField("aumAggregate")} placeholder="0.00" />
                     {aiResult?.aumAggregate != null && <AiValueBadge value={String(aiResult.aumAggregate)} onApply={() => applyField("aumAggregate")} />}
-                  </FieldRow>
-                  <FieldRow label="AUM at Maturity">
-                    <input type="number" className={inputCls} value={form.aumEnd} onChange={setField("aumEnd")} placeholder="0.00" />
-                    {aiResult?.aumEnd != null && <AiValueBadge value={String(aiResult.aumEnd)} onApply={() => applyField("aumEnd")} />}
                   </FieldRow>
                 </div>
 
@@ -641,16 +634,20 @@ export default function FundDetailsPage() {
                 )}
                 <div className="space-y-2 mt-2">
                   {form.topHoldings.map((h, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input className={`${inputCls} flex-1`} value={h.name} onChange={e => updateHolding(i, "name", e.target.value)} placeholder="Company / instrument" />
-                      <input className={inputCls} style={{ width: "76px" }} value={h.percentage} onChange={e => updateHolding(i, "percentage", e.target.value)} placeholder="%" type="number" />
-                      <input className={`${inputCls} w-32`} value={h.sector} onChange={e => updateHolding(i, "sector", e.target.value)} placeholder="Sector" />
-                      <input className={`${inputCls} w-20`} value={h.rating} onChange={e => updateHolding(i, "rating", e.target.value)} placeholder="Rating" />
-                      {form.topHoldings.length > 1 && (
-                        <button onClick={() => removeHolding(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      )}
+                    <div key={i} className="flex flex-col gap-1.5 pb-2 border-b border-[#F1F5F9] last:border-0">
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} flex-1`} value={h.name} onChange={e => updateHolding(i, "name", e.target.value)} placeholder="Company / instrument name" />
+                        {form.topHoldings.length > 1 && (
+                          <button onClick={() => removeHolding(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} w-[90px] shrink-0`} value={h.percentage} onChange={e => updateHolding(i, "percentage", e.target.value)} placeholder="% of NAV" type="number" />
+                        <input className={`${inputFlexCls} flex-1`} value={h.sector} onChange={e => updateHolding(i, "sector", e.target.value)} placeholder="Industry / sector" />
+                        <input className={`${inputFlexCls} w-28 shrink-0`} value={h.rating} onChange={e => updateHolding(i, "rating", e.target.value)} placeholder="Rating" />
+                      </div>
                     </div>
                   ))}
                   <button onClick={addHolding} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
@@ -721,7 +718,7 @@ export default function FundDetailsPage() {
             {!selectedFund && <p className="text-[11.5px] text-[#94A3B8] mt-1.5">Select a fund first</p>}
 
             {/* AI Config */}
-            <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
+            {selectedFund && <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
               <h2 className="text-[15px] font-bold text-[#0B1F3A] mb-4">AI Analysis</h2>
 
               {/* Provider tabs */}
@@ -824,8 +821,7 @@ export default function FundDetailsPage() {
                           schemeType: "Scheme Type",
                           exitLoad: "Exit Load",
                           aumCurrent: "Current AUM (₹ Cr)",
-                          aumAggregate: "Aggregate AUM (₹ Cr)",
-                          aumEnd: "AUM at Maturity",
+                          aumAggregate: "Monthly AAUM (₹ Cr)",
                           minInvestment: "Min Investment (₹)",
                           additionalInvestment: "Additional Investment (₹)",
                           fundManagers: "Fund Managers",
@@ -858,7 +854,7 @@ export default function FundDetailsPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       </div>

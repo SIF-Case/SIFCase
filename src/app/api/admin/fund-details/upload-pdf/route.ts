@@ -9,32 +9,37 @@ cloudinary.config({
 });
 
 export async function POST(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  try {
+    if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const form = await req.formData();
-  const file = form.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+    const form = await req.formData();
+    const file = form.get("file") as File | null;
+    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
-  if (file.type !== "application/pdf") return NextResponse.json({ error: "PDF files only" }, { status: 400 });
-  if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "Max 20MB" }, { status: 400 });
+    if (file.type !== "application/pdf") return NextResponse.json({ error: "PDF files only" }, { status: 400 });
+    if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "Max 20MB" }, { status: 400 });
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-  const result = await new Promise<{ secure_url: string; original_filename: string }>((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      {
-        folder: "sifcase/factsheets",
-        resource_type: "raw",
-        use_filename: true,
-        unique_filename: true,
-      },
-      (err, res) => err ? reject(err) : resolve(res as { secure_url: string; original_filename: string }),
-    ).end(buffer);
-  });
+    const result = await new Promise<{ secure_url: string; original_filename: string }>((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: "sifcase/factsheets",
+          resource_type: "raw",
+          use_filename: true,
+          unique_filename: true,
+        },
+        (err, res) => err ? reject(err) : resolve(res as { secure_url: string; original_filename: string }),
+      ).end(buffer);
+    });
 
-  return NextResponse.json({
-    url: result.secure_url,
-    filename: file.name || result.original_filename,
-  });
+    return NextResponse.json({
+      url: result.secure_url,
+      filename: file.name || result.original_filename,
+    });
+  } catch (err) {
+    console.error("upload-pdf error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

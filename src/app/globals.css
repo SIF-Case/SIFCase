@@ -60,6 +60,13 @@
 /* ── Base ─────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
+/* Remove focus outlines from recharts SVG elements */
+.recharts-wrapper,
+.recharts-wrapper svg,
+.recharts-wrapper *:focus {
+  outline: none !important;
+}
+
 body {
   background-color: #FFFFFF;
   color: #334155;

@@ -5,7 +5,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { SourceBadge } from "@/components/ui/SourceBadge";
-import { getFundDetail } from "@/lib/sifData";
+import { getFundDetail, getFundDetailsForName } from "@/lib/sifData";
+import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -27,8 +28,8 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const { variant } = await searchParams;
   const isReinvest = variant === "reinvest";
   const fund = await getFundDetail(code);
-
   if (!fund) notFound();
+  const fundDetails = await getFundDetailsForName(fund.fundName).catch(() => null);
 
   const siReturn = fund.returns.SI;
   const positive = siReturn !== null ? siReturn >= 0 : true;
@@ -368,24 +369,8 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
             </div>
           </section>
 
-          {/* ── COSTS ─────────────────────────────────────────────────────── */}
-          <section>
-            <div className="mb-5">
-              <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Costs</div>
-              <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">Expense ratio and charges</h2>
-            </div>
-            <div className="bg-surface border border-rule rounded-[18px] p-8 flex items-start gap-4">
-              <Info className="size-5 text-muted shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[14px] font-medium text-body mb-1">TER and expense data pending AMC verification</div>
-                <div className="text-[13px] text-muted leading-relaxed">
-                  Expense ratio, exit load, and other charges are sourced from the AMC's official disclosures and the ISID document.
-                  This data will be available once verified.
-                </div>
-                <SourceBadge variant="review" className="text-[9.5px] mt-3" />
-              </div>
-            </div>
-          </section>
+          {/* ── RICH FUND DETAILS (from factsheets) ───────────────────────── */}
+          {fundDetails && <FundDetailsSection details={fundDetails} />}
 
           {/* ── TAXATION ─────────────────────────────────────────────────── */}
           <section>
@@ -428,9 +413,9 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                     { field: "Sharpe Ratio", value: fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : "Insufficient history", badge: "calculated" as const },
                     { field: "Volatility", value: fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
                     { field: "Expense Ratio / TER", value: "Pending", badge: "review" as const },
-                    { field: "Benchmark", value: "Pending", badge: "review" as const },
-                    { field: "Exit Load", value: "Pending", badge: "review" as const },
-                    { field: "Fund Manager", value: "Pending", badge: "review" as const },
+                    { field: "Benchmark", value: fundDetails?.benchmarkName || "Pending", badge: "review" as const },
+                    { field: "Exit Load", value: fundDetails?.exitLoad || "Pending", badge: "review" as const },
+                    { field: "Fund Manager", value: fundDetails?.fundManagers?.map(m => m.name).join(", ") || "Pending", badge: "review" as const },
                   ].map(({ field, value, badge }) => (
                     <tr key={field} className="hover:bg-surface transition-colors">
                       <td className="px-5 py-3.5 font-medium text-body">{field}</td>

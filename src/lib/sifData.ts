@@ -564,6 +564,41 @@ function computeVolatility(records: { nav: number }[]): number | null {
   return +(Math.sqrt(variance) * Math.sqrt(252) * 100).toFixed(2);
 }
 
+// ── FundDetails (rich factsheet data) ────────────────────────────────────────
+
+export interface FundDetailsData {
+  riskBand: string;
+  schemeType: string;
+  exitLoad: string;
+  aumCurrent: number | null;
+  aumAggregate: number | null;
+  minInvestment: number | null;
+  additionalInvestment: number | null;
+  fundManagers: { name: string; designation?: string }[];
+  benchmarkName: string;
+  benchmarkRiskBand: string;
+  benchmarkDetails: string;
+  assetAllocation: { assetClass: string; percentage: number }[];
+  portfolioByIndustry: { industry: string; percentage: number }[];
+  portfolioByRatingClass: { ratingClass: string; percentage: number }[];
+  topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
+  factsheets: { url: string; filename: string; uploadedAt: string }[];
+}
+
+export async function getFundDetailsForName(fundName: string): Promise<FundDetailsData | null> {
+  await connectDB();
+  const db = mongoose.connection.db!;
+  const escaped = fundName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const doc = await db.collection("funddetails").findOne(
+    { fundName: { $regex: new RegExp(escaped, "i") } },
+    { projection: { _id: 0, __v: 0 } },
+  );
+  if (!doc) return null;
+  // JSON round-trip strips BSON ObjectIds (_id on subdocuments) and converts Dates to strings —
+  // required so the result can be passed as a plain prop to Client Components.
+  return JSON.parse(JSON.stringify(doc)) as FundDetailsData;
+}
+
 export async function getFundDetail(code: string): Promise<FundDetail | null> {
   const { schemes, navs } = await getCollections();
 
