@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronDown, ArrowRight } from "lucide-react";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
+import { RiskGauge } from "@/components/ui/RiskMeter";
 
 const FILTERS = ["All", "Hybrid", "Equity"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -104,52 +105,8 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   );
 }
 
-function RiskGauge({ level, label }: { level: number; label: string }) {
-  const cx = 44, cy = 44, R = 34, r = 24;
-  const pt = (angleDeg: number, radius: number) => ({
-    x: +(cx + radius * Math.cos(Math.PI - (angleDeg * Math.PI) / 180)).toFixed(2),
-    y: +(cy - radius * Math.sin((angleDeg * Math.PI) / 180)).toFixed(2),
-  });
-  const seg = (a1: number, a2: number, color: string) => {
-    const o1 = pt(a1, R), o2 = pt(a2, R);
-    const i1 = pt(a1, r), i2 = pt(a2, r);
-    return (
-      <path
-        d={`M ${o1.x} ${o1.y} A ${R} ${R} 0 0 1 ${o2.x} ${o2.y} L ${i2.x} ${i2.y} A ${r} ${r} 0 0 0 ${i1.x} ${i1.y} Z`}
-        fill={color}
-      />
-    );
-  };
-  const needlePt = pt(level * 180, 22);
-  return (
-    <div className="flex flex-col items-center flex-shrink-0">
-      <svg viewBox="0 0 88 50" width="88" height="50">
-        {seg(0, 55, "#22C55E")}
-        {seg(55, 110, "#F59E0B")}
-        {seg(110, 180, "#EF4444")}
-        <line x1={cx} y1={cy} x2={needlePt.x} y2={needlePt.y}
-          stroke="#0B1F3A" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r="3.5" fill="#0B1F3A" />
-      </svg>
-      <p className="text-[8.5px] font-semibold uppercase tracking-[0.08em] text-muted -mt-1">
-        {label}
-      </p>
-    </div>
-  );
-}
-
-function riskLabel(si: number | null): { label: string; level: number } {
-  if (si === null) return { label: "UNRATED", level: 0.5 };
-  if (si >= 8) return { label: "HIGH RISK", level: 0.82 };
-  if (si >= 4) return { label: "MOD-HIGH RISK", level: 0.65 };
-  if (si >= 1) return { label: "MODERATE RISK", level: 0.45 };
-  return { label: "LOW-MOD RISK", level: 0.28 };
-}
-
 function FundCard({ fund, period }: { fund: FundRow; period: PeriodKey }) {
-  const siRet = fund.returns?.["SI"] ?? null;
   const periodRet = fund.returns?.[period] ?? null;
-  const risk = riskLabel(siRet);
 
   const fmtRet = (v: number | null | undefined) =>
     v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}%` : "—";
@@ -210,7 +167,7 @@ function FundCard({ fund, period }: { fund: FundRow; period: PeriodKey }) {
         <div className="flex-1 min-w-0">
           <Sparkline data={fund.sparklines?.[period] ?? []} dates={fund.sparklineDates?.[period] ?? []} id={`${fund.schemeCode}-${period}`} />
         </div>
-        <RiskGauge level={risk.level} label={risk.label} />
+        {fund.riskBand != null && <RiskGauge level={fund.riskBand} />}
       </div>
 
       <div className="flex items-center gap-2.5 pt-1">

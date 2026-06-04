@@ -35,7 +35,7 @@ type FormState = {
 };
 
 type AiResult = Partial<{
-  riskBand: string | null;
+  riskBand: number | null;
   schemeType: string | null;
   exitLoad: string | null;
   aumCurrent: number | null;
@@ -44,7 +44,7 @@ type AiResult = Partial<{
   additionalInvestment: number | null;
   fundManagers: { name: string; designation?: string }[];
   benchmarkName: string | null;
-  benchmarkRiskBand: string | null;
+  benchmarkRiskBand: number | null;
   benchmarkDetails: string | null;
   assetAllocation: { assetClass: string; percentage: number }[];
   portfolioByIndustry: { industry: string; percentage: number }[];
@@ -185,7 +185,7 @@ export default function FundDetailsPage() {
       if (d.detail) {
         const det = d.detail;
         setForm({
-          riskBand: det.riskBand || "",
+          riskBand: det.riskBand != null ? String(det.riskBand) : "",
           schemeType: det.schemeType || "",
           exitLoad: det.exitLoad || "",
           aumCurrent: det.aumCurrent != null ? String(det.aumCurrent) : "",
@@ -196,7 +196,7 @@ export default function FundDetailsPage() {
             ? det.fundManagers.map((m: Manager) => ({ name: m.name || "", designation: m.designation || "" }))
             : [{ name: "", designation: "" }],
           benchmarkName: det.benchmarkName || "",
-          benchmarkRiskBand: det.benchmarkRiskBand || "",
+          benchmarkRiskBand: det.benchmarkRiskBand != null ? String(det.benchmarkRiskBand) : "",
           benchmarkDetails: det.benchmarkDetails || "",
           assetAllocation: det.assetAllocation?.length
             ? det.assetAllocation.map((a: { assetClass: string; percentage: number }) => ({ assetClass: a.assetClass || "", percentage: String(a.percentage) }))
@@ -315,7 +315,7 @@ export default function FundDetailsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fundName: selectedFund,
-          riskBand: form.riskBand,
+          riskBand: form.riskBand !== "" ? Number(form.riskBand) : null,
           schemeType: form.schemeType,
           exitLoad: form.exitLoad,
           aumCurrent: form.aumCurrent !== "" ? Number(form.aumCurrent) : null,
@@ -324,7 +324,7 @@ export default function FundDetailsPage() {
           additionalInvestment: form.additionalInvestment !== "" ? Number(form.additionalInvestment) : 10_000,
           fundManagers: form.fundManagers.filter(m => m.name.trim()),
           benchmarkName: form.benchmarkName,
-          benchmarkRiskBand: form.benchmarkRiskBand,
+          benchmarkRiskBand: form.benchmarkRiskBand !== "" ? Number(form.benchmarkRiskBand) : null,
           benchmarkDetails: form.benchmarkDetails,
           assetAllocation: form.assetAllocation
             .filter(a => a.assetClass.trim())
@@ -462,8 +462,15 @@ export default function FundDetailsPage() {
                 <SectionHeader title="Overview" />
                 <div className="grid grid-cols-2 gap-x-4">
                   <FieldRow label="Risk Band">
-                    <input className={inputCls} value={form.riskBand} onChange={setField("riskBand")} placeholder="e.g. High Risk" />
-                    {aiResult?.riskBand != null && <AiValueBadge value={String(aiResult.riskBand)} onApply={() => applyField("riskBand")} />}
+                    <select className={inputCls} value={form.riskBand} onChange={setField("riskBand")}>
+                      <option value="">— select —</option>
+                      <option value="1">1 · Low</option>
+                      <option value="2">2 · Low to Moderate</option>
+                      <option value="3">3 · Moderate</option>
+                      <option value="4">4 · Moderately High</option>
+                      <option value="5">5 · High</option>
+                    </select>
+                    {aiResult?.riskBand != null && <AiValueBadge value={`Band ${aiResult.riskBand}`} onApply={() => applyField("riskBand")} />}
                   </FieldRow>
                   <FieldRow label="Scheme Type">
                     <input className={inputCls} value={form.schemeType} onChange={setField("schemeType")} placeholder="e.g. Category III AIF" />
@@ -534,8 +541,15 @@ export default function FundDetailsPage() {
                     {aiResult?.benchmarkName != null && <AiValueBadge value={String(aiResult.benchmarkName)} onApply={() => applyField("benchmarkName")} />}
                   </FieldRow>
                   <FieldRow label="Benchmark Risk Band">
-                    <input className={inputCls} value={form.benchmarkRiskBand} onChange={setField("benchmarkRiskBand")} placeholder="e.g. High Risk" />
-                    {aiResult?.benchmarkRiskBand != null && <AiValueBadge value={String(aiResult.benchmarkRiskBand)} onApply={() => applyField("benchmarkRiskBand")} />}
+                    <select className={inputCls} value={form.benchmarkRiskBand} onChange={setField("benchmarkRiskBand")}>
+                      <option value="">— select —</option>
+                      <option value="1">1 · Low</option>
+                      <option value="2">2 · Low to Moderate</option>
+                      <option value="3">3 · Moderate</option>
+                      <option value="4">4 · Moderately High</option>
+                      <option value="5">5 · High</option>
+                    </select>
+                    {aiResult?.benchmarkRiskBand != null && <AiValueBadge value={`Band ${aiResult.benchmarkRiskBand}`} onApply={() => applyField("benchmarkRiskBand")} />}
                   </FieldRow>
                 </div>
                 <FieldRow label="Benchmark Details">
@@ -703,7 +717,7 @@ export default function FundDetailsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,.xlsx,.xls"
               className="hidden"
               onChange={handlePdfUpload}
             />
@@ -713,7 +727,7 @@ export default function FundDetailsPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-[8px] border border-[#E2E8F0] text-[13px] font-medium text-[#475569] hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
             >
               {uploadingPdf ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-              Upload PDF
+              Upload PDF / Excel
             </button>
             {!selectedFund && <p className="text-[11.5px] text-[#94A3B8] mt-1.5">Select a fund first</p>}
 

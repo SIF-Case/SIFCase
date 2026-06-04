@@ -29,7 +29,7 @@ const HoldingSchema = z.object({
 });
 
 export const FactsheetExtractionSchema = z.object({
-  riskBand: z.string().nullable().describe("Fund risk level in English: Low Risk / Low to Moderate Risk / Moderate Risk / Moderately High Risk / High Risk / Very High Risk"),
+  riskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5: 1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High"),
   schemeType: z.string().nullable().describe("Strategy/fund type from header, e.g. 'Hybrid Long-Short Fund'"),
   exitLoad: z.string().nullable().describe("Exact text under Exit Load label, e.g. 'Nil'"),
   aumCurrent: z.number().nullable().describe("Month end AUM in ₹ Crore as a number"),
@@ -38,7 +38,7 @@ export const FactsheetExtractionSchema = z.object({
   additionalInvestment: z.number().nullable().describe("Additional investment per transaction in ₹, null if only Re.1"),
   fundManagers: z.array(FundManagerSchema).describe("All fund managers with name and designation"),
   benchmarkName: z.string().nullable().describe("Full benchmark index name"),
-  benchmarkRiskBand: z.string().nullable().describe("Benchmark risk level in English, same mapping as riskBand"),
+  benchmarkRiskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5, same mapping as riskBand"),
   benchmarkDetails: z.string().nullable().describe("Benchmark composition description if any"),
   assetAllocation: z.array(AssetAllocationSchema).describe("Only category totals from asset class table, not individual stocks"),
   portfolioByIndustry: z.array(IndustrySchema).describe("All rows from industry/sector allocation section"),
@@ -50,9 +50,10 @@ export type FactsheetExtraction = z.infer<typeof FactsheetExtractionSchema>;
 
 // ─── Risk band normalisation ───────────────────────────────────────────────────
 
-const RISK_MAP: Record<string, string> = {
-  "1": "Low Risk", "2": "Low to Moderate Risk", "3": "Moderate Risk",
-  "4": "Moderately High Risk", "5": "High Risk", "6": "Very High Risk",
+const RISK_MAP: Record<string, number> = {
+  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
+  "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
+  "Moderately High Risk": 4, "High Risk": 5,
 };
 
 // ─── Legacy providers (Groq / OpenRouter) ─────────────────────────────────────
@@ -61,7 +62,7 @@ const EXTRACTION_PROMPT = `You are a precise financial extraction engine for Ind
 
 === FIELD RULES ===
 
-riskBand: Read the RISK LEVELS section. The line "Fund risk: Risk Level X" or "Fund risk: RISK-LEVEL X" tells you the fund's level. Map it: 1=Low Risk, 2=Low to Moderate Risk, 3=Moderate Risk, 4=Moderately High Risk, 5=High Risk, 6=Very High Risk. Example: "Fund risk: Risk Level 1" → return "Low Risk". Return English text, never the raw number. Do NOT infer from strategy name.
+riskBand: Read the RISK LEVELS section. The line "Fund risk: Risk Level X" or "Fund risk: RISK-LEVEL X" tells you the fund's level. SEBI mandates levels 1–5 only (1=Low … 5=High). Return the integer directly. Example: "Fund risk: Risk Level 3" → return 3. Do NOT infer from strategy name or from any spreadsheet data.
 
 schemeType: Strategy/fund type. Look in the header/subtitle near the fund name. E.g. "Hybrid Long-Short Fund", "Equity Long-Short Fund".
 
@@ -79,7 +80,7 @@ fundManagers: ALL managers named under "Fund Manager:" section. Each gets {name,
 
 benchmarkName: Full benchmark index name.
 
-benchmarkRiskBand: Benchmark risk level in English using same mapping as riskBand.
+benchmarkRiskBand: Benchmark risk level as integer 1–6, same mapping as riskBand.
 
 assetAllocation: Only TOTAL rows from asset class table. Never individual stocks. Return [{assetClass, percentage}].
 
@@ -147,7 +148,7 @@ async function callOpenRouter(text: string, model: string, apiKey: string) {
 
 // ─── Gemini native PDF path (generateObject) ──────────────────────────────────
 
-async function callGeminiNative(pdfUrls: string[], model: string, apiKey: string): Promise<Record<string, unknown>> {
+async function callGeminiNative(pdfUrls: string[], model: string, apiKey: string, extraText = ""): Promise<Record<string, unknown>> {
   const google = createGoogleGenerativeAI({ apiKey });
 
   // Fetch all PDFs as buffers (up to 3)
@@ -159,13 +160,13 @@ async function callGeminiNative(pdfUrls: string[], model: string, apiKey: string
     if (buf.byteLength) pdfBuffers.push(new Uint8Array(buf));
   }
 
-  if (!pdfBuffers.length) throw new Error("Could not fetch any PDFs");
+  if (!pdfBuffers.length && !extraText) throw new Error("Could not fetch any files");
 
   const PROMPT = `You are extracting data from an Indian SIF/AIF fund factsheet. Be exhaustive — do not skip any row or section.
 
 === SCALAR FIELDS ===
-riskBand: Find the fund's riskometer. Map the level number to English: 1=Low Risk, 2=Low to Moderate Risk, 3=Moderate Risk, 4=Moderately High Risk, 5=High Risk, 6=Very High Risk. Never return the raw number.
-benchmarkRiskBand: Same mapping for the benchmark riskometer.
+riskBand: Read ONLY from the PDF's FUND/STRATEGY riskometer — the LEFT dial in the "RISK BAND" section. SEBI mandates levels 1–5 only (1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High). Return the integer directly — do NOT convert to English. NEVER infer from the fund name, strategy, or Excel data. Return null if unclear.
+benchmarkRiskBand: Read ONLY from the PDF's BENCHMARK riskometer — the RIGHT dial in the "RISK BAND" section. Return the integer level (1–5) directly. Do NOT copy riskBand here; the fund and benchmark levels are often different.
 schemeType: Fund strategy type from the header/subtitle (e.g. "Hybrid Long-Short Fund").
 exitLoad: Exact text under "Exit Load" label.
 aumCurrent: Month-end AUM in ₹ Crore as a plain number (e.g. 803.02). Look for "Month End AUM" or "AUM as on" — NOT the monthly average.
@@ -227,6 +228,7 @@ IMPORTANT: Extract every single row. A factsheet with 60+ holdings should have 6
 
   const content: ContentPart[] = [
     ...pdfBuffers.map(buf => ({ type: "file" as const, data: buf, mediaType: "application/pdf" })),
+    ...(extraText ? [{ type: "text" as const, text: `=== SPREADSHEET DATA ===\n${extraText}\n\n` }] : []),
     { type: "text" as const, text: PROMPT },
   ];
 
@@ -243,10 +245,17 @@ IMPORTANT: Extract every single row. A factsheet with 60+ holdings should have 6
 // ─── Post-processing (shared across all providers) ────────────────────────────
 
 function postProcess(extracted: Record<string, unknown>): Record<string, unknown> {
-  // Normalise risk fields: digit string → English
+  // Normalise risk fields → integer 1–6
   for (const key of ["riskBand", "benchmarkRiskBand"] as const) {
     const v = extracted[key];
-    if (typeof v === "string" && RISK_MAP[v.trim()]) extracted[key] = RISK_MAP[v.trim()];
+    if (typeof v === "number") {
+      extracted[key] = Math.round(v);
+    } else if (typeof v === "string") {
+      const raw = v.trim();
+      if (RISK_MAP[raw] != null) { extracted[key] = RISK_MAP[raw]; continue; }
+      const m = raw.match(/(?:RISK[-\s]LEVEL|Risk\s*Level)\s*(\d)/i);
+      if (m && RISK_MAP[m[1]] != null) extracted[key] = RISK_MAP[m[1]];
+    }
   }
 
   // Fix null fund manager designations
@@ -315,6 +324,38 @@ function postProcess(extracted: Record<string, unknown>): Record<string, unknown
   return extracted;
 }
 
+// ─── Excel text extraction ─────────────────────────────────────────────────────
+
+async function extractExcelText(buffer: Buffer): Promise<string> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.read(buffer, { type: "buffer" });
+  const parts: string[] = [];
+  for (const sheetName of wb.SheetNames) {
+    const ws = wb.Sheets[sheetName];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" }) as unknown[][];
+    if (!rows.length) continue;
+    parts.push(`=== Sheet: ${sheetName} ===`);
+    for (const row of rows) {
+      const cells = (row as unknown[]).map(c => String(c ?? "").trim());
+      if (cells.some(c => c)) parts.push(cells.join("\t"));
+    }
+  }
+  return parts.join("\n");
+}
+
+function isExcelUrl(url: string) {
+  return /\.(xlsx|xls)(\?|$)/i.test(url);
+}
+
+function isExcelBuffer(buf: Buffer): boolean {
+  // XLSX/OOXML = ZIP magic bytes: PK (50 4B)
+  if (buf[0] === 0x50 && buf[1] === 0x4B) return true;
+  // Legacy XLS = CFBF magic bytes: D0 CF 11 E0
+  if (buf[0] === 0xD0 && buf[1] === 0xCF && buf[2] === 0x11 && buf[3] === 0xE0) return true;
+  return false;
+}
+
 // ─── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -328,13 +369,30 @@ export async function POST(req: NextRequest) {
       apiKey: string;
     };
 
-    if (!pdfUrls?.length) return NextResponse.json({ error: "No PDFs provided" }, { status: 400 });
+    if (!pdfUrls?.length) return NextResponse.json({ error: "No files provided" }, { status: 400 });
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
     if (!model) return NextResponse.json({ error: "Model required" }, { status: 400 });
 
-    // ── Gemini: native PDF path — no text extraction needed ──────────────────
+    // ── Gemini: native PDF path + Excel text ─────────────────────────────────
     if (provider === "gemini") {
-      const extracted = await callGeminiNative(pdfUrls, model, apiKey);
+      const pdfUrlsForGemini: string[] = [];
+      const excelTexts: string[] = [];
+
+      for (const url of pdfUrls.slice(0, 3)) {
+        try {
+          const r = await fetch(url);
+          if (!r.ok) continue;
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (!buf.byteLength) continue;
+          if (isExcelBuffer(buf) || isExcelUrl(url)) {
+            excelTexts.push(await extractExcelText(buf));
+          } else {
+            pdfUrlsForGemini.push(url);
+          }
+        } catch { /* skip */ }
+      }
+
+      const extracted = await callGeminiNative(pdfUrlsForGemini, model, apiKey, excelTexts.join("\n\n"));
       return NextResponse.json({ extracted: postProcess(extracted) });
     }
 
@@ -581,6 +639,14 @@ export async function POST(req: NextRequest) {
         if (!r.ok) { pdfErrors.push(`Fetch failed: HTTP ${r.status}`); continue; }
         const buf = Buffer.from(await r.arrayBuffer());
         if (!buf.byteLength) { pdfErrors.push("Empty response from URL"); continue; }
+
+        // Excel path — detect by magic bytes (Cloudinary strips extensions)
+        if (isExcelBuffer(buf) || isExcelUrl(url)) {
+          const xlText = await extractExcelText(buf);
+          if (xlText.trim()) textParts.push(xlText);
+          else pdfErrors.push("No text extracted from Excel");
+          continue;
+        }
 
         const result = await new Promise<{ text: string; direct: DirectData }>((resolve, reject) => {
           const parser = new PDFParser();

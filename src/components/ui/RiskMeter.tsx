@@ -1,11 +1,17 @@
-export function RiskMeter({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
-  const colors = [
-    "var(--color-positive)",
-    "var(--color-positive)",
-    "var(--color-gold)",
-    "var(--color-gold)",
-    "var(--color-negative)",
-  ];
+export const RISK_COLORS = [
+  "#22C55E",   // 1 Low
+  "#84CC16",   // 2 Low to Moderate
+  "#EAB308",   // 3 Moderate
+  "#DC2626",   // 4 Moderately High
+  "#7F1D1D",   // 5 High
+];
+
+export const RISK_LABELS = [
+  "Low", "Low-Mod", "Moderate", "Mod-High", "High",
+];
+
+export function RiskMeter({ level: rawLevel }: { level: 1 | 2 | 3 | 4 | 5 }) {
+  const level = Math.max(1, Math.min(5, Math.round(Number(rawLevel)))) as 1 | 2 | 3 | 4 | 5;
   return (
     <div className="flex gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
@@ -13,8 +19,7 @@ export function RiskMeter({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
           key={i}
           className="w-5 h-1.5 rounded-sm"
           style={{
-            backgroundColor: i <= level ? colors[i - 1] : "var(--color-border-strong)",
-            opacity: i <= level ? 1 : 0.4,
+            backgroundColor: i <= level ? RISK_COLORS[i - 1] : "#E2E8F0",
           }}
         />
       ))}
@@ -22,14 +27,9 @@ export function RiskMeter({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
   );
 }
 
-export function RiskGauge({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
-  const segs = [
-    { color: "var(--color-positive)" },
-    { color: "#a3d977" },
-    { color: "var(--color-gold)" },
-    { color: "#f0915a" },
-    { color: "var(--color-negative)" },
-  ];
+export function RiskGauge({ level: rawLevel }: { level: 1 | 2 | 3 | 4 | 5 }) {
+  const level = Math.max(1, Math.min(5, Math.round(Number(rawLevel)))) as 1 | 2 | 3 | 4 | 5;
+  if (!level || isNaN(level)) return null;
   const cx = 50, cy = 50, r = 40;
   const segAngle = 180 / 5;
   const needleDeg = -180 + segAngle * (level - 0.5);
@@ -48,14 +48,87 @@ export function RiskGauge({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
   return (
     <div className="w-[110px]">
       <svg viewBox="0 0 100 60" className="w-full h-auto">
-        {segs.map((s, i) => (
-          <path key={i} d={arc(i)} fill="none" stroke={s.color} strokeWidth="9" strokeLinecap="butt" />
+        {RISK_COLORS.map((color, i) => (
+          <path key={i} d={arc(i)} fill="none" stroke={color} strokeWidth="9" strokeLinecap="butt" />
         ))}
-        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="var(--color-foreground)" strokeWidth="2" strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r="3" fill="var(--color-foreground)" />
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#0B1F3A" strokeWidth="2" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="3" fill="#0B1F3A" />
       </svg>
       <div className="text-center text-[9px] font-mono uppercase tracking-widest text-muted -mt-1">
-        {["Low", "Low-Mod", "Moderate", "Mod-High", "High"][level - 1]} risk
+        {RISK_LABELS[level - 1]}
+      </div>
+    </div>
+  );
+}
+
+// Official SEBI horizontal riskometer — numbered boxes with circle + triangle pointer
+export function SEBIRiskometer({
+  level: rawLevel,
+  title,
+  subtitle,
+}: {
+  level: 1 | 2 | 3 | 4 | 5;
+  title: string;
+  subtitle?: string;
+}) {
+  const level = Math.max(1, Math.min(5, Math.round(Number(rawLevel)))) as 1 | 2 | 3 | 4 | 5;
+  if (!level || isNaN(level)) return null;
+
+  return (
+    <div className="flex flex-col items-center gap-3 w-full">
+      <div className="text-center">
+        <div className="text-[11px] font-mono uppercase tracking-widest text-muted mb-0.5">Risk-band</div>
+        <div className="text-[18px] font-bold text-heading tracking-tight">RISK-LEVEL {level}</div>
+        <div className="text-[13px] text-body mt-0.5">{title}</div>
+        {subtitle && <div className="text-[11px] text-muted mt-0.5">{subtitle}</div>}
+      </div>
+
+      <div className="w-full">
+        <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-muted mb-1.5 px-0.5">
+          <span>Lower Risk</span>
+          <span>Higher Risk</span>
+        </div>
+
+        {/* Boxes */}
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((i) => {
+            const active = i === level;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full flex items-center justify-center rounded-[6px] font-bold text-white relative"
+                  style={{
+                    backgroundColor: RISK_COLORS[i - 1],
+                    height: "44px",
+                    fontSize: "18px",
+                    outline: active ? "3px solid #0B1F3A" : "none",
+                    outlineOffset: "2px",
+                    boxShadow: active ? "0 0 0 1px #fff inset" : "none",
+                  }}
+                >
+                  {active && (
+                    <div
+                      className="absolute inset-0 rounded-[6px] border-[2.5px] border-white"
+                    />
+                  )}
+                  {i}
+                </div>
+                {/* Triangle pointer under active */}
+                {active ? (
+                  <svg width="12" height="8" viewBox="0 0 12 8">
+                    <polygon points="6,0 12,8 0,8" fill="#0B1F3A" />
+                  </svg>
+                ) : (
+                  <div className="h-2" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-1.5 text-center text-[10px] font-semibold text-muted">
+          {RISK_LABELS[level - 1]}
+        </div>
       </div>
     </div>
   );

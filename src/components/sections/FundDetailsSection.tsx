@@ -214,6 +214,24 @@ function monoShades(baseHex: string, n: number): [string, string][] {
 
 interface VCell { name: string; pct: number; pts: string; polygon: [number,number][]; cx: number; cy: number; area: number; gradId: string }
 
+function GradientDefs({ cells, palette }: { cells: VCell[]; palette: [string,string][] }) {
+  return (
+    <>
+      {cells.map((c, i) => {
+        const [lt, dk] = palette[i] ?? ["#aaa","#888"];
+        return (
+          <radialGradient key={c.gradId} id={c.gradId}
+            cx={c.cx} cy={c.cy} r={Math.sqrt(c.area)*0.8}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={lt}/>
+            <stop offset="100%" stopColor={dk}/>
+          </radialGradient>
+        );
+      })}
+    </>
+  );
+}
+
 async function computeCells(
   items: {name: string; pct: number}[],
   clip: [number,number][],
@@ -233,29 +251,15 @@ async function computeCells(
 }
 
 function VoronoiLayer({
-  cells, palette, dim, onCellClick,
+  cells, dim, onCellClick,
 }: {
   cells: VCell[];
-  palette: [string, string][];
   dim?: boolean;
   onCellClick?: (name: string) => void;
 }) {
   const [hovered, setHovered] = useState<string|null>(null);
   return (
     <g opacity={dim ? 0.18 : 1} style={{transition:"opacity 0.35s"}}>
-      <defs>
-        {cells.map((c, i) => {
-          const [lt, dk] = palette[i] ?? ["#aaa","#888"];
-          return (
-            <radialGradient key={c.gradId} id={c.gradId}
-              cx={c.cx} cy={c.cy} r={Math.sqrt(c.area)*0.8}
-              gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor={lt}/>
-              <stop offset="100%" stopColor={dk}/>
-            </radialGradient>
-          );
-        })}
-      </defs>
       {cells.map(c => {
         const fs = Math.min(16, Math.max(8, Math.sqrt(c.area)/12));
         const lines = wrapText(c.name, Math.max(4, Math.floor(Math.sqrt(c.area)/(fs*0.56))));
@@ -379,15 +383,14 @@ function VoronoiSectorChart({
             style={{width:"100%", maxHeight:720, cursor: drillSector ? "pointer" : "default"}}>
             <defs>
               <filter id="voronoi-shadow" x="-40%" y="-40%" width="180%" height="180%">
-                {/* Outer glow layer */}
-                <feDropShadow dx="0" dy="0" stdDeviation="20" floodColor="rgba(0,0,0,0.18)" result="glow" />
-                {/* Main elevation shadow */}
                 <feDropShadow dx="0" dy="14" stdDeviation="22" floodColor="rgba(0,0,0,0.42)" />
               </filter>
+              <GradientDefs cells={sectorCells} palette={sectorPalette} />
+              <GradientDefs cells={holdingCells} palette={holdingPalette} />
             </defs>
 
             {/* Layer 1 — sectors: dimmed when drilled */}
-            <VoronoiLayer cells={sectorCells} palette={sectorPalette}
+            <VoronoiLayer cells={sectorCells}
               dim={!!drillSector} onCellClick={setDrillSector} />
 
             {/* Layer 2 — holdings: scale in place, elevated with shadow + halo */}
@@ -407,7 +410,7 @@ function VoronoiSectorChart({
                     fill="none" stroke="white" strokeWidth={8}
                     strokeLinejoin="round" opacity={0.85} />
                 ))}
-                <VoronoiLayer cells={holdingCells} palette={holdingPalette} />
+                <VoronoiLayer cells={holdingCells} />
               </g>
             )}
           </svg>
@@ -427,11 +430,17 @@ function IndustryChart({ data }: { data: { industry: string; percentage: number 
         tabIndex={-1} style={{ outline: "none", userSelect: "none" }}>
         <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#94A3B8" }}
           axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="industry" width={120}
-          tick={{ fontSize: 11, fill: "#334155" }} axisLine={false} tickLine={false}
-          tickFormatter={(v: string) => {
-            const t = v.length > 13 ? v.slice(0, 12) + "…" : v;
-            return t.replace(/ /g, " "); // non-breaking spaces prevent SVG word-wrap
+        <YAxis type="category" dataKey="industry" width={115}
+          axisLine={false} tickLine={false}
+          tick={(props) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { x, y, payload } = props as any;
+            const label = payload.value.length > 12 ? payload.value.slice(0, 11) + "…" : payload.value;
+            return (
+              <text x={Number(x)} y={Number(y)} dy={4} textAnchor="end" fill="#334155" fontSize={11}>
+                {label}
+              </text>
+            );
           }} />
         <Tooltip
           cursor={false}
@@ -509,8 +518,8 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
             </div>
             <div>
               {details.benchmarkName && <StatRow label="Benchmark" value={details.benchmarkName} />}
-              {details.benchmarkRiskBand && <StatRow label="Benchmark Risk" value={details.benchmarkRiskBand} />}
-              {details.riskBand && <StatRow label="Fund Risk Band" value={details.riskBand} />}
+              {details.benchmarkRiskBand != null && <StatRow label="Benchmark Risk" value={`Risk Band ${details.benchmarkRiskBand}`} />}
+              {details.riskBand != null && <StatRow label="Fund Risk Band" value={`Risk Band ${details.riskBand}`} />}
               {details.benchmarkDetails && <StatRow label="Benchmark Details" value={details.benchmarkDetails} />}
             </div>
           </div>
@@ -622,11 +631,8 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
 
       {/* ── RATING CLASS ALLOCATION ────────────────────────────────────── */}
       {details.portfolioByRatingClass?.length > 0 && (
-        <SectionCard label="Portfolio" title="Rating class allocation">
+        <SectionCard label="Portfolio" title="Debt Allocation">
           <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-rule bg-surface">
-              <span className="text-[11px] font-mono uppercase tracking-widest text-muted">Debt portfolio breakdown by rating</span>
-            </div>
             <div className="grid md:grid-cols-[1fr_300px] divide-y md:divide-y-0 md:divide-x divide-rule">
               <div className="p-6">
                 <RatingPieChart data={details.portfolioByRatingClass} />

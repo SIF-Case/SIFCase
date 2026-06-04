@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IFundDetails extends Document {
   fundName: string;
-  riskBand: string;
+  riskBand: 1 | 2 | 3 | 4 | 5 | null;
   schemeType: string;
   exitLoad: string;
   aumCurrent: number | null;
@@ -12,7 +12,7 @@ export interface IFundDetails extends Document {
   additionalInvestment: number;
   fundManagers: { name: string; designation?: string }[];
   benchmarkName: string;
-  benchmarkRiskBand: string;
+  benchmarkRiskBand: 1 | 2 | 3 | 4 | 5 | null;
   benchmarkDetails: string;
   assetAllocation: { assetClass: string; percentage: number }[];
   portfolioByIndustry: { industry: string; percentage: number }[];
@@ -26,7 +26,7 @@ export interface IFundDetails extends Document {
 const FundDetailsSchema = new Schema<IFundDetails>(
   {
     fundName: { type: String, required: true, unique: true, index: true },
-    riskBand: { type: String, default: "" },
+    riskBand: { type: Number, default: null },
     schemeType: { type: String, default: "" },
     exitLoad: { type: String, default: "" },
     aumCurrent: { type: Number, default: null },
@@ -36,7 +36,7 @@ const FundDetailsSchema = new Schema<IFundDetails>(
     additionalInvestment: { type: Number, default: 10_000 },
     fundManagers: [{ name: String, designation: String }],
     benchmarkName: { type: String, default: "" },
-    benchmarkRiskBand: { type: String, default: "" },
+    benchmarkRiskBand: { type: Number, default: null },
     benchmarkDetails: { type: String, default: "" },
     assetAllocation: [{ assetClass: String, percentage: Number }],
     portfolioByIndustry: [{ industry: String, percentage: Number }],

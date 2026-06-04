@@ -7,6 +7,7 @@ import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 import { getFundDetail, getFundDetailsForName } from "@/lib/sifData";
 import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
+import { SEBIRiskometer, RISK_LABELS } from "@/components/ui/RiskMeter";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -314,6 +315,33 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Risk & Liquidity</div>
               <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">Risk profile and liquidity terms</h2>
             </div>
+
+            {/* SEBI Riskometer */}
+            {fundDetails?.riskBand != null && (
+              <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden mb-6">
+                <div className="px-5 py-4 border-b border-rule bg-surface flex items-center justify-between">
+                  <div className="text-[11px] font-mono uppercase tracking-widest text-muted">SEBI Riskometer</div>
+                  <SourceBadge variant="review" className="text-[9.5px]" />
+                </div>
+                <div className={`px-6 py-6 grid gap-6 divide-x divide-rule ${fundDetails.benchmarkRiskBand != null ? "grid-cols-2" : "grid-cols-1 max-w-sm mx-auto"}`}>
+                  <div className="px-4 first:pl-0">
+                    <SEBIRiskometer
+                      level={fundDetails.riskBand}
+                      title={fund.fundName}
+                    />
+                  </div>
+                  {fundDetails.benchmarkRiskBand != null && (
+                    <div className="px-4">
+                      <SEBIRiskometer
+                        level={fundDetails.benchmarkRiskBand}
+                        title={fundDetails.benchmarkName || "Benchmark"}
+                        subtitle="as applicable"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Risk metrics */}

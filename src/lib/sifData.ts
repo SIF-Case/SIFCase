@@ -48,6 +48,7 @@ export interface FundRow {
   drawdowns: Record<PeriodKey, number | null>;
   sparklines: Record<PeriodKey, number[]>;
   sparklineDates: Record<PeriodKey, string[]>;
+  riskBand: 1 | 2 | 3 | 4 | 5 | null;
 }
 
 export interface TickerNav {
@@ -277,6 +278,23 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: s
   return rows;
 }
 
+const RISK_BAND_STRING_MAP_EARLY: Record<string, 1 | 2 | 3 | 4 | 5> = {
+  "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
+  "Moderately High Risk": 4, "High Risk": 5,
+};
+
+function normaliseRiskBandEarly(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
+  if (v == null) return null;
+  if (typeof v === "string") {
+    if (RISK_BAND_STRING_MAP_EARLY[v]) return RISK_BAND_STRING_MAP_EARLY[v];
+    const n = parseInt(v, 10);
+    if (n >= 1 && n <= 5) return n as 1 | 2 | 3 | 4 | 5;
+    return null;
+  }
+  if (typeof v === "number" && v >= 1 && v <= 5) return Math.round(v) as 1 | 2 | 3 | 4 | 5;
+  return null;
+}
+
 export async function getTopFunds(): Promise<FundRow[]> {
   const sifs = await getSIFsWithReturns("Regular", "Growth");
 
@@ -307,6 +325,17 @@ export async function getTopFunds(): Promise<FundRow[]> {
     const code = r.schemeCode as string;
     if (!navsByCode.has(code)) navsByCode.set(code, []);
     navsByCode.get(code)!.push({ nav: r.nav as number, navDate: new Date(r.navDate) });
+  }
+
+  // Batch fetch riskBand from funddetails
+  const db = mongoose.connection.db!;
+  const fundNames = sorted.map((s) => s.fundName);
+  const detailsDocs = await db.collection("funddetails")
+    .find({ fundName: { $in: fundNames } }, { projection: { fundName: 1, riskBand: 1, _id: 0 } })
+    .toArray();
+  const riskBandByName = new Map<string, 1 | 2 | 3 | 4 | 5 | null>();
+  for (const d of detailsDocs) {
+    riskBandByName.set(d.fundName as string, normaliseRiskBandEarly(d.riskBand));
   }
 
   const funds: FundRow[] = sorted.map((s) => {
@@ -386,6 +415,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
         drawdowns,
         sparklines,
         sparklineDates,
+        riskBand: riskBandByName.get(s.fundName) ?? null,
       };
     });
 
@@ -567,7 +597,7 @@ function computeVolatility(records: { nav: number }[]): number | null {
 // ── FundDetails (rich factsheet data) ────────────────────────────────────────
 
 export interface FundDetailsData {
-  riskBand: string;
+  riskBand: 1 | 2 | 3 | 4 | 5 | null;
   schemeType: string;
   exitLoad: string;
   aumCurrent: number | null;
@@ -576,13 +606,30 @@ export interface FundDetailsData {
   additionalInvestment: number | null;
   fundManagers: { name: string; designation?: string }[];
   benchmarkName: string;
-  benchmarkRiskBand: string;
+  benchmarkRiskBand: 1 | 2 | 3 | 4 | 5 | null;
   benchmarkDetails: string;
   assetAllocation: { assetClass: string; percentage: number }[];
   portfolioByIndustry: { industry: string; percentage: number }[];
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
   factsheets: { url: string; filename: string; uploadedAt: string }[];
+}
+
+const RISK_BAND_STRING_MAP: Record<string, 1 | 2 | 3 | 4 | 5> = {
+  "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
+  "Moderately High Risk": 4, "High Risk": 5,
+};
+
+function normaliseRiskBand(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
+  if (v == null) return null;
+  if (typeof v === "string") {
+    if (RISK_BAND_STRING_MAP[v]) return RISK_BAND_STRING_MAP[v];
+    const n = parseInt(v, 10);
+    if (n >= 1 && n <= 5) return n as 1 | 2 | 3 | 4 | 5;
+    return null;
+  }
+  if (typeof v === "number" && v >= 1 && v <= 5) return Math.round(v) as 1 | 2 | 3 | 4 | 5;
+  return null;
 }
 
 export async function getFundDetailsForName(fundName: string): Promise<FundDetailsData | null> {
@@ -596,7 +643,10 @@ export async function getFundDetailsForName(fundName: string): Promise<FundDetai
   if (!doc) return null;
   // JSON round-trip strips BSON ObjectIds (_id on subdocuments) and converts Dates to strings —
   // required so the result can be passed as a plain prop to Client Components.
-  return JSON.parse(JSON.stringify(doc)) as FundDetailsData;
+  const data = JSON.parse(JSON.stringify(doc)) as FundDetailsData;
+  data.riskBand = normaliseRiskBand(data.riskBand);
+  data.benchmarkRiskBand = normaliseRiskBand(data.benchmarkRiskBand);
+  return data;
 }
 
 export async function getFundDetail(code: string): Promise<FundDetail | null> {

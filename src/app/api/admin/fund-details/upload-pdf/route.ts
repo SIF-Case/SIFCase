@@ -16,7 +16,14 @@ export async function POST(req: NextRequest) {
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
-    if (file.type !== "application/pdf") return NextResponse.json({ error: "PDF files only" }, { status: 400 });
+    const ALLOWED_TYPES = new Set([
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      "application/vnd.ms-excel", // .xls
+    ]);
+    if (!ALLOWED_TYPES.has(file.type) && !file.name.match(/\.(pdf|xlsx|xls)$/i)) {
+      return NextResponse.json({ error: "PDF or Excel files only (.pdf, .xlsx, .xls)" }, { status: 400 });
+    }
     if (file.size > 20 * 1024 * 1024) return NextResponse.json({ error: "Max 20MB" }, { status: 400 });
 
     const bytes = await file.arrayBuffer();
