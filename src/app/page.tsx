@@ -8,7 +8,6 @@ import { Hero } from "@/components/sections/Hero";
 import { PerformanceReportBanner } from "@/components/sections/PerformanceReportBanner";
 import { TopFunds } from "@/components/sections/TopFunds";
 import { CompareFunds } from "@/components/sections/CompareFunds";
-import { TrustStrip } from "@/components/sections/TrustStrip";
 import { MarketSnapshot } from "@/components/sections/MarketSnapshot";
 import { SIFComparisonTable } from "@/components/sections/SIFComparisonTable";
 import { PulseStrip } from "@/components/sections/PulseStrip";
@@ -44,7 +43,6 @@ export default async function HomePage() {
         <Navbar />
         <Hero />
         <PerformanceReportBanner report={latestReport} />
-        <TrustStrip />
         <MarketSnapshot stats={stats} />
         <TopFunds funds={topFunds} />
         <PulseStrip funds={heatmap.funds} monthLabels={heatmap.monthLabels} topFunds={topFunds} />
