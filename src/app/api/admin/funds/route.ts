@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasAnyPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
 
+// This data backs both the "Funds & NAV" and "Funds" (scheme table) admin pages.
+const FUNDS_PAGES = ["funds", "schemes"];
+
 export async function GET(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasAnyPageAccess(req, FUNDS_PAGES, "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectDB();
   const db = mongoose.connection.db!;

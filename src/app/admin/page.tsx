@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/adminAuth";
+import { requirePageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import CronLog from "@/models/CronLog";
@@ -8,7 +8,7 @@ import { Users, Database, Activity, Clock, CheckCircle, XCircle } from "lucide-r
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  await requireAdmin();
+  await requirePageAccess("dashboard", "view");
   await connectDB();
   const db = mongoose.connection.db!;
 

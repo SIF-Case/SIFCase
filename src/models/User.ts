@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 export interface IUser extends Document {
   name?: string;
@@ -10,6 +10,7 @@ export interface IUser extends Document {
   googleId?: string;
   isAdmin: boolean;
   isBlocked: boolean;
+  role?: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const UserSchema = new Schema<IUser>(
     googleId: { type: String, sparse: true, unique: true },
     isAdmin: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
+    role: { type: Schema.Types.ObjectId, ref: "Role", default: null, index: true },
   },
   { timestamps: true },
 );

@@ -19,6 +19,7 @@ type ArticleDoc = {
   excerpt: string;
   category: string;
   subcategory: string;
+  order: number;
   coverDesktop: string;
   coverMobile: string;
   authorName: string;
@@ -72,7 +73,7 @@ export default async function ReadPage() {
   await connectDB();
 
   const articles = (await Article.find({ status: "published", category: "General" })
-    .sort({ publishedAt: -1 })
+    .sort({ order: 1, publishedAt: -1 })
     .lean()) as unknown as ArticleDoc[];
 
   const order: string[] = [];

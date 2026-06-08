@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import slugify from "slugify";
 
 export async function GET(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasPageAccess(req, "articles", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = 20;
+  const limit = searchParams.get("all") === "1" ? 500 : 20;
   const [articles, total] = await Promise.all([
     Article.find().sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     Article.countDocuments(),
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasPageAccess(req, "articles", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const body = await req.json();
   const {

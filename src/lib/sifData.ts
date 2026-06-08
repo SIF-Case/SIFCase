@@ -1,5 +1,6 @@
 import { connectDB } from "./mongodb";
 import mongoose from "mongoose";
+import PerformanceReport from "@/models/PerformanceReport";
 
 export interface SnapshotStats {
   totalSchemes: number;
@@ -613,6 +614,14 @@ export interface FundDetailsData {
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
   factsheets: { url: string; filename: string; uploadedAt: string }[];
+  suitableFor: string;
+  notSuitableFor: string;
+  bullMarket: string;
+  bearMarket: string;
+  sidewaysMarket: string;
+  howItWorks: string;
+  mfEquivalent: string;
+  portfolioFit: string;
 }
 
 const RISK_BAND_STRING_MAP: Record<string, 1 | 2 | 3 | 4 | 5> = {
@@ -796,5 +805,154 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
       SI: computeVolatility(allHistory),
     },
     variants: samePlanVariants,
+  };
+}
+
+// ── Monthly Performance Reports ──────────────────────────────────────────────
+
+export interface MonthlyReportFundRow {
+  schemeCode: string;
+  fundName: string;
+  amc: string;
+  inceptionDate: string;
+  monthlyReturn: number;
+  sinceInceptionReturn: number | null;
+}
+
+export interface MonthlyPerformanceData {
+  monthKey: string;
+  label: string;
+  rangeStart: string;
+  rangeEnd: string;
+  isCurrentMonth: boolean;
+  funds: MonthlyReportFundRow[];
+  excludedCount: number;
+  bestPerformer: MonthlyReportFundRow | null;
+  worstPerformer: MonthlyReportFundRow | null;
+  avgReturn: number | null;
+  positiveCount: number;
+  negativeCount: number;
+}
+
+export function monthKeyToLabel(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+export function monthKeyToSlug(monthKey: string): string {
+  return monthKeyToLabel(monthKey).toLowerCase().replace(/\s+/g, "-");
+}
+
+export function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Computes a month's SIF performance table (Direct • Growth) directly from stored NAV history. */
+export async function getMonthlyPerformanceData(monthKey: string): Promise<MonthlyPerformanceData | null> {
+  const m = monthKey.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const year = parseInt(m[1]);
+  const month = parseInt(m[2]);
+
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+  const now = new Date();
+  const isCurrentMonth = now.getUTCFullYear() === year && now.getUTCMonth() + 1 === month;
+  const effectiveEnd = isCurrentMonth ? now : end;
+
+  const { schemes, navs } = await getCollections();
+
+  const allSchemes = await schemes
+    .find({ plan: "Direct", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, companyName: 1 } })
+    .toArray();
+  if (!allSchemes.length) return null;
+
+  const codes = allSchemes.map((s) => s.schemeCode as string);
+  const allNavRecords = await navs
+    .find({ schemeCode: { $in: codes }, navDate: { $lte: effectiveEnd } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
+    .sort({ navDate: 1 })
+    .toArray();
+
+  const navsByCode = new Map<string, { nav: number; navDate: Date }[]>();
+  for (const r of allNavRecords) {
+    const code = r.schemeCode as string;
+    if (!navsByCode.has(code)) navsByCode.set(code, []);
+    navsByCode.get(code)!.push({ nav: r.nav as number, navDate: new Date(r.navDate) });
+  }
+
+  const funds: MonthlyReportFundRow[] = [];
+  let excludedCount = 0;
+
+  for (const s of allSchemes) {
+    const code = s.schemeCode as string;
+    const records = navsByCode.get(code) ?? [];
+    if (!records.length) continue;
+
+    const first = records[0];
+    if (first.navDate > end) { excludedCount++; continue; } // not yet launched in this month
+
+    const inMonth = records.filter((r) => r.navDate >= start && r.navDate <= end);
+    if (inMonth.length < 2) { excludedCount++; continue; }
+
+    const latest = records[records.length - 1];
+    funds.push({
+      schemeCode: code,
+      fundName: (s.schemeName as string).replace(/\s*-\s*(Direct|Regular)\s*Plan.*$/i, "").replace(/\s*-\s*Growth.*$/i, "").trim(),
+      amc: (s.companyName as string) || (s.amc as string),
+      inceptionDate: formatDate(first.navDate),
+      monthlyReturn: pct(inMonth[inMonth.length - 1].nav, inMonth[0].nav),
+      sinceInceptionReturn: pct(latest.nav, first.nav),
+    });
+  }
+
+  funds.sort((a, b) => b.monthlyReturn - a.monthlyReturn);
+
+  const positiveCount = funds.filter((f) => f.monthlyReturn >= 0).length;
+  const negativeCount = funds.filter((f) => f.monthlyReturn < 0).length;
+  const avgReturn = funds.length
+    ? +(funds.reduce((sum, f) => sum + f.monthlyReturn, 0) / funds.length).toFixed(2)
+    : null;
+
+  return {
+    monthKey,
+    label: monthKeyToLabel(monthKey),
+    rangeStart: formatDate(start),
+    rangeEnd: isCurrentMonth ? "present" : formatDate(end),
+    isCurrentMonth,
+    funds,
+    excludedCount,
+    bestPerformer: funds[0] ?? null,
+    worstPerformer: funds.length ? funds[funds.length - 1] : null,
+    avgReturn,
+    positiveCount,
+    negativeCount,
+  };
+}
+
+export interface LatestReportSummary {
+  monthKey: string;
+  slug: string;
+  label: string;
+  summary: string;
+  niftyReturn: number | null;
+  data: MonthlyPerformanceData | null;
+}
+
+/** Latest published monthly report plus its live-computed performance data, for the homepage banner. */
+export async function getLatestPublishedReport(): Promise<LatestReportSummary | null> {
+  await connectDB();
+  const report = await PerformanceReport.findOne({ published: true }).sort({ monthKey: -1 }).lean();
+  if (!report) return null;
+
+  const data = await getMonthlyPerformanceData(report.monthKey);
+
+  return {
+    monthKey: report.monthKey,
+    slug: report.slug,
+    label: report.label,
+    summary: report.summary,
+    niftyReturn: report.niftyReturn,
+    data,
   };
 }

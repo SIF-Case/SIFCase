@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/adminAuth";
+import { requirePageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import { ArticleEditor } from "@/components/editor/ArticleEditor";
 import { notFound } from "next/navigation";
 
 export default async function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requirePageAccess("articles", "edit");
   const { id } = await params;
   await connectDB();
   const article = await Article.findById(id).lean();

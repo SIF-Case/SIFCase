@@ -19,6 +19,17 @@ export interface IFundDetails extends Document {
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
   factsheets: { url: string; filename: string; uploadedAt: Date }[];
+  // Investor Suitability
+  suitableFor: string;
+  notSuitableFor: string;
+  // Market Scenarios
+  bullMarket: string;
+  bearMarket: string;
+  sidewaysMarket: string;
+  // Fund Fit
+  howItWorks: string;
+  mfEquivalent: string;
+  portfolioFit: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +54,14 @@ const FundDetailsSchema = new Schema<IFundDetails>(
     portfolioByRatingClass: [{ ratingClass: String, percentage: Number }],
     topHoldings: [{ name: String, percentage: Number, sector: String, rating: String }],
     factsheets: [{ url: String, filename: String, uploadedAt: { type: Date, default: Date.now } }],
+    suitableFor: { type: String, default: "" },
+    notSuitableFor: { type: String, default: "" },
+    bullMarket: { type: String, default: "" },
+    bearMarket: { type: String, default: "" },
+    sidewaysMarket: { type: String, default: "" },
+    howItWorks: { type: String, default: "" },
+    mfEquivalent: { type: String, default: "" },
+    portfolioFit: { type: String, default: "" },
   },
   { timestamps: true },
 );

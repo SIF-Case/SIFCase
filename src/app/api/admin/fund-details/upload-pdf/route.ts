@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
 import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
@@ -10,7 +10,7 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
-    if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const form = await req.formData();
     const file = form.get("file") as File | null;

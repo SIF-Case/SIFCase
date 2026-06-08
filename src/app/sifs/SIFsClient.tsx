@@ -7,7 +7,9 @@ import { useRouter } from "next/navigation";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useCompareTray } from "@/components/ui/CompareTray";
-import { Plus, Check } from "lucide-react";
+import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { Plus, Check, Bookmark } from "lucide-react";
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
 const CATEGORIES = ["All", "Equity", "Hybrid"] as const;
@@ -31,10 +33,20 @@ function ReturnBadge({ value }: { value: number | null }) {
   );
 }
 
-function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
+function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: PeriodKey; onRequireAuth: (reason: string) => void }) {
   const router = useRouter();
   const { has, toggle } = useCompareTray();
   const inTray = has(fund.schemeCode);
+  const { watching, toggle: toggleWatch, loading: watchLoading, loggedIn } = useWatchlist(fund.schemeCode);
+
+  function handleWatchClick() {
+    if (!loggedIn) {
+      rememberPendingWatchlistAdd(fund.schemeCode);
+      onRequireAuth("save to your watchlist");
+      return;
+    }
+    toggleWatch();
+  }
   const spark = fund.sparklines[period];
   const ret = fund.returns[period];
   const pos = ret === null ? true : ret >= 0;
@@ -94,8 +106,18 @@ function FundRow({ fund, period }: { fund: FundRow; period: PeriodKey }) {
           : <span className="text-[10px] text-muted">No data</span>}
       </div>
 
-      {/* Compare button — stopPropagation so row click doesn't fire */}
-      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+      {/* Compare + Watchlist buttons — stopPropagation so row click doesn't fire */}
+      <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={handleWatchClick}
+          disabled={watchLoading}
+          title={watching ? "Remove from watchlist" : "Add to watchlist"}
+          aria-pressed={watching}
+          className={`inline-flex items-center justify-center w-7 h-7 rounded-full border transition shrink-0 disabled:opacity-50 ${
+            watching ? "border-primary bg-primary/10 text-primary" : "border-rule hover:border-rule-strong text-muted hover:text-body"
+          }`}>
+          <Bookmark className="size-3.5" fill={watching ? "currentColor" : "none"} />
+        </button>
         <button
           onClick={() => toggle(fund.schemeCode)}
           title={inTray ? "Remove from compare" : "Add to compare"}
@@ -121,6 +143,13 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const [strategyFilter, setStrategyFilter] = useState("All");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authReason, setAuthReason] = useState("");
+
+  function requireAuth(reason: string) {
+    setAuthReason(reason);
+    setAuthOpen(true);
+  }
 
   const strategies = useMemo(() =>
     ["All", ...Array.from(new Set(funds.map((f) => f.strategy))).sort()],
@@ -282,7 +311,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
             {filtered.length === 0 ? (
               <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
             ) : (
-              paginated.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} />)
+              paginated.map((fund) => <FundRow key={fund.schemeCode} fund={fund} period={period} onRequireAuth={requireAuth} />)
             )}
           </div>
         </div>
@@ -330,6 +359,8 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
           </div>
         </div>
       </div>
+
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} reason={authReason} />
     </div>
   );
 }

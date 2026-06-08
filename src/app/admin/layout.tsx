@@ -1,19 +1,25 @@
-import { requireAdmin } from "@/lib/adminAuth";
+import { auth } from "@/auth";
+import { getEffectiveAccess } from "@/lib/adminAuth";
+import { ADMIN_PAGES } from "@/lib/adminPages";
 import Link from "next/link";
-import { LayoutDashboard, Users, Database, ScrollText, LogOut, ShieldCheck, BookOpen, Table2, ClipboardList } from "lucide-react";
-
-const NAV = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/funds", label: "Funds & NAV", icon: Database },
-  { href: "/admin/schemes", label: "Funds", icon: Table2 },
-  { href: "/admin/fund-details", label: "Fund Details", icon: ClipboardList },
-  { href: "/admin/articles", label: "Articles", icon: BookOpen },
-  { href: "/admin/logs", label: "Cron Logs", icon: ScrollText },
-];
+import { redirect } from "next/navigation";
+import { LogOut, ShieldCheck, Settings as SettingsIcon } from "lucide-react";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  const session = await auth();
+  if (!session?.user?.id) redirect("/");
+
+  const access = await getEffectiveAccess(session.user.id);
+  if (!access) redirect("/");
+
+  const visiblePages = access.isSuperAdmin
+    ? ADMIN_PAGES
+    : ADMIN_PAGES.filter(p => {
+        const perm = access.permissions.get(p.key);
+        return !!(perm?.view || perm?.edit);
+      });
+
+  if (visiblePages.length === 0) redirect("/");
 
   return (
     <div className="flex min-h-screen bg-[#F4F6FA]">
@@ -30,13 +36,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {visiblePages.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors">
               <Icon className="size-4 shrink-0" />
               {label}
             </Link>
           ))}
+
+          {access.isSuperAdmin && (
+            <Link href="/admin/settings"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+              <SettingsIcon className="size-4 shrink-0" />
+              Settings
+            </Link>
+          )}
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">

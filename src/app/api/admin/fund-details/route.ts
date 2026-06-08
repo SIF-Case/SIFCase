@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import FundDetails from "@/models/FundDetails";
 import SIFScheme from "@/models/SIFScheme";
 
 export async function GET(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasPageAccess(req, "fundDetails", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
 
   const { searchParams } = new URL(req.url);

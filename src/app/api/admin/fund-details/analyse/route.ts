@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
+import { connectDB } from "@/lib/mongodb";
+import AISetting from "@/models/AISetting";
 import { generateObject } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
@@ -44,6 +46,14 @@ export const FactsheetExtractionSchema = z.object({
   portfolioByIndustry: z.array(IndustrySchema).describe("All rows from industry/sector allocation section"),
   portfolioByRatingClass: z.array(z.object({ ratingClass: z.string(), percentage: z.number() })).describe("Rating class allocation rows if present"),
   topHoldings: z.array(HoldingSchema).describe("All holdings including equity long, equity futures short (negative %), bonds, T-bills, G-Secs, cash"),
+  suitableFor: z.string().nullable().describe("Who this SIF is suitable for — describe target investor profile, minimum net-worth, risk appetite, investment horizon, and goals"),
+  notSuitableFor: z.string().nullable().describe("Who this SIF is NOT suitable for — describe investor types that should avoid this fund"),
+  bullMarket: z.string().nullable().describe("How this fund is expected to perform in bull markets and why, based on its strategy"),
+  bearMarket: z.string().nullable().describe("How this fund is expected to perform in bear markets and why, based on its strategy"),
+  sidewaysMarket: z.string().nullable().describe("How this fund is expected to perform in sideways/range-bound markets and why, based on its strategy"),
+  howItWorks: z.string().nullable().describe("Concise 2–4 sentence explanation of how the fund strategy works — long/short mechanics, instruments used, return drivers"),
+  mfEquivalent: z.string().nullable().describe("Closest mutual fund category or comparable MF product for an investor familiar with mutual funds"),
+  portfolioFit: z.string().nullable().describe("Where this fund fits in a diversified portfolio — e.g. satellite allocation, alternative/hedge sleeve, return enhancer"),
 });
 
 export type FactsheetExtraction = z.infer<typeof FactsheetExtractionSchema>;
@@ -56,7 +66,7 @@ const RISK_MAP: Record<string, number> = {
   "Moderately High Risk": 4, "High Risk": 5,
 };
 
-// ─── Legacy providers (Groq / OpenRouter) ─────────────────────────────────────
+// ─── Legacy providers (DeepSeek / OpenRouter) ─────────────────────────────────
 
 const EXTRACTION_PROMPT = `You are a precise financial extraction engine for Indian SIF/AIF factsheets. Return ONLY valid JSON — zero prose, zero markdown.
 
@@ -88,8 +98,24 @@ portfolioByIndustry: All rows from industry/sector allocation. Return [{industry
 
 topHoldings: ALL holdings — equity long (positive %), equity futures short (negative %), bonds, T-bills, G-Secs, cash. Each: {name, percentage, sector, rating}.
 
+suitableFor: 2–4 sentences describing the target investor — minimum net-worth (SEBI Category III AIF requires ₹5 Cr), risk appetite, investment horizon, and goals. Infer from the fund strategy and any suitability disclosures in the document.
+
+notSuitableFor: 2–3 sentences describing investor types who should NOT invest — e.g. risk-averse investors, those with short horizons, those needing liquidity.
+
+bullMarket: 2–3 sentences on how this fund performs in rising equity markets, citing the long-short strategy.
+
+bearMarket: 2–3 sentences on how this fund performs in falling equity markets — does the short book provide downside protection?
+
+sidewaysMarket: 2–3 sentences on performance in flat/range-bound markets.
+
+howItWorks: 2–4 sentences explaining the fund's long-short mechanics, key instruments, and return drivers.
+
+mfEquivalent: 1 sentence naming the closest mutual fund category (e.g. "Balanced Advantage Fund / Dynamic Asset Allocation Fund") and why.
+
+portfolioFit: 2–3 sentences on where this SIF fits in a diversified portfolio — satellite, alternative sleeve, hedge, etc.
+
 === JSON SCHEMA ===
-{"riskBand":string|null,"schemeType":string|null,"exitLoad":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"portfolioByRatingClass":[{"ratingClass":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}]}
+{"riskBand":string|null,"schemeType":string|null,"exitLoad":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"portfolioByRatingClass":[{"ratingClass":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}],"suitableFor":string|null,"notSuitableFor":string|null,"bullMarket":string|null,"bearMarket":string|null,"sidewaysMarket":string|null,"howItWorks":string|null,"mfEquivalent":string|null,"portfolioFit":string|null}
 
 === FACTSHEET TEXT ===
 `;
@@ -100,29 +126,24 @@ function parseAiJson(text: string): Record<string, unknown> {
   return JSON.parse(cleaned);
 }
 
-const GROQ_NO_JSON_MODE = new Set(["openai/gpt-oss-20b"]);
-
 const MODEL_MAX_CHARS: Record<string, number> = {
-  "openai/gpt-oss-20b": 18_000,
-  "llama-3.1-8b-instant": 20_000,
-  "llama-3.3-70b-versatile": 22_000,
+  "deepseek-chat": 60_000,
+  "deepseek-reasoner": 50_000,
 };
 
-async function callGroq(text: string, model: string, apiKey: string) {
-  const body: Record<string, unknown> = {
-    model,
-    messages: [{ role: "user", content: EXTRACTION_PROMPT + text }],
-    temperature: 0.1,
-  };
-  if (!GROQ_NO_JSON_MODE.has(model)) body.response_format = { type: "json_object" };
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+async function callDeepSeek(text: string, model: string, apiKey: string) {
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: EXTRACTION_PROMPT + text }],
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+    }),
   });
   const d = await res.json();
-  if (!res.ok) throw new Error(d.error?.message || "Groq API error");
+  if (!res.ok) throw new Error(d.error?.message || "DeepSeek API error");
   return parseAiJson(d.choices[0].message.content);
 }
 
@@ -220,7 +241,17 @@ TREPS / CBLO / REPO: sector = "Cash". rating = null.
 NET CASH / CASH EQUIVALENTS: sector = "Cash". rating = null.
 
 IMPORTANT: The same company CAN appear as both a long equity position AND a short futures position — include BOTH as separate entries with correct sign.
-IMPORTANT: Extract every single row. A factsheet with 60+ holdings should have 60+ entries in topHoldings.`;
+IMPORTANT: Extract every single row. A factsheet with 60+ holdings should have 60+ entries in topHoldings.
+
+=== INVESTOR SUITABILITY & FUND FIT ===
+suitableFor: 2–4 sentences on who this SIF is suitable for — target investor profile, SEBI Category III AIF minimum net-worth requirement (₹5 Cr), risk appetite, investment horizon, and goals. Infer from the fund strategy, risk band, and any suitability disclosures.
+notSuitableFor: 2–3 sentences on who should NOT invest — e.g. risk-averse investors, short investment horizons, liquidity needs.
+bullMarket: 2–3 sentences on performance in rising equity markets, referencing the long book and short hedges.
+bearMarket: 2–3 sentences on performance in falling equity markets — does the short book provide downside protection?
+sidewaysMarket: 2–3 sentences on performance in flat / range-bound markets.
+howItWorks: 2–4 sentences explaining the long-short strategy mechanics, instruments used, and return drivers.
+mfEquivalent: 1 sentence naming the closest mutual fund category and why.
+portfolioFit: 2–3 sentences on where this SIF belongs in a diversified portfolio — satellite, alternative, hedge sleeve, etc.`;
 
   type ContentPart =
     | { type: "text"; text: string }
@@ -358,18 +389,40 @@ function isExcelBuffer(buf: Buffer): boolean {
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
 
+// Reports whether a centrally-configured AI provider exists for this feature
+// (Admin → AI Settings) so the UI can skip manual key entry. Never returns the key itself.
+export async function GET(req: NextRequest) {
+  if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  await connectDB();
+  const config = await AISetting.findOne({ usages: "fundDetailsAnalysis" }, "label provider modelName").lean();
+  return NextResponse.json({ config: config ? { label: config.label, provider: config.provider, modelName: config.modelName } : null });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const { pdfUrls, provider, model, apiKey } = await req.json() as {
+    const body = await req.json() as {
       pdfUrls: string[];
-      provider: "groq" | "gemini" | "openrouter";
-      model: string;
-      apiKey: string;
+      provider?: "deepseek" | "gemini" | "openrouter";
+      model?: string;
+      apiKey?: string;
     };
+    const { pdfUrls } = body;
+    let { provider, model, apiKey } = body;
+
+    // Prefer the centrally-configured provider for this usage (Admin → AI Settings)
+    // over manually-entered values — keeps API keys server-side only.
+    await connectDB();
+    const savedConfig = await AISetting.findOne({ usages: "fundDetailsAnalysis" }).lean();
+    if (savedConfig) {
+      provider = savedConfig.provider;
+      model = savedConfig.modelName;
+      apiKey = savedConfig.apiKey;
+    }
 
     if (!pdfUrls?.length) return NextResponse.json({ error: "No files provided" }, { status: 400 });
+    if (!provider) return NextResponse.json({ error: "No AI provider configured — set one up in Admin → AI Settings or enter one manually" }, { status: 400 });
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
     if (!model) return NextResponse.json({ error: "Model required" }, { status: 400 });
 
@@ -396,7 +449,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ extracted: postProcess(extracted) });
     }
 
-    // ── Groq / OpenRouter: text extraction path ───────────────────────────────
+    // ── DeepSeek / OpenRouter: text extraction path ──────────────────────────
     const { default: PDFParser } = await import("pdf2json");
 
     type Pdf2JsonData = {
@@ -683,7 +736,7 @@ export async function POST(req: NextRequest) {
       .slice(0, maxChars);
 
     let aiExtracted: Record<string, unknown>;
-    if (provider === "groq") aiExtracted = await callGroq(combined, model, apiKey);
+    if (provider === "deepseek") aiExtracted = await callDeepSeek(combined, model, apiKey);
     else aiExtracted = await callOpenRouter(combined, model, apiKey);
 
     // Override with direct-parsed data (more accurate than AI for structured tables)

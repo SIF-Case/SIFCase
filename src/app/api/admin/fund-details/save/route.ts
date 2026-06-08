@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import FundDetails from "@/models/FundDetails";
 
 export async function POST(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
 
   const body = await req.json();

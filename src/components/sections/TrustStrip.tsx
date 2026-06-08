@@ -1,27 +1,6 @@
 import { ShieldCheck, TrendingUp, FileText, Ban } from "lucide-react";
 
-const ITEMS = [
-  {
-    Icon: ShieldCheck,
-    text: "NAV from AMFI",
-    sub: "Direct import, no manual entry",
-  },
-  {
-    Icon: TrendingUp,
-    text: "Returns calculated from NAV history",
-    sub: "Not from marketing materials",
-  },
-  {
-    Icon: FileText,
-    text: "Documents from AMC / ISID",
-    sub: "Official scheme documents only",
-  },
-  {
-    Icon: Ban,
-    text: "No guessed data",
-    sub: "Missing values shown as unavailable",
-  },
-];
+const ITEMS = [];
 
 export function TrustStrip() {
   return (

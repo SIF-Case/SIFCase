@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { Hero } from "@/components/sections/Hero";
+import { PerformanceReportBanner } from "@/components/sections/PerformanceReportBanner";
 import { TopFunds } from "@/components/sections/TopFunds";
 import { CompareFunds } from "@/components/sections/CompareFunds";
 import { TrustStrip } from "@/components/sections/TrustStrip";
@@ -23,15 +24,17 @@ import {
   getTopFunds,
   getTickerNavs,
   getMonthlyHeatmapData,
+  getLatestPublishedReport,
 } from "@/lib/sifData";
 
 export default async function HomePage() {
-  const [stats, sifs, topFunds, tickerNavs, heatmap] = await Promise.all([
+  const [stats, sifs, topFunds, tickerNavs, heatmap, latestReport] = await Promise.all([
     getSnapshotStats(),
     getSIFsWithReturns("Regular", "Growth"),
     getTopFunds(),
     getTickerNavs(),
     getMonthlyHeatmapData(),
+    getLatestPublishedReport(),
   ]);
 
   return (
@@ -40,6 +43,7 @@ export default async function HomePage() {
         <TickerRibbon navItems={tickerNavs} />
         <Navbar />
         <Hero />
+        <PerformanceReportBanner report={latestReport} />
         <TrustStrip />
         <MarketSnapshot stats={stats} />
         <TopFunds funds={topFunds} />

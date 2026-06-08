@@ -10,6 +10,7 @@ export interface IArticle extends Document {
   useSeparateMobile: boolean;
   category: string;
   subcategory: string;
+  order: number;
   tags: string[];
   status: "draft" | "published";
   authorName: string;
@@ -39,6 +40,7 @@ const ArticleSchema = new Schema<IArticle>(
     useSeparateMobile: { type: Boolean, default: false },
     category: { type: String, default: "General" },
     subcategory: { type: String, default: "" },
+    order: { type: Number, default: 0 },
     tags: [String],
     status: { type: String, enum: ["draft", "published"], default: "draft" },
     authorName: { type: String, default: "SIFcase Team" },

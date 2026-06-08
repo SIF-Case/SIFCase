@@ -7,26 +7,32 @@ import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } fro
 import { firebaseAuth } from "@/lib/firebase";
 
 const COUNTRIES = [
-  { code: "IN", dial: "+91",  flag: "🇮🇳", name: "India" },
-  { code: "US", dial: "+1",   flag: "🇺🇸", name: "United States" },
-  { code: "GB", dial: "+44",  flag: "🇬🇧", name: "United Kingdom" },
+  { code: "IN", dial: "+91", flag: "🇮🇳", name: "India" },
+  { code: "US", dial: "+1", flag: "🇺🇸", name: "United States" },
+  { code: "GB", dial: "+44", flag: "🇬🇧", name: "United Kingdom" },
   { code: "AE", dial: "+971", flag: "🇦🇪", name: "UAE" },
-  { code: "SG", dial: "+65",  flag: "🇸🇬", name: "Singapore" },
-  { code: "AU", dial: "+61",  flag: "🇦🇺", name: "Australia" },
-  { code: "CA", dial: "+1",   flag: "🇨🇦", name: "Canada" },
-  { code: "DE", dial: "+49",  flag: "🇩🇪", name: "Germany" },
-  { code: "FR", dial: "+33",  flag: "🇫🇷", name: "France" },
-  { code: "JP", dial: "+81",  flag: "🇯🇵", name: "Japan" },
-  { code: "CN", dial: "+86",  flag: "🇨🇳", name: "China" },
-  { code: "BR", dial: "+55",  flag: "🇧🇷", name: "Brazil" },
-  { code: "ZA", dial: "+27",  flag: "🇿🇦", name: "South Africa" },
+  { code: "SG", dial: "+65", flag: "🇸🇬", name: "Singapore" },
+  { code: "AU", dial: "+61", flag: "🇦🇺", name: "Australia" },
+  { code: "CA", dial: "+1", flag: "🇨🇦", name: "Canada" },
+  { code: "DE", dial: "+49", flag: "🇩🇪", name: "Germany" },
+  { code: "FR", dial: "+33", flag: "🇫🇷", name: "France" },
+  { code: "JP", dial: "+81", flag: "🇯🇵", name: "Japan" },
+  { code: "CN", dial: "+86", flag: "🇨🇳", name: "China" },
+  { code: "BR", dial: "+55", flag: "🇧🇷", name: "Brazil" },
+  { code: "ZA", dial: "+27", flag: "🇿🇦", name: "South Africa" },
   { code: "NG", dial: "+234", flag: "🇳🇬", name: "Nigeria" },
   { code: "KE", dial: "+254", flag: "🇰🇪", name: "Kenya" },
 ];
 
 type Stage =
-  | "phone"      // enter phone number (+ OTP shown inline after send)
-  | "link";      // phone verified — choose Google or email/password
+  | "phone"            // enter phone number
+  | "verify-phone"     // SMS OTP entry (Firebase) — new/unknown numbers, or known numbers without an email
+  | "verify-email"     // email OTP entry — returning users with a verified email (no SMS sent)
+  | "link"             // phone verified, no email yet — choose Google or Email
+  | "link-email-form"  // name + email entry
+  | "link-email-otp";  // OTP entry to verify the new email
+
+const RESEND_COOLDOWN = 45;
 
 function GoogleIcon() {
   return (
@@ -39,30 +45,30 @@ function GoogleIcon() {
   );
 }
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; reason?: string };
 
-export function AuthModal({ open, onClose }: Props) {
-  const { data: session } = useSession();
+export function AuthModal({ open, onClose, reason }: Props) {
+  const { data: session, update: updateSession } = useSession();
   const [stage, setStage] = useState<Stage>("phone");
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [countryOpen, setCountryOpen] = useState(false);
   const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [maskedEmail, setMaskedEmail] = useState("");
+  const [resendIn, setResendIn] = useState(0);
 
-  // email/password form state
-  const [emailMode, setEmailMode] = useState<"signin" | "signup">("signin");
+  // link-email form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   const confirmationRef = useRef<ConfirmationResult | null>(null);
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
   const captchaContainerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  const fullPhone = `${country.dial}${phone.replace(/\D/g, "")}`;
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -75,31 +81,90 @@ export function AuthModal({ open, onClose }: Props) {
     return () => { recaptchaRef.current?.clear(); recaptchaRef.current = null; };
   }, [open]);
 
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
   function reset() {
     setStage("phone");
-    setPhone(""); setOtp(""); setOtpSent(false); setError(""); setLoading(false);
-    setShowEmailForm(false); setEmail(""); setPassword(""); setName("");
+    setPhone(""); setOtp(""); setError(""); setLoading(false);
+    setMaskedEmail(""); setResendIn(0);
+    setName(""); setEmail("");
   }
 
   function handleClose() { reset(); onClose(); }
 
-  async function sendOtp() {
+  async function sendPhoneOtp() {
+    const result = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
+    confirmationRef.current = result;
+    setStage("verify-phone");
+    setResendIn(RESEND_COOLDOWN);
+  }
+
+  async function submitPhone() {
     setError("");
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 7) { setError("Enter a valid phone number"); return; }
-    const fullPhone = `${country.dial}${digits}`;
     setLoading(true);
     try {
-      confirmationRef.current = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
-      setOtpSent(true);
+      const res = await fetch("/api/auth/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Something went wrong"); setLoading(false); return; }
+
+      if (data.channel === "email") {
+        setMaskedEmail(data.masked ?? "");
+        setStage("verify-email");
+        setResendIn(RESEND_COOLDOWN);
+      } else {
+        await sendPhoneOtp();
+      }
     } catch (e: unknown) {
-      setError((e as Error).message ?? "Failed to send OTP");
+      setError((e as Error).message ?? "Failed to send code");
     } finally {
       setLoading(false);
     }
   }
 
-  async function verifyOtp() {
+  async function resendCode() {
+    if (resendIn > 0) return;
+    setError(""); setOtp("");
+    setLoading(true);
+    try {
+      if (stage === "verify-phone") {
+        await sendPhoneOtp();
+      } else if (stage === "verify-email") {
+        const res = await fetch("/api/auth/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: fullPhone }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? "Couldn't resend the code"); }
+        else setResendIn(RESEND_COOLDOWN);
+      } else if (stage === "link-email-otp") {
+        const res = await fetch("/api/auth/link-email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error ?? "Couldn't resend the code"); }
+        else setResendIn(RESEND_COOLDOWN);
+      }
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Couldn't resend the code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyPhoneOtp() {
     setError("");
     if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
     setLoading(true);
@@ -108,11 +173,11 @@ export function AuthModal({ open, onClose }: Props) {
       const idToken = await result.user.getIdToken();
       const res = await signIn("phone", { idToken, redirect: false });
       if (res?.error) throw new Error(res.error);
-      // Check if user already has email linked — if so, login is complete
-      const session = await getSession();
-      if (session?.user?.email) {
+      const freshSession = await getSession();
+      if (freshSession?.user?.email) {
         handleClose();
       } else {
+        setOtp(""); setError("");
         setStage("link");
       }
     } catch (e: unknown) {
@@ -122,31 +187,72 @@ export function AuthModal({ open, onClose }: Props) {
     }
   }
 
-  async function submitEmail() {
+  async function verifyEmailLoginOtp() {
     setError("");
-    if (emailMode === "signup" && !name.trim()) { setError("Enter your name"); return; }
-    if (!email || !password) { setError("Fill in all fields"); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
     setLoading(true);
-    if (emailMode === "signup") {
-      const res = await fetch("/api/auth/register", {
+    try {
+      const res = await signIn("email-otp", { phone: fullPhone, otp, redirect: false });
+      if (res?.error) { setError("Incorrect or expired code"); return; }
+      handleClose();
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Invalid code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitLinkEmailForm() {
+    setError("");
+    if (!name.trim()) { setError("Enter your name"); return; }
+    if (!email.trim()) { setError("Enter your email"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/link-email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, phoneUserId: session?.user?.id ?? null }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Registration failed"); setLoading(false); return; }
+      if (!res.ok) { setError(data.error ?? "Couldn't send the code"); return; }
+      setOtp(""); setError("");
+      setStage("link-email-otp");
+      setResendIn(RESEND_COOLDOWN);
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Couldn't send the code");
+    } finally {
+      setLoading(false);
     }
-    const res = await signIn("email-password", { email, password, redirect: false });
-    if (res?.error) {
-      setError(emailMode === "signin" ? "Invalid email or password" : "Sign-in after registration failed");
-    } else {
+  }
+
+  async function verifyLinkEmailOtp() {
+    setError("");
+    if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/link-email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Verification failed"); return; }
+      await updateSession({});
       handleClose();
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Verification failed");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   if (!open) return null;
+
+  const isOtpStage = stage === "verify-phone" || stage === "verify-email" || stage === "link-email-otp";
+  const verifyHandler =
+    stage === "verify-phone" ? verifyPhoneOtp :
+      stage === "verify-email" ? verifyEmailLoginOtp :
+        verifyLinkEmailOtp;
 
   return (
     <div
@@ -164,39 +270,43 @@ export function AuthModal({ open, onClose }: Props) {
           <X className="size-4" />
         </button>
 
-        {/* Logo + title */}
         <div className="mb-6">
           <div className="w-8 h-8 rounded-[8px] bg-brand-navy flex items-center justify-center text-white text-xs font-bold mb-3">S</div>
           <h2 className="text-[20px] font-bold text-heading tracking-[-0.3px]">
-            {stage === "phone" && "Sign in to SIFcase"}
-            {stage === "link" && "You're verified!"}
+            {stage === "phone" && (reason ? `To ${reason}, sign in to SIFcase` : "Sign in to SIFcase")}
+            {stage === "verify-phone" && "Enter the code"}
+            {stage === "verify-email" && "Check your email"}
+            {stage === "link" && "One Last Step, Verify your Email"}
+            {stage === "link-email-form" && "Add your email"}
+            {stage === "link-email-otp" && "Check your email"}
           </h2>
           <p className="text-[13px] text-muted mt-1">
-            {stage === "phone" && !otpSent && "Enter your phone number to get started."}
-            {stage === "phone" && otpSent && `Code sent to ${country.dial} ${phone}`}
+            {stage === "phone" && "Enter your phone number to get started."}
+            {stage === "verify-phone" && `Code sent via SMS to ${country.dial} ${phone}`}
+            {stage === "verify-email" && (maskedEmail ? `Enter the code sent to ${maskedEmail}` : "Enter the code we sent to your registered email")}
             {stage === "link" && "Choose how you'd like to continue."}
+            {stage === "link-email-form" && "We'll send a verification code to confirm it's you."}
+            {stage === "link-email-otp" && `Enter the code sent to ${email}`}
           </p>
         </div>
 
-        {/* ── Stage 1: Phone + inline OTP ── */}
+        {/* ── Stage: Phone entry ── */}
         {stage === "phone" && (
           <div className="space-y-3">
             <div>
               <label className="block text-[12px] font-medium text-muted mb-1.5">Phone Number</label>
               <div className="flex gap-2">
-                {/* Country dropdown */}
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => !otpSent && setCountryOpen((o) => !o)}
-                    disabled={otpSent}
-                    className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading flex items-center gap-1.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+                    onClick={() => setCountryOpen((o) => !o)}
+                    className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading flex items-center gap-1.5 hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap"
                   >
                     <span>{country.flag}</span>
                     <span className="text-muted">{country.dial}</span>
                     <span className="text-muted text-[10px]">▼</span>
                   </button>
-                  {countryOpen && !otpSent && (
+                  {countryOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setCountryOpen(false)} />
                       <div className="absolute z-20 top-full mt-1 left-0 w-56 bg-white border border-rule rounded-[12px] shadow-premium py-1 max-h-52 overflow-y-auto">
@@ -216,76 +326,86 @@ export function AuthModal({ open, onClose }: Props) {
                     </>
                   )}
                 </div>
-                {/* Number input */}
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => !otpSent && setPhone(e.target.value.replace(/[^\d\s\-]/g, ""))}
-                  readOnly={otpSent}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s\-]/g, ""))}
                   placeholder="98765 43210"
                   autoFocus
-                  className={`flex-1 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${otpSent ? "opacity-60 cursor-not-allowed" : ""}`}
-                  onKeyDown={(e) => !otpSent && e.key === "Enter" && sendOtp()}
+                  className="flex-1 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  onKeyDown={(e) => e.key === "Enter" && submitPhone()}
                 />
               </div>
             </div>
 
-            {/* OTP field appears inline after send */}
-            {otpSent && (
-              <div>
-                <label className="block text-[12px] font-medium text-muted mb-1.5">OTP Code</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                  placeholder="123456"
-                  autoFocus
-                  className="w-full h-12 px-3 rounded-[10px] border border-rule bg-white text-[20px] text-heading tracking-[0.3em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                  onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
-                />
-              </div>
-            )}
-
             {error && <p className="text-[12px] text-loss">{error}</p>}
 
-            {!otpSent ? (
-              <button
-                onClick={sendOtp}
-                disabled={loading}
-                className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-                Send OTP
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={verifyOtp}
-                  disabled={loading}
-                  className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {loading && <Loader2 className="size-4 animate-spin" />}
-                  Verify
-                </button>
-                <button
-                  onClick={() => { setOtpSent(false); setOtp(""); setError(""); }}
-                  className="w-full flex items-center justify-center gap-1.5 text-[12px] text-muted hover:text-body"
-                >
-                  <ArrowLeft className="size-3" /> Change number
-                </button>
-              </>
-            )}
+            <button
+              onClick={submitPhone}
+              disabled={loading}
+              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+              Continue
+            </button>
           </div>
         )}
 
-        {/* ── Stage 3: Link account ── */}
-        {stage === "link" && !showEmailForm && (
+        {/* ── OTP entry stages (phone SMS / email login / email link) ── */}
+        {isOtpStage && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[12px] font-medium text-muted mb-1.5">Verification code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="000000"
+                autoFocus
+                className="w-full h-12 px-3 rounded-[10px] border border-rule bg-white text-[20px] text-heading tracking-[0.3em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                onKeyDown={(e) => e.key === "Enter" && verifyHandler()}
+              />
+            </div>
+
+            {error && <p className="text-[12px] text-loss">{error}</p>}
+
+            <button
+              onClick={verifyHandler}
+              disabled={loading}
+              className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="size-4 animate-spin" />}
+              Verify
+            </button>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  if (stage === "verify-phone") { setStage("phone"); setOtp(""); setError(""); }
+                  else if (stage === "link-email-otp") { setStage("link-email-form"); setOtp(""); setError(""); }
+                  else { setStage("phone"); setOtp(""); setError(""); }
+                }}
+                className="flex items-center gap-1.5 text-[12px] text-muted hover:text-body"
+              >
+                <ArrowLeft className="size-3" /> Back
+              </button>
+              <button
+                onClick={resendCode}
+                disabled={resendIn > 0 || loading}
+                className="text-[12px] text-primary font-medium hover:underline disabled:text-faint disabled:no-underline disabled:cursor-not-allowed"
+              >
+                {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Stage: Link account choice ── */}
+        {stage === "link" && (
           <div className="space-y-3">
             <button
               onClick={async () => {
-                // Mark this as a linking flow so the OAuth callback can merge accounts
                 await fetch("/api/auth/link-google-init", { method: "POST" });
                 signIn("google");
               }}
@@ -295,7 +415,7 @@ export function AuthModal({ open, onClose }: Props) {
               Continue with Google
             </button>
             <button
-              onClick={() => setShowEmailForm(true)}
+              onClick={() => { setStage("link-email-form"); setError(""); }}
               className="w-full h-11 rounded-[10px] border border-rule bg-white hover:bg-surface text-[13.5px] font-semibold text-heading flex items-center justify-center gap-3 transition-colors shadow-sm"
             >
               <Mail className="size-4 text-muted" />
@@ -304,10 +424,10 @@ export function AuthModal({ open, onClose }: Props) {
           </div>
         )}
 
-        {/* ── Stage 3b: Email form ── */}
-        {stage === "link" && showEmailForm && (
+        {/* ── Stage: Link via Email — Name + Email form ── */}
+        {stage === "link-email-form" && (
           <div className="space-y-3">
-            <button onClick={() => { setShowEmailForm(false); setError(""); }} className="flex items-center gap-1.5 text-[12px] text-muted hover:text-body mb-1">
+            <button onClick={() => { setStage("link"); setError(""); }} className="flex items-center gap-1.5 text-[12px] text-muted hover:text-body mb-1">
               <ArrowLeft className="size-3" /> Back
             </button>
             <div>
@@ -318,26 +438,15 @@ export function AuthModal({ open, onClose }: Props) {
             <div>
               <label className="block text-[12px] font-medium text-muted mb-1.5">Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-                className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-muted mb-1.5">Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
                 className="w-full h-10 px-3 rounded-[10px] border border-rule bg-white text-[13.5px] text-heading focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                onKeyDown={(e) => e.key === "Enter" && submitEmail()} />
+                onKeyDown={(e) => e.key === "Enter" && submitLinkEmailForm()} />
             </div>
             {error && <p className="text-[12px] text-loss">{error}</p>}
-            <button onClick={submitEmail} disabled={loading}
+            <button onClick={submitLinkEmailForm} disabled={loading}
               className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2">
               {loading && <Loader2 className="size-4 animate-spin" />}
-              {emailMode === "signin" ? "Sign in" : "Create account"}
+              Send code
             </button>
-            <p className="text-center text-[12px] text-muted">
-              {emailMode === "signin" ? "No account?" : "Already have one?"}{" "}
-              <button onClick={() => { setEmailMode(emailMode === "signin" ? "signup" : "signin"); setError(""); }} className="text-primary font-medium hover:underline">
-                {emailMode === "signin" ? "Sign up" : "Sign in"}
-              </button>
-            </p>
           </div>
         )}
 

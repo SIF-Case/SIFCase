@@ -32,6 +32,17 @@ type FormState = {
   portfolioByRatingClass: RatingAlloc[];
   topHoldings: Holding[];
   factsheets: Factsheet[];
+  // Investor Suitability
+  suitableFor: string;
+  notSuitableFor: string;
+  // Market Scenarios
+  bullMarket: string;
+  bearMarket: string;
+  sidewaysMarket: string;
+  // Fund Fit
+  howItWorks: string;
+  mfEquivalent: string;
+  portfolioFit: string;
 };
 
 type AiResult = Partial<{
@@ -50,6 +61,17 @@ type AiResult = Partial<{
   portfolioByIndustry: { industry: string; percentage: number }[];
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
+  // Investor Suitability
+  suitableFor: string | null;
+  notSuitableFor: string | null;
+  // Market Scenarios
+  bullMarket: string | null;
+  bearMarket: string | null;
+  sidewaysMarket: string | null;
+  // Fund Fit
+  howItWorks: string | null;
+  mfEquivalent: string | null;
+  portfolioFit: string | null;
 }>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,12 +87,15 @@ const EMPTY_FORM: FormState = {
   portfolioByRatingClass: [{ ratingClass: "", percentage: "" }],
   topHoldings: [{ name: "", percentage: "", sector: "", rating: "" }],
   factsheets: [],
+  suitableFor: "", notSuitableFor: "",
+  bullMarket: "", bearMarket: "", sidewaysMarket: "",
+  howItWorks: "", mfEquivalent: "", portfolioFit: "",
 };
 
-type Provider = "groq" | "gemini" | "openrouter";
+type Provider = "deepseek" | "gemini" | "openrouter";
 
 const PROVIDERS: Record<Provider, { label: string; models: string[] }> = {
-  groq: { label: "Groq", models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "meta-llama/llama-4-maverick-17b-128e-instruct", "openai/gpt-oss-20b"] },
+  deepseek: { label: "DeepSeek", models: ["deepseek-chat", "deepseek-reasoner"] },
   gemini: { label: "Gemini", models: ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash"] },
   openrouter: { label: "OpenRouter", models: [] },
 };
@@ -126,10 +151,12 @@ export default function FundDetailsPage() {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // AI state
-  const [provider, setProvider] = useState<Provider>("groq");
-  const [model, setModel] = useState(PROVIDERS.groq.models[0]);
+  const [provider, setProvider] = useState<Provider>("deepseek");
+  const [model, setModel] = useState(PROVIDERS.deepseek.models[0]);
   const [customModel, setCustomModel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [savedConfig, setSavedConfig] = useState<{ label: string; provider: Provider; modelName: string } | null | undefined>(undefined);
+  const [overrideConfig, setOverrideConfig] = useState(false);
   const [analysing, setAnalysing] = useState(false);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiError, setAiError] = useState("");
@@ -147,6 +174,11 @@ export default function FundDetailsPage() {
         setFundNames(d.fundNames || []);
         setBrandNames(d.brandNames || []);
       });
+
+    fetch("/api/admin/fund-details/analyse")
+      .then(r => r.json())
+      .then(d => setSavedConfig(d.config ?? null))
+      .catch(() => setSavedConfig(null));
   }, []);
 
   const handleBrandChange = (brand: string) => {
@@ -213,6 +245,14 @@ export default function FundDetailsPage() {
           factsheets: (det.factsheets || []).map((f: Factsheet) => ({
             url: f.url, filename: f.filename, uploadedAt: f.uploadedAt,
           })),
+          suitableFor: det.suitableFor || "",
+          notSuitableFor: det.notSuitableFor || "",
+          bullMarket: det.bullMarket || "",
+          bearMarket: det.bearMarket || "",
+          sidewaysMarket: det.sidewaysMarket || "",
+          howItWorks: det.howItWorks || "",
+          mfEquivalent: det.mfEquivalent || "",
+          portfolioFit: det.portfolioFit || "",
         });
       } else {
         setForm(EMPTY_FORM);
@@ -253,13 +293,14 @@ export default function FundDetailsPage() {
     setAiResult(null);
     try {
       const activeModel = provider === "openrouter" ? customModel : model;
+      const useManualEntry = !savedConfig || overrideConfig;
       const r = await fetch("/api/admin/fund-details/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fundName: selectedFund,
           pdfUrls: form.factsheets.map(f => f.url),
-          provider, model: activeModel, apiKey,
+          ...(useManualEntry ? { provider, model: activeModel, apiKey } : {}),
         }),
       });
       const d = await r.json();
@@ -339,6 +380,14 @@ export default function FundDetailsPage() {
             .filter(h => h.name.trim())
             .map(h => ({ name: h.name, percentage: Number(h.percentage) || 0, sector: h.sector, rating: h.rating || undefined })),
           factsheets: form.factsheets,
+          suitableFor: form.suitableFor,
+          notSuitableFor: form.notSuitableFor,
+          bullMarket: form.bullMarket,
+          bearMarket: form.bearMarket,
+          sidewaysMarket: form.sidewaysMarket,
+          howItWorks: form.howItWorks,
+          mfEquivalent: form.mfEquivalent,
+          portfolioFit: form.portfolioFit,
         }),
       });
       const d = await r.json();
@@ -381,8 +430,9 @@ export default function FundDetailsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const canAnalyse = !!selectedFund && form.factsheets.length > 0 && !!apiKey &&
-    (provider !== "openrouter" ? !!model : !!customModel);
+  const usingSavedConfig = !!savedConfig && !overrideConfig;
+  const canAnalyse = !!selectedFund && form.factsheets.length > 0 &&
+    (usingSavedConfig || (!!apiKey && (provider !== "openrouter" ? !!model : !!customModel)));
 
   const aiDisplayValue = (field: keyof AiResult): string | null => {
     const val = aiResult?.[field];
@@ -669,6 +719,47 @@ export default function FundDetailsPage() {
                   </button>
                 </div>
 
+                {/* Investor Suitability */}
+                <SectionHeader title="Investor Suitability" />
+                <FieldRow label="Suitable For">
+                  <textarea className={`${textareaCls} h-24`} value={form.suitableFor} onChange={setField("suitableFor")} placeholder="Describe the investor profile, risk appetite, and goals this SIF is suitable for..." />
+                  {aiResult?.suitableFor != null && <AiValueBadge value={String(aiResult.suitableFor)} onApply={() => applyField("suitableFor")} />}
+                </FieldRow>
+                <FieldRow label="Not Suitable For">
+                  <textarea className={`${textareaCls} h-24`} value={form.notSuitableFor} onChange={setField("notSuitableFor")} placeholder="Describe investor types who should avoid this SIF..." />
+                  {aiResult?.notSuitableFor != null && <AiValueBadge value={String(aiResult.notSuitableFor)} onApply={() => applyField("notSuitableFor")} />}
+                </FieldRow>
+
+                {/* Market Scenarios */}
+                <SectionHeader title="Market Scenario Performance" />
+                <FieldRow label="In Bull Markets">
+                  <textarea className={`${textareaCls} h-20`} value={form.bullMarket} onChange={setField("bullMarket")} placeholder="How does this fund perform in bull markets and why..." />
+                  {aiResult?.bullMarket != null && <AiValueBadge value={String(aiResult.bullMarket)} onApply={() => applyField("bullMarket")} />}
+                </FieldRow>
+                <FieldRow label="In Bear Markets">
+                  <textarea className={`${textareaCls} h-20`} value={form.bearMarket} onChange={setField("bearMarket")} placeholder="How does this fund perform in bear markets and why..." />
+                  {aiResult?.bearMarket != null && <AiValueBadge value={String(aiResult.bearMarket)} onApply={() => applyField("bearMarket")} />}
+                </FieldRow>
+                <FieldRow label="In Sideways Markets">
+                  <textarea className={`${textareaCls} h-20`} value={form.sidewaysMarket} onChange={setField("sidewaysMarket")} placeholder="How does this fund perform in sideways / range-bound markets and why..." />
+                  {aiResult?.sidewaysMarket != null && <AiValueBadge value={String(aiResult.sidewaysMarket)} onApply={() => applyField("sidewaysMarket")} />}
+                </FieldRow>
+
+                {/* Fund Fit */}
+                <SectionHeader title="Where Does This Fund Fit For You?" />
+                <FieldRow label="How This Fund Works">
+                  <textarea className={`${textareaCls} h-24`} value={form.howItWorks} onChange={setField("howItWorks")} placeholder="Concise explanation of the fund strategy mechanics..." />
+                  {aiResult?.howItWorks != null && <AiValueBadge value={String(aiResult.howItWorks)} onApply={() => applyField("howItWorks")} />}
+                </FieldRow>
+                <FieldRow label="MF Equivalent">
+                  <textarea className={`${textareaCls} h-16`} value={form.mfEquivalent} onChange={setField("mfEquivalent")} placeholder="Closest mutual fund category or equivalent..." />
+                  {aiResult?.mfEquivalent != null && <AiValueBadge value={String(aiResult.mfEquivalent)} onApply={() => applyField("mfEquivalent")} />}
+                </FieldRow>
+                <FieldRow label="Portfolio Fit">
+                  <textarea className={`${textareaCls} h-20`} value={form.portfolioFit} onChange={setField("portfolioFit")} placeholder="Where this fund fits in an investor's portfolio (e.g. satellite, core, hedge)..." />
+                  {aiResult?.portfolioFit != null && <AiValueBadge value={String(aiResult.portfolioFit)} onApply={() => applyField("portfolioFit")} />}
+                </FieldRow>
+
                 {/* Save */}
                 <div className="mt-8 pt-6 border-t border-[#E2E8F0] flex items-center gap-3 flex-wrap">
                   <button
@@ -735,6 +826,26 @@ export default function FundDetailsPage() {
             {selectedFund && <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
               <h2 className="text-[15px] font-bold text-[#0B1F3A] mb-4">AI Analysis</h2>
 
+              {savedConfig && (
+                <div className="flex items-center justify-between gap-3 mb-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded-[8px] px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-[#15803D]">
+                      Using saved config — {savedConfig.label}
+                    </p>
+                    <p className="text-[11px] text-[#16A34A] font-mono mt-0.5 truncate">
+                      {PROVIDERS[savedConfig.provider]?.label ?? savedConfig.provider} · {savedConfig.modelName}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setOverrideConfig(v => !v)}
+                    className="shrink-0 text-[11px] font-semibold text-[#15803D] hover:text-[#166534] transition-colors"
+                  >
+                    {overrideConfig ? "Use saved config" : "Override manually ▾"}
+                  </button>
+                </div>
+              )}
+
+              {!usingSavedConfig && <>
               {/* Provider tabs */}
               <div className="flex gap-1 mb-4 bg-[#F1F5F9] rounded-[8px] p-1">
                 {(Object.keys(PROVIDERS) as Provider[]).map(p => (
@@ -786,6 +897,7 @@ export default function FundDetailsPage() {
                   autoComplete="off"
                 />
               </div>
+              </>}
 
               {/* Analyse button */}
               <button
@@ -846,6 +958,14 @@ export default function FundDetailsPage() {
                           portfolioByIndustry: "Portfolio by Industry",
                           portfolioByRatingClass: "Portfolio by Rating Class",
                           topHoldings: "Top Holdings",
+                          suitableFor: "Suitable For",
+                          notSuitableFor: "Not Suitable For",
+                          bullMarket: "Bull Market Performance",
+                          bearMarket: "Bear Market Performance",
+                          sidewaysMarket: "Sideways Market Performance",
+                          howItWorks: "How This Fund Works",
+                          mfEquivalent: "MF Equivalent",
+                          portfolioFit: "Portfolio Fit",
                         }[field] || field;
 
                         return (

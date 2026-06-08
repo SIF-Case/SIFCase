@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Send, ArrowLeft, Loader2, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil } from "lucide-react";
+import { Save, Eye, Send, ArrowLeft, Loader2, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil, Sparkles } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { ImageUploader } from "./ImageUploader";
 
@@ -197,6 +197,8 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fundHouses, setFundHouses] = useState<string[]>([]);
+  const [generatingMeta, setGeneratingMeta] = useState(false);
+  const [metaError, setMetaError] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/amcs")
@@ -211,6 +213,48 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
 
   function handleCategoryChange(cat: string) {
     setForm((f) => ({ ...f, category: cat, subcategory: "" }));
+  }
+
+  async function generateMeta() {
+    if (!form.content.replace(/<[^>]+>/g, "").trim()) { setMetaError("Add some article content first"); return; }
+    setGeneratingMeta(true); setMetaError("");
+    try {
+      const existing = {
+        title: form.title,
+        excerpt: form.excerpt,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        seoTitle: form.seoTitle,
+        metaDescription: form.metaDescription,
+        focusKeyphrase: form.focusKeyphrase,
+        primaryKeyword: form.primaryKeyword,
+      };
+      const res = await fetch("/api/admin/articles/generate-meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: form.title, content: form.content, category: form.category, existing }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setMetaError(data?.error ?? `Generation failed (${res.status})`); return; }
+
+      const meta = (data?.meta ?? {}) as Partial<{
+        title: string; excerpt: string; tags: string[];
+        seoTitle: string; metaDescription: string; focusKeyphrase: string; primaryKeyword: string;
+      }>;
+
+      // Only fill fields that are currently empty — never overwrite manual entries.
+      setForm((f) => ({
+        ...f,
+        title: f.title.trim() ? f.title : (meta.title ?? f.title),
+        excerpt: f.excerpt.trim() ? f.excerpt : (meta.excerpt ?? f.excerpt),
+        tags: f.tags.trim() ? f.tags : (meta.tags?.length ? meta.tags.join(", ") : f.tags),
+        seoTitle: f.seoTitle.trim() ? f.seoTitle : (meta.seoTitle ?? f.seoTitle),
+        metaDescription: f.metaDescription.trim() ? f.metaDescription : (meta.metaDescription ?? f.metaDescription),
+        focusKeyphrase: f.focusKeyphrase.trim() ? f.focusKeyphrase : (meta.focusKeyphrase ?? f.focusKeyphrase),
+        primaryKeyword: f.primaryKeyword.trim() ? f.primaryKeyword : (meta.primaryKeyword ?? f.primaryKeyword),
+      }));
+    } finally {
+      setGeneratingMeta(false);
+    }
   }
 
   async function save(status: "draft" | "published") {
@@ -390,10 +434,19 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
 
           {/* SEO Panel */}
           <div className="bg-white rounded-[14px] border border-rule shadow-card p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <Search className="size-3.5 text-primary" />
-              <p className="text-[12px] font-semibold text-heading uppercase tracking-widest text-muted">SEO</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="size-3.5 text-primary" />
+                <p className="text-[12px] font-semibold text-heading uppercase tracking-widest text-muted">SEO</p>
+              </div>
+              <button type="button" onClick={generateMeta} disabled={generatingMeta}
+                title="Fills empty fields — title, excerpt, tags, and SEO — using the AI config assigned to “Articles — Title, Excerpt & SEO Generation” in AI Settings"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] border border-primary/30 bg-primary/5 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50">
+                {generatingMeta ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                {generatingMeta ? "Generating…" : "Fill with AI"}
+              </button>
             </div>
+            {metaError && <p className="text-[11px] text-loss -mt-2">{metaError}</p>}
 
             {/* SERP preview */}
             <div className="rounded-[10px] border border-rule bg-surface p-3">

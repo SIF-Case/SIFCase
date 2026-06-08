@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasAnyPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import CronLog from "@/models/CronLog";
 import { fetchAndStoreSIFNav } from "@/lib/navFetcher";
 
 export async function POST(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasAnyPageAccess(req, ["funds", "schemes"], "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const start = Date.now();
   try {

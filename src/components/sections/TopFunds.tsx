@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ChevronDown, ArrowRight } from "lucide-react";
+import { ChevronDown, ArrowRight, Bookmark } from "lucide-react";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { RiskGauge } from "@/components/ui/RiskMeter";
+import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 const FILTERS = ["All", "Hybrid", "Equity"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -105,8 +107,22 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   );
 }
 
-function FundCard({ fund, period }: { fund: FundRow; period: PeriodKey }) {
+function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: PeriodKey; onRequireAuth: (reason: string) => void }) {
   const periodRet = fund.returns?.[period] ?? null;
+  const { watching, toggle, loading, loggedIn } = useWatchlist(fund.schemeCode);
+
+  function handleWatchClick() {
+    if (!loggedIn) {
+      rememberPendingWatchlistAdd(fund.schemeCode);
+      onRequireAuth("save to your watchlist");
+      return;
+    }
+    toggle();
+  }
+
+  function handleInvestClick(e: React.MouseEvent) {
+    if (!loggedIn) { e.preventDefault(); onRequireAuth("invest in this fund"); }
+  }
 
   const fmtRet = (v: number | null | undefined) =>
     v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}%` : "—";
@@ -177,8 +193,23 @@ function FundCard({ fund, period }: { fund: FundRow; period: PeriodKey }) {
         >
           Details
         </a>
+        <button
+          type="button"
+          onClick={handleWatchClick}
+          disabled={loading}
+          aria-label={watching ? "Remove from watchlist" : "Add to watchlist"}
+          aria-pressed={watching}
+          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full border transition-colors disabled:opacity-50 ${
+            watching
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-rule text-muted hover:border-brand-navy hover:text-heading"
+          }`}
+        >
+          <Bookmark className="w-4 h-4" strokeWidth={2} fill={watching ? "currentColor" : "none"} />
+        </button>
         <a
           href="#"
+          onClick={handleInvestClick}
           className="flex-1 py-2 rounded-full bg-primary text-white text-[13px] font-semibold text-center hover:bg-primary-hover shadow-btn"
         >
           Invest Now
@@ -194,6 +225,13 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
   const [amc, setAmc] = useState<string>("All");
   const [amcOpen, setAmcOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authReason, setAuthReason] = useState("");
+
+  function requireAuth(reason: string) {
+    setAuthReason(reason);
+    setAuthOpen(true);
+  }
 
   const amcs = ["All", ...Array.from(new Set(funds.map((f) => f.amc))).sort()];
 
@@ -285,7 +323,7 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {visible.map((fund) => (
-            <FundCard key={fund.schemeCode} fund={fund} period={period} />
+            <FundCard key={fund.schemeCode} fund={fund} period={period} onRequireAuth={requireAuth} />
           ))}
           {visible.length === 0 && (
             <p className="col-span-3 text-center py-12 text-muted">No funds in this category.</p>
@@ -310,6 +348,8 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
           </a>
         </div>
       </div>
+
+      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} reason={authReason} />
     </section>
   );
 }

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasAnyPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
 
+const FUNDS_PAGES = ["funds", "schemes"];
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasAnyPageAccess(req, FUNDS_PAGES, "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { code } = await params;
   await connectDB();
@@ -25,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasAnyPageAccess(req, FUNDS_PAGES, "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { code } = await params;
   await connectDB();

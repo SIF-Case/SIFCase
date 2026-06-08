@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LabelList,
 } from "recharts";
-import { FileText, Download, Search, Users, TrendingUp, Building2, BarChart2 } from "lucide-react";
+import { FileText, Download, Search, Users, TrendingUp, TrendingDown, Building2, BarChart2, CheckCircle2, XCircle, ArrowLeftRight, Compass } from "lucide-react";
 import type { FundDetailsData } from "@/lib/sifData";
 
 // ─── Colour palette ────────────────────────────────────────────────────────────
@@ -712,6 +712,108 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                 </tbody>
               </table>
             </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── INVESTOR SUITABILITY ───────────────────────────────────────── */}
+      {(details.suitableFor || details.notSuitableFor) && (
+        <SectionCard label="Investor Suitability" title="Is this fund right for you?">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {details.suitableFor && (
+              <div className="rounded-[16px] border border-emerald-200 bg-emerald-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="size-4 text-gain" strokeWidth={2} />
+                  <h3 className="text-[14px] font-bold text-heading">Suitable for</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.suitableFor}</p>
+              </div>
+            )}
+            {details.notSuitableFor && (
+              <div className="rounded-[16px] border border-red-200 bg-red-50 p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <XCircle className="size-4 text-loss" strokeWidth={2} />
+                  <h3 className="text-[14px] font-bold text-heading">Not suitable for</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.notSuitableFor}</p>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── MARKET SCENARIO PERFORMANCE ────────────────────────────────── */}
+      {(details.bullMarket || details.bearMarket || details.sidewaysMarket) && (
+        <SectionCard label="Market Scenario Performance" title="How this fund may behave across cycles">
+          <div className="grid sm:grid-cols-3 gap-4">
+            {details.bullMarket && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                    <TrendingUp className="size-4 text-gain" strokeWidth={2} />
+                  </span>
+                  <h3 className="text-[14px] font-bold text-heading">In Bull Markets</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.bullMarket}</p>
+              </div>
+            )}
+            {details.bearMarket && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                    <TrendingDown className="size-4 text-loss" strokeWidth={2} />
+                  </span>
+                  <h3 className="text-[14px] font-bold text-heading">In Bear Markets</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.bearMarket}</p>
+              </div>
+            )}
+            {details.sidewaysMarket && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="size-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                    <ArrowLeftRight className="size-4 text-primary" strokeWidth={2} />
+                  </span>
+                  <h3 className="text-[14px] font-bold text-heading">In Sideways Markets</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.sidewaysMarket}</p>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── WHERE DOES THIS FUND FIT FOR YOU ───────────────────────────── */}
+      {(details.howItWorks || details.mfEquivalent || details.portfolioFit) && (
+        <SectionCard label="Where Does This Fund Fit For You?" title="Understanding the fund's role in your portfolio">
+          <div className="space-y-4">
+            {details.howItWorks && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Compass className="size-4 text-primary" strokeWidth={2} />
+                  <h3 className="text-[14px] font-bold text-heading">How this fund works</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.howItWorks}</p>
+              </div>
+            )}
+            {details.mfEquivalent && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <BarChart2 className="size-4 text-primary" strokeWidth={2} />
+                  <h3 className="text-[14px] font-bold text-heading">Closest mutual fund equivalent</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.mfEquivalent}</p>
+              </div>
+            )}
+            {details.portfolioFit && (
+              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Building2 className="size-4 text-primary" strokeWidth={2} />
+                  <h3 className="text-[14px] font-bold text-heading">Where it fits in your portfolio</h3>
+                </div>
+                <p className="text-[13px] text-body leading-relaxed">{details.portfolioFit}</p>
+              </div>
+            )}
           </div>
         </SectionCard>
       )}

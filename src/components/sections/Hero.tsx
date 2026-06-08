@@ -6,10 +6,8 @@ import { HeroHeatmap } from "@/components/sections/HeroHeatmap";
 
 const POPULAR_TAGS = [
   "Long-Short",
-  "Market Neutral",
   "Equity Ex-Top 100",
   "Hybrid L/S",
-  "Event Driven",
   "New Launches",
   "Top by NAV",
 ];

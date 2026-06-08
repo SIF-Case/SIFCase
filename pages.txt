@@ -1,0 +1,24 @@
+ 4. Central page registry — src/lib/adminPages.ts (new)
+
+ Plain array, single source of truth for both the sidebar and the role-editor matrix:
+ export const ADMIN_PAGES = [
+   { key: "dashboard",   label: "Dashboard",    href: "/admin",              icon: LayoutDashboard, editable:
+ false },
+   { key: "users",       label: "Users",        href: "/admin/users",        icon: Users,           editable:
+ true  },
+   { key: "clients",     label: "Clients",      href: "/admin/clients",      icon: UserSquare2,     editable:
+ true  },
+   { key: "funds",       label: "Funds & NAV",  href: "/admin/funds",        icon: Database,        editable:
+ true  },
+   { key: "schemes",     label: "Funds",        href: "/admin/schemes",      icon: Table2,          editable:
+ true  },
+   { key: "fundDetails", label: "Fund Details", href: "/admin/fund-details", icon: ClipboardList,   editable:
+ true  },
+   { key: "articles",    label: "Articles",     href: "/admin/articles",     icon: BookOpen,        editable:
+ true  },
+   { key: "logs",        label: "Cron Logs",    href: "/admin/logs",         icon: ScrollText,      editable:
+ false },
+   { key: "roles",       label: "Roles",        href: "/admin/roles",        icon: KeyRound,        editable:
+ true  },
+ ];
+ pageKey strings are the durable contract stored in Role.permissions[].pageKey.

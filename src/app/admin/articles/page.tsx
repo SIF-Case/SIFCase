@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Eye, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, RefreshCw, ArrowUpDown, X, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 type Article = {
   _id: string;
@@ -10,19 +10,126 @@ type Article = {
   slug: string;
   status: "draft" | "published";
   category: string;
+  subcategory: string;
+  order: number;
   readTime: number;
   publishedAt: string | null;
   createdAt: string;
 };
 
+function ReorderModal({ articles, onClose, onSaved }: {
+  articles: Article[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const initial = useMemo(() => {
+    const order: string[] = [];
+    const grouped: Record<string, Article[]> = {};
+    for (const a of articles.filter((x) => x.category === "General")) {
+      const sub = a.subcategory?.trim() || "General";
+      if (!grouped[sub]) { grouped[sub] = []; order.push(sub); }
+      grouped[sub].push(a);
+    }
+    for (const sub of order) {
+      grouped[sub].sort((x, y) => (x.order ?? 0) - (y.order ?? 0)
+        || (new Date(y.publishedAt ?? 0).getTime() - new Date(x.publishedAt ?? 0).getTime()));
+    }
+    return { order, grouped };
+  }, [articles]);
+
+  const [groups, setGroups] = useState(initial.grouped);
+  const [saving, setSaving] = useState(false);
+
+  function move(sub: string, idx: number, dir: -1 | 1) {
+    setGroups((g) => {
+      const list = [...g[sub]];
+      const j = idx + dir;
+      if (j < 0 || j >= list.length) return g;
+      [list[idx], list[j]] = [list[j], list[idx]];
+      return { ...g, [sub]: list };
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const items = initial.order.flatMap((sub) => groups[sub].map((a, i) => ({ id: a._id, order: i })));
+      await fetch("/api/admin/articles/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      onSaved();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6" onClick={onClose}>
+      <div className="bg-white rounded-[14px] border border-rule shadow-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-rule sticky top-0 bg-white">
+          <div>
+            <h2 className="text-[16px] font-bold text-heading">Reorder articles</h2>
+            <p className="text-[11.5px] text-muted mt-0.5">Sets the display order within each sub-category on /read.</p>
+          </div>
+          <button onClick={onClose} className="size-7 inline-flex items-center justify-center rounded-[6px] text-muted hover:text-body">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {initial.order.length === 0 ? (
+            <p className="text-[13px] text-muted text-center py-8">No General-category articles to reorder yet.</p>
+          ) : initial.order.map((sub) => (
+            <div key={sub}>
+              <p className="text-[11px] font-mono font-semibold uppercase tracking-widest text-primary mb-2">{sub}</p>
+              <div className="border border-rule rounded-[10px] overflow-hidden">
+                {groups[sub].map((a, idx) => (
+                  <div key={a._id} className="flex items-center gap-3 px-4 py-2.5 border-b border-rule last:border-0">
+                    <span className="text-[11px] font-mono text-faint w-5 shrink-0">{idx + 1}</span>
+                    <p className="flex-1 min-w-0 text-[13px] font-medium text-body truncate">{a.title}</p>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={() => move(sub, idx, -1)} disabled={idx === 0}
+                        className="size-6 inline-flex items-center justify-center rounded-[5px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed">
+                        <ChevronUp className="size-3.5" />
+                      </button>
+                      <button type="button" onClick={() => move(sub, idx, 1)} disabled={idx === groups[sub].length - 1}
+                        className="size-6 inline-flex items-center justify-center rounded-[5px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed">
+                        <ChevronDown className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button onClick={save} disabled={saving || initial.order.length === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-[8px] bg-primary text-white text-[13px] font-semibold hover:opacity-90 disabled:opacity-50">
+              {saving ? <Loader2 className="size-3.5 animate-spin" /> : null} {saving ? "Saving…" : "Save order"}
+            </button>
+            <button onClick={onClose} className="px-4 py-2 rounded-[8px] border border-rule text-[13px] text-muted hover:text-body">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminArticles() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/articles");
+    const res = await fetch("/api/admin/articles?all=1");
     const data = await res.json();
     setArticles(data.articles ?? []);
     setTotal(data.total ?? 0);
@@ -47,6 +154,11 @@ export default function AdminArticles() {
         <div className="flex items-center gap-3">
           <button onClick={fetch_} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
             <RefreshCw className="size-3.5" />
+          </button>
+          <button onClick={() => setReorderOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] font-semibold text-muted hover:text-body"
+            title="Set the display order of articles within each sub-category on /read">
+            <ArrowUpDown className="size-3.5" /> Reorder
           </button>
           <Link href="/admin/articles/new"
             className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:bg-primary-hover shadow-btn">
@@ -95,6 +207,10 @@ export default function AdminArticles() {
           </div>
         ))}
       </div>
+
+      {reorderOpen && (
+        <ReorderModal articles={articles} onClose={() => setReorderOpen(false)} onSaved={fetch_} />
+      )}
     </div>
   );
 }

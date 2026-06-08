@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyFirebaseToken } from "@/lib/firebaseAdmin";
+import { consumeEmailOtp } from "@/lib/otp";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -30,6 +31,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!valid) return null;
         return {
           id: (user._id as { toString(): string }).toString(),
+          name: user.name ?? null,
+          email: user.email ?? null,
+          image: user.image ?? null,
+        };
+      },
+    }),
+    Credentials({
+      id: "email-otp",
+      credentials: {
+        phone: { label: "Phone" },
+        otp: { label: "OTP" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.phone || !credentials?.otp) return null;
+        const result = await consumeEmailOtp({
+          purpose: "login",
+          key: credentials.phone as string,
+          otp: credentials.otp as string,
+        });
+        if (!result.ok) return null;
+        await connectDB();
+        const user = await User.findOne({ email: result.email });
+        if (!user) return null;
+        if (!user.emailVerified) {
+          user.emailVerified = new Date();
+          await user.save();
+        }
+        return {
+          id: user._id.toString(),
           name: user.name ?? null,
           email: user.email ?? null,
           image: user.image ?? null,
@@ -99,7 +129,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
+      if (trigger === "update" && token.id) {
+        await connectDB();
+        const dbUser = await User.findById(token.id as string).lean();
+        if (dbUser) {
+          token.name = dbUser.name ?? token.name;
+          token.email = dbUser.email ?? token.email;
+          token.picture = dbUser.image ?? token.picture;
+        }
+        return token;
+      }
       if (user) {
         token.id = user.id;
         token.phone = (user as { phone?: string }).phone;
