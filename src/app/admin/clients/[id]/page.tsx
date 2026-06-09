@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Send, UserSquare2 } from "lucide-react";
+import { ArrowLeft, Trash2, Send, UserSquare2, Activity, Eye } from "lucide-react";
 
 const STAGES = ["lead", "contacted", "qualified", "proposal", "onboarded", "lost"];
 
@@ -17,6 +17,8 @@ const STAGE_STYLES: Record<string, string> = {
 
 type Note = { _id?: string; text: string; authorName: string; createdAt: string };
 type Staff = { _id: string; name?: string; email?: string };
+type PageVisit = { path: string; visitedAt: string };
+type UserActivity = { action: string; description: string; createdAt: string };
 type ClientDetail = {
   _id: string;
   name: string;
@@ -30,9 +32,18 @@ type ClientDetail = {
   estimatedAumLakhs?: number | null;
   riskProfile?: string | null;
   notes: Note[];
+  pageVisits?: PageVisit[];
+  activities?: UserActivity[];
   lastContactedAt?: string | null;
   tags: string[];
   createdAt: string;
+};
+
+const ACTIVITY_STYLES: Record<string, { badge: string; text: string }> = {
+  "Create User": { badge: "bg-blue-50 text-blue-600 border border-blue-200", text: "Create User" },
+  "Wishlist": { badge: "bg-violet-50 text-violet-600 border border-violet-200", text: "Wishlist" },
+  "Invest": { badge: "bg-emerald-50 text-gain border border-emerald-200", text: "Invest" },
+  "Booklet": { badge: "bg-amber-50 text-amber-700 border border-amber-200", text: "Booklet" },
 };
 
 function field(label: string, value: React.ReactNode) {
@@ -173,6 +184,63 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                   <div key={n._id ?? i} className="border-l-2 border-rule pl-3.5">
                     <p className="text-[13px] text-body">{n.text}</p>
                     <p className="text-[11px] text-faint mt-1">{n.authorName} · {new Date(n.createdAt).toLocaleString("en-IN")}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* User Action Log */}
+          <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="size-4 text-brand-navy" />
+              <h2 className="text-[13px] font-semibold text-heading">User Action Log</h2>
+            </div>
+            {(!client.activities || client.activities.length === 0) ? (
+              <p className="text-[13px] text-muted text-center py-6">No user actions logged yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {[...client.activities].reverse().map((act, i) => {
+                  const style = ACTIVITY_STYLES[act.action] || {
+                    badge: "bg-mist text-muted border border-rule",
+                    text: act.action,
+                  };
+                  return (
+                    <div key={i} className="flex items-start justify-between gap-4 border-b border-rule/50 pb-3 last:border-b-0 last:pb-0">
+                      <div className="space-y-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${style.badge}`}>
+                          {style.text}
+                        </span>
+                        <p className="text-[13px] text-body mt-1">{act.description}</p>
+                      </div>
+                      <span className="text-[11px] text-muted font-mono whitespace-nowrap pt-1">
+                        {new Date(act.createdAt).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Page Navigation History */}
+          <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Eye className="size-4 text-brand-navy" />
+              <h2 className="text-[13px] font-semibold text-heading">Page Navigation History</h2>
+            </div>
+            {(!client.pageVisits || client.pageVisits.length === 0) ? (
+              <p className="text-[13px] text-muted text-center py-6">No page navigation history logged yet.</p>
+            ) : (
+              <div className="max-h-72 overflow-y-auto space-y-2.5 pr-2 custom-scrollbar">
+                {[...client.pageVisits].reverse().map((visit, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 py-2 border-b border-rule/30 last:border-b-0 last:pb-0">
+                    <span className="font-mono text-[12px] bg-slate-50 border border-slate-200/60 rounded px-2 py-0.5 text-body truncate max-w-[320px] md:max-w-[450px]">
+                      {visit.path}
+                    </span>
+                    <span className="text-[11px] text-muted font-mono whitespace-nowrap">
+                      {new Date(visit.visitedAt).toLocaleString("en-IN")}
+                    </span>
                   </div>
                 ))}
               </div>

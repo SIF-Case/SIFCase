@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Client, { CLIENT_STAGES, ClientStage } from "@/models/Client";
+import User from "@/models/User";
 import { auth } from "@/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -19,10 +20,39 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!await hasPageAccess(req, "clients", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   await connectDB();
-  const client = await Client.findById(id)
+  let client = await Client.findById(id)
     .populate("assignedTo", "name email")
     .populate("notes.authorId", "name")
     .lean();
+
+  if (!client) {
+    client = await Client.findOne({ linkedUserId: id })
+      .populate("assignedTo", "name email")
+      .populate("notes.authorId", "name")
+      .lean();
+  }
+
+  if (!client) {
+    const user = await User.findById(id).lean();
+    if (user) {
+      const newClient = await Client.create({
+        name: user.name || user.email || user.phone || "Unknown User",
+        email: user.email || undefined,
+        phone: user.phone || undefined,
+        linkedUserId: user._id,
+        stage: "lead",
+        source: "Create User",
+        activities: [{ action: "Create User", description: "Registered user account", createdAt: user.createdAt || new Date() }],
+        pageVisits: [],
+        notes: [{ text: "User account created", authorName: "System", createdAt: user.createdAt || new Date() }],
+      });
+      client = await Client.findById(newClient._id)
+        .populate("assignedTo", "name email")
+        .populate("notes.authorId", "name")
+        .lean();
+    }
+  }
+
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ client });
 }
@@ -38,7 +68,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const authorId = session?.user?.id;
   const authorName = session?.user?.name || "Staff";
 
-  const client = await Client.findById(id);
+  let client = await Client.findById(id);
+  if (!client) {
+    client = await Client.findOne({ linkedUserId: id });
+  }
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (action === "addNote") {
@@ -86,6 +119,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!await hasPageAccess(req, "clients", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   await connectDB();
-  await Client.findByIdAndDelete(id);
+  const deleted = await Client.findByIdAndDelete(id);
+  if (!deleted) {
+    await Client.findOneAndDelete({ linkedUserId: id });
+  }
   return NextResponse.json({ ok: true });
 }

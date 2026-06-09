@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, Plus, RefreshCw, X, UserSquare2 } from "lucide-react";
+import { Search, Plus, RefreshCw, X, UserSquare2, Trash2, Send, Activity, Eye } from "lucide-react";
 
 type Client = {
   _id: string;
@@ -17,7 +17,46 @@ type Client = {
   _isRawUser?: boolean;
 };
 
+type Note = { _id?: string; text: string; authorName: string; createdAt: string };
+type PageVisit = { path: string; visitedAt: string };
+type UserActivity = { action: string; description: string; createdAt: string };
+type ClientDetail = {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  stage: string;
+  source?: string;
+  assignedTo?: { _id: string; name?: string; email?: string } | null;
+  investmentInterest: string[];
+  estimatedAumLakhs?: number | null;
+  riskProfile?: string | null;
+  notes: Note[];
+  pageVisits?: PageVisit[];
+  activities?: UserActivity[];
+  lastContactedAt?: string | null;
+  tags: string[];
+  createdAt: string;
+};
+
 type Staff = { _id: string; name?: string; email?: string };
+
+const ACTIVITY_STYLES: Record<string, { badge: string; text: string }> = {
+  "Create User": { badge: "bg-blue-50 text-blue-600 border border-blue-200", text: "Create User" },
+  "Wishlist": { badge: "bg-violet-50 text-violet-600 border border-violet-200", text: "Wishlist" },
+  "Invest": { badge: "bg-emerald-50 text-gain border border-emerald-200", text: "Invest" },
+  "Booklet": { badge: "bg-amber-50 text-amber-700 border border-amber-200", text: "Booklet" },
+};
+
+function field(label: string, value: React.ReactNode) {
+  return (
+    <div>
+      <p className="text-[9px] font-mono uppercase tracking-widest text-muted mb-0.5">{label}</p>
+      <p className="text-[12px] text-body">{value || <span className="text-faint">—</span>}</p>
+    </div>
+  );
+}
 
 const STAGES = ["lead", "contacted", "qualified", "proposal", "onboarded", "lost"];
 
@@ -56,6 +95,105 @@ export default function AdminClients() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Sidebar states
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientDetail | null>(null);
+  const [sidebarLoading, setSidebarLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    source: "",
+    estimatedAumLakhs: "",
+    riskProfile: "",
+    tags: "",
+  });
+  const [noteText, setNoteText] = useState("");
+  const [sidebarBusy, setSidebarBusy] = useState(false);
+
+  const fetchSelectedClient = useCallback(async (id: string) => {
+    setSidebarLoading(true);
+    try {
+      const res = await fetch(`/api/admin/clients/${id}`);
+      const data = await res.json();
+      if (res.ok && data.client) {
+        setSelectedClient(data.client);
+        setEditForm({
+          name: data.client.name || "",
+          email: data.client.email || "",
+          phone: data.client.phone || "",
+          company: data.client.company || "",
+          source: data.client.source || "",
+          estimatedAumLakhs: data.client.estimatedAumLakhs != null ? String(data.client.estimatedAumLakhs) : "",
+          riskProfile: data.client.riskProfile || "",
+          tags: (data.client.tags || []).join(", "),
+        });
+      } else {
+        setSelectedClient(null);
+      }
+    } catch (err) {
+      console.error(err);
+      setSelectedClient(null);
+    } finally {
+      setSidebarLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedClientId) {
+      fetchSelectedClient(selectedClientId);
+      setIsEditing(false);
+    } else {
+      setSelectedClient(null);
+    }
+  }, [selectedClientId, fetchSelectedClient]);
+
+  async function patchSidebar(body: Record<string, unknown>) {
+    if (!selectedClientId) return;
+    setSidebarBusy(true);
+    await fetch(`/api/admin/clients/${selectedClientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    await fetchSelectedClient(selectedClientId);
+    fetchClients();
+    setSidebarBusy(false);
+  }
+
+  async function addSidebarNote() {
+    if (!noteText.trim()) return;
+    await patchSidebar({ action: "addNote", text: noteText.trim() });
+    setNoteText("");
+  }
+
+  async function saveClientDetails() {
+    if (!editForm.name.trim()) return;
+    await patchSidebar({
+      name: editForm.name.trim(),
+      email: editForm.email || undefined,
+      phone: editForm.phone || undefined,
+      company: editForm.company || "",
+      source: editForm.source || "",
+      estimatedAumLakhs: editForm.estimatedAumLakhs !== "" ? Number(editForm.estimatedAumLakhs) : null,
+      riskProfile: editForm.riskProfile || null,
+      tags: editForm.tags.split(",").map(t => t.trim()).filter(Boolean),
+    });
+    setIsEditing(false);
+  }
+
+  async function deleteSidebarClient() {
+    if (!selectedClient) return;
+    if (!confirm(`Delete client "${selectedClient.name}"? This cannot be undone.`)) return;
+    setSidebarBusy(true);
+    await fetch(`/api/admin/clients/${selectedClientId}`, { method: "DELETE" });
+    setSelectedClientId(null);
+    fetchClients();
+    setSidebarBusy(false);
+  }
+
   const fetchClients = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), q: search });
@@ -73,7 +211,7 @@ export default function AdminClients() {
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
   useEffect(() => {
-    fetch("/api/admin/staff").then(r => r.json()).then(d => setStaff(d.staff ?? [])).catch(() => {});
+    fetch("/api/admin/staff").then(r => r.json()).then(d => setStaff(d.staff ?? [])).catch(() => { });
   }, []);
 
   function openCreate() {
@@ -149,8 +287,8 @@ export default function AdminClients() {
             No clients found.{canEdit && " Use “New client” to add one."}
           </div>
         ) : clients.map((c) => (
-          <Link key={c._id} href={`/admin/clients/${c._id}`}
-            className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface transition-colors">
+          <div key={c._id} onClick={() => setSelectedClientId(c._id)}
+            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface transition-colors cursor-pointer ${selectedClientId === c._id ? "bg-slate-50 border-l-2 border-l-brand-navy" : ""}`}>
             <div className="min-w-0 flex items-center gap-2">
               <UserSquare2 className="size-3.5 text-muted shrink-0" />
               <div className="min-w-0">
@@ -172,7 +310,7 @@ export default function AdminClients() {
             <div className="text-[12px] text-muted">
               {c.lastContactedAt ? new Date(c.lastContactedAt).toLocaleDateString("en-IN") : <span className="text-faint">—</span>}
             </div>
-          </Link>
+          </div>
         ))}
 
         {/* Pagination */}
@@ -243,6 +381,309 @@ export default function AdminClients() {
                 {saving ? "Creating…" : "Create client"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar Detail View */}
+      {selectedClientId && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/35 backdrop-blur-[1.5px] transition-opacity" 
+            onClick={() => setSelectedClientId(null)} 
+          />
+          
+          {/* Panel */}
+          <div className="relative w-full max-w-lg md:w-[500px] h-full bg-white shadow-premium border-l border-rule flex flex-col z-10 transition-transform duration-300">
+            {sidebarLoading ? (
+              <div className="flex-1 flex items-center justify-center text-muted text-[13px]">
+                Loading details…
+              </div>
+            ) : !selectedClient ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted">
+                <p className="text-[13px] mb-4">Client not found.</p>
+                <button onClick={() => setSelectedClientId(null)} className="px-4 py-2 rounded-[10px] border border-rule text-[13px] hover:text-body">
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-rule bg-white sticky top-0 z-20">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="size-8 rounded-[8px] bg-brand-navy/5 border border-rule flex items-center justify-center shrink-0">
+                      <UserSquare2 className="size-4 text-brand-navy" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-[14px] font-bold text-heading truncate">{selectedClient.name}</h2>
+                      <p className="text-[11px] text-muted">
+                        {selectedClient.company || "No company"} · added {new Date(selectedClient.createdAt).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button 
+                      onClick={() => setIsEditing(!isEditing)}
+                      className="px-2.5 py-1 rounded-[6px] border border-rule text-[11px] font-medium text-muted hover:text-body"
+                    >
+                      {isEditing ? "Cancel" : "Edit"}
+                    </button>
+                    {canEdit && (
+                      <button 
+                        onClick={deleteSidebarClient}
+                        className="p-1 rounded-[6px] border border-rule text-muted hover:text-loss hover:border-red-200"
+                        title="Delete client"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setSelectedClientId(null)} 
+                      className="p-1 rounded-[6px] border border-rule text-muted hover:text-body"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {isEditing ? (
+                    /* Edit Form */
+                    <div className="space-y-4">
+                      <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule pb-1.5">Edit details</h3>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Name</label>
+                          <input 
+                            value={editForm.name} 
+                            onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Email</label>
+                          <input 
+                            value={editForm.email} 
+                            onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Phone</label>
+                          <input 
+                            value={editForm.phone} 
+                            onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Company</label>
+                          <input 
+                            value={editForm.company} 
+                            onChange={e => setEditForm(p => ({ ...p, company: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Source</label>
+                          <input 
+                            value={editForm.source} 
+                            onChange={e => setEditForm(p => ({ ...p, source: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Estimated AUM (Lakhs)</label>
+                          <input 
+                            type="number"
+                            value={editForm.estimatedAumLakhs} 
+                            onChange={e => setEditForm(p => ({ ...p, estimatedAumLakhs: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Risk Profile</label>
+                          <select 
+                            value={editForm.riskProfile} 
+                            onChange={e => setEditForm(p => ({ ...p, riskProfile: e.target.value }))}
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] outline-none focus:border-primary"
+                          >
+                            <option value="">Select risk profile</option>
+                            <option value="Conservative">Conservative</option>
+                            <option value="Moderate">Moderate</option>
+                            <option value="Aggressive">Aggressive</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Tags (comma separated)</label>
+                          <input 
+                            value={editForm.tags} 
+                            onChange={e => setEditForm(p => ({ ...p, tags: e.target.value }))}
+                            placeholder="e.g. active, high-priority"
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                          />
+                        </div>
+                      </div>
+                      <div className="pt-2 flex justify-end gap-2">
+                        <button 
+                          onClick={() => setIsEditing(false)} 
+                          className="px-3.5 py-1.5 rounded-[8px] border border-rule text-[12px] text-muted hover:text-body"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={saveClientDetails} 
+                          disabled={sidebarBusy || !editForm.name.trim()}
+                          className="px-3.5 py-1.5 rounded-[8px] bg-brand-navy text-white text-[12px] font-medium hover:bg-brand-navy/90 disabled:opacity-50"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* View Mode Details */
+                    <div className="space-y-5">
+                      {/* Pipeline Stage & Assigned To */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-mist/30 border border-rule/50 rounded-[10px] p-3">
+                          <label className="block text-[9px] font-mono uppercase tracking-widest text-muted mb-1">Pipeline Stage</label>
+                          <select 
+                            value={selectedClient.stage} 
+                            disabled={!canEdit || sidebarBusy}
+                            onChange={e => patchSidebar({ action: "setStage", stage: e.target.value })}
+                            className={`w-full h-8 px-2 rounded-[6px] border text-[12px] outline-none capitalize disabled:opacity-60 bg-white ${STAGE_STYLES[selectedClient.stage] ?? STAGE_STYLES.lead}`}
+                          >
+                            {STAGES.map(s => <option key={s} value={s} className="capitalize bg-white text-body">{s}</option>)}
+                          </select>
+                        </div>
+                        <div className="bg-mist/30 border border-rule/50 rounded-[10px] p-3">
+                          <label className="block text-[9px] font-mono uppercase tracking-widest text-muted mb-1">Assigned To</label>
+                          <select 
+                            value={selectedClient.assignedTo?._id ?? ""} 
+                            disabled={!canEdit || sidebarBusy}
+                            onChange={e => patchSidebar({ action: "assign", assignedTo: e.target.value || null })}
+                            className="w-full h-8 px-2 rounded-[6px] border border-rule bg-white text-[12px] text-body outline-none"
+                          >
+                            <option value="">Unassigned</option>
+                            {staff.map(s => <option key={s._id} value={s._id}>{s.name || s.email}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Contact & Personal details */}
+                      <div className="border border-rule/60 rounded-[12px] p-4 bg-slate-50/50 space-y-3">
+                        <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule/50 pb-1.5">Client Information</h3>
+                        <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                          {field("Email", selectedClient.email)}
+                          {field("Phone", <span className="font-mono">{selectedClient.phone}</span>)}
+                          {field("Company", selectedClient.company)}
+                          {field("Source", selectedClient.source)}
+                          {field("Estimated AUM", selectedClient.estimatedAumLakhs != null ? `₹${selectedClient.estimatedAumLakhs.toLocaleString("en-IN")} L` : null)}
+                          {field("Risk profile", selectedClient.riskProfile)}
+                        </div>
+                        {selectedClient.tags && selectedClient.tags.length > 0 && (
+                          <div className="pt-2">
+                            <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Tags</p>
+                            <div className="flex flex-wrap gap-1">
+                              {selectedClient.tags.map((t, idx) => (
+                                <span key={idx} className="text-[10px] text-body bg-mist border border-rule/70 px-2 py-0.5 rounded-full">{t}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Activity & notes */}
+                      <div className="border border-rule/60 rounded-[12px] p-4 bg-white space-y-4">
+                        <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule/50 pb-1">Notes & History</h3>
+                        {canEdit && (
+                          <div className="flex items-start gap-2">
+                            <textarea 
+                              value={noteText} 
+                              onChange={e => setNoteText(e.target.value)}
+                              placeholder="Log updates, call details..."
+                              className="flex-1 h-14 px-2.5 py-1.5 rounded-[8px] border border-rule text-[12px] outline-none focus:border-primary resize-none" 
+                            />
+                            <button 
+                              onClick={addSidebarNote} 
+                              disabled={sidebarBusy || !noteText.trim()}
+                              className="h-14 px-3 inline-flex items-center justify-center rounded-[8px] bg-brand-navy text-white text-[12px] font-medium hover:bg-brand-navy/90 disabled:opacity-40"
+                            >
+                              <Send className="size-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        {!selectedClient.notes || selectedClient.notes.length === 0 ? (
+                          <p className="text-[12px] text-muted text-center py-4">No notes yet.</p>
+                        ) : (
+                          <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                            {[...selectedClient.notes].reverse().map((n, idx) => (
+                              <div key={n._id ?? idx} className="border-l border-rule pl-3">
+                                <p className="text-[12px] text-body">{n.text}</p>
+                                <p className="text-[10px] text-faint mt-0.5">{n.authorName} · {new Date(n.createdAt).toLocaleString("en-IN")}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* User Action Log */}
+                      <div className="border border-rule/60 rounded-[12px] p-4 bg-white space-y-3">
+                        <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule/50 pb-1">User Action Log</h3>
+                        {!selectedClient.activities || selectedClient.activities.length === 0 ? (
+                          <p className="text-[12px] text-muted text-center py-4">No activities logged.</p>
+                        ) : (
+                          <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                            {[...selectedClient.activities].reverse().map((act, idx) => {
+                              const style = ACTIVITY_STYLES[act.action] || {
+                                badge: "bg-mist text-muted border border-rule",
+                                text: act.action,
+                              };
+                              return (
+                                <div key={idx} className="flex items-start justify-between gap-3 border-b border-rule/30 pb-2 last:border-b-0 last:pb-0">
+                                  <div className="min-w-0">
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide uppercase ${style.badge}`}>
+                                      {style.text}
+                                    </span>
+                                    <p className="text-[12px] text-body mt-0.5">{act.description}</p>
+                                  </div>
+                                  <span className="text-[10px] text-muted font-mono pt-1 whitespace-nowrap">
+                                    {new Date(act.createdAt).toLocaleString("en-IN")}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Page Navigation History */}
+                      <div className="border border-rule/60 rounded-[12px] p-4 bg-white space-y-3">
+                        <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule/50 pb-1">Page Navigation History</h3>
+                        {!selectedClient.pageVisits || selectedClient.pageVisits.length === 0 ? (
+                          <p className="text-[12px] text-muted text-center py-4">No page visits logged.</p>
+                        ) : (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {[...selectedClient.pageVisits].reverse().map((visit, idx) => (
+                              <div key={idx} className="flex items-center justify-between gap-3 py-1 border-b border-rule/20 last:border-b-0">
+                                <span className="font-mono text-[11px] bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5 text-body truncate max-w-[220px]">
+                                  {visit.path}
+                                </span>
+                                <span className="text-[10px] text-muted font-mono whitespace-nowrap">
+                                  {new Date(visit.visitedAt).toLocaleString("en-IN")}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import Watchlist from "@/models/Watchlist";
+import { logClientActivity } from "@/lib/activityLogger";
 
 async function getUserId() {
   const session = await auth();
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest) {
     { $addToSet: { schemeCodes: schemeCode } },
     { upsert: true },
   );
+  try {
+    await logClientActivity(userId, "Wishlist", `Added scheme to watchlist: ${schemeCode}`);
+  } catch (err) {
+    console.error("Watchlist activity logger error:", err);
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -36,5 +42,10 @@ export async function DELETE(req: NextRequest) {
   const { schemeCode } = await req.json();
   await connectDB();
   await Watchlist.findOneAndUpdate({ userId }, { $pull: { schemeCodes: schemeCode } });
+  try {
+    await logClientActivity(userId, "Wishlist", `Removed scheme from watchlist: ${schemeCode}`);
+  } catch (err) {
+    console.error("Watchlist activity logger error:", err);
+  }
   return NextResponse.json({ ok: true });
 }

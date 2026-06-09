@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { verifyFirebaseToken } from "@/lib/firebaseAdmin";
 import { consumeEmailOtp } from "@/lib/otp";
+import { logClientActivity } from "@/lib/activityLogger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -77,6 +78,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let user = await User.findOne({ phone: decoded.phone_number });
         if (!user) {
           user = await User.create({ phone: decoded.phone_number, name: decoded.phone_number });
+          try {
+            await logClientActivity(user._id.toString(), "Create User", "Registered user account via Phone/Firebase Login");
+          } catch (err) {
+            console.error("Phone sign up client logger error:", err);
+          }
         }
         return {
           id: user._id.toString(),
@@ -115,13 +121,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Normal Google sign-in flow
         const existing = await User.findOne({ email: profile.email });
         if (!existing) {
-          await User.create({
+          const newUser = await User.create({
             name: profile.name ?? undefined,
             email: profile.email,
             image: (profile as { picture?: string }).picture ?? undefined,
             googleId: profile.sub ?? undefined,
             emailVerified: new Date(),
           });
+          try {
+            await logClientActivity(newUser._id.toString(), "Create User", "Registered user account via Google login");
+          } catch (err) {
+            console.error("Google sign up client logger error:", err);
+          }
         } else if (!existing.googleId) {
           existing.googleId = profile.sub as string;
           await existing.save();

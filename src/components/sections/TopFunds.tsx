@@ -6,6 +6,7 @@ import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { RiskGauge } from "@/components/ui/RiskMeter";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { trackActivity } from "@/components/UserTracker";
 
 const FILTERS = ["All", "Hybrid", "Equity"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -121,7 +122,14 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
   }
 
   function handleInvestClick(e: React.MouseEvent) {
-    if (!loggedIn) { e.preventDefault(); onRequireAuth("invest in this fund"); }
+    if (!loggedIn) {
+      e.preventDefault();
+      onRequireAuth("invest in this fund");
+      return;
+    }
+    e.preventDefault();
+    trackActivity("Invest", `Expressed interest in investing in: ${fund.fundName || fund.name}`);
+    alert(`Thank you for your interest in ${fund.fundName || fund.name}. We have recorded your interest, and our advisory team will contact you shortly.`);
   }
 
   const fmtRet = (v: number | null | undefined) =>

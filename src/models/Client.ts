@@ -11,6 +11,17 @@ export interface IClientNote {
   createdAt: Date;
 }
 
+export interface IPageVisit {
+  path: string;
+  visitedAt: Date;
+}
+
+export interface IUserActivity {
+  action: string;
+  description: string;
+  createdAt: Date;
+}
+
 export interface IClient extends Document {
   name: string;
   email?: string;
@@ -24,6 +35,8 @@ export interface IClient extends Document {
   riskProfile?: "Conservative" | "Moderate" | "Aggressive" | null;
   linkedUserId?: Types.ObjectId | null;
   notes: IClientNote[];
+  pageVisits: IPageVisit[];
+  activities: IUserActivity[];
   lastContactedAt?: Date | null;
   tags: string[];
   createdAt: Date;
@@ -35,6 +48,21 @@ const ClientNoteSchema = new Schema<IClientNote>(
     text: { type: String, required: true },
     authorId: { type: Schema.Types.ObjectId, ref: "User" },
     authorName: { type: String, default: "" },
+    createdAt: { type: Date, default: Date.now },
+  },
+);
+
+const PageVisitSchema = new Schema<IPageVisit>(
+  {
+    path: { type: String, required: true },
+    visitedAt: { type: Date, default: Date.now },
+  },
+);
+
+const UserActivitySchema = new Schema<IUserActivity>(
+  {
+    action: { type: String, required: true },
+    description: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
   },
 );
@@ -53,6 +81,8 @@ const ClientSchema = new Schema<IClient>(
     riskProfile: { type: String, enum: ["Conservative", "Moderate", "Aggressive"], default: null },
     linkedUserId: { type: Schema.Types.ObjectId, ref: "User", default: null, sparse: true, index: true },
     notes: { type: [ClientNoteSchema], default: [] },
+    pageVisits: { type: [PageVisitSchema], default: [] },
+    activities: { type: [UserActivitySchema], default: [] },
     lastContactedAt: { type: Date, default: null },
     tags: { type: [String], default: [] },
   },

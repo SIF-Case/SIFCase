@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
+import { logClientActivity } from "@/lib/activityLogger";
 
 export async function POST(req: NextRequest) {
   const { name, email, password, phoneUserId } = await req.json();
@@ -43,7 +44,13 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  await User.create({ name: name || email.split("@")[0], email, passwordHash });
+  const user = await User.create({ name: name || email.split("@")[0], email, passwordHash });
+
+  try {
+    await logClientActivity(user._id.toString(), "Create User", "Registered user account via email/password");
+  } catch (err) {
+    console.error("Failed to log Client registration activity:", err);
+  }
 
   return NextResponse.json({ ok: true });
 }
