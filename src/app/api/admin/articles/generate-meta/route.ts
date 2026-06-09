@@ -77,7 +77,7 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
         { role: "user", content: prompt },
       ],
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 1000,
       response_format: { type: "json_object" },
     }),
   });
@@ -99,7 +99,7 @@ async function callOpenRouter(prompt: string, model: string, apiKey: string): Pr
       model,
       messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY valid JSON matching: {"title":string,"excerpt":string,"tags":string[],"seoTitle":string,"metaDescription":string,"focusKeyphrase":string,"primaryKeyword":string}` }],
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 1000,
     }),
   });
   const d = await res.json();
