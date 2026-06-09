@@ -19,40 +19,26 @@ const ArticleMetaSchema = z.object({
 type ArticleMeta = z.infer<typeof ArticleMetaSchema>;
 
 function buildPrompt(input: { title: string; content: string; category: string; existing: Partial<ArticleMeta> }): string {
-  const plain = input.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 8000);
+  const plain = input.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 3000);
   const existingLines = Object.entries(input.existing)
     .filter(([, v]) => v && (typeof v === "string" ? v.trim() : (v as string[]).length))
     .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`);
 
-  return `You are an SEO copywriter for SIFcase, a financial education site about Specialised Investment Funds (SIFs) in India.
+  return `SEO copywriter for SIFcase (Indian SIF financial education). Professional, informative, no-hype tone.
 
-Generate metadata for the article below. Return fields that are SEO-optimised, accurate to the content, and written in a professional, no-hype tone (matches a "Wealth Trust" editorial voice — informative, precise, never salesy).
-
-${existingLines.length ? `=== ALREADY FILLED — KEEP CONSISTENT WITH THESE, DO NOT CONTRADICT ===\n${existingLines.join("\n")}\n` : ""}
-=== ARTICLE ===
+${existingLines.length ? `KEEP CONSISTENT WITH:\n${existingLines.join("\n")}\n\n` : ""}ARTICLE
 Category: ${input.category}
-Current title: ${input.title || "(none yet)"}
-Content (excerpt):
+Title: ${input.title || "(none)"}
 ${plain}
 
-For the article above, from the SEO perspective, give me the following:
-
-1. Title Tag (50–60 chars)
-2. Meta Description (150–155 chars)
-3. Focus Keyphrase
-4. Primary Keyword
-
-Also help me with an excerpt for the article (300–350 characters).
-
-=== OUTPUT RULES ===
-Treat every character range below as a HARD LIMIT, not a suggestion — count characters as you write and revise before answering so the final string fits BETWEEN the two numbers (inclusive). Going over the upper bound, even by a few characters, is a failure.
-title: Only suggest if the current title is weak/missing — must be specific, factual, under 70 chars.
-excerpt: Between 300 and 350 characters (count them) — summarising the article's core value for a reader scanning article cards. Do not exceed 350.
-tags: 4–7 lowercase, comma-relevant tags (topics, fund types, themes mentioned).
-seoTitle: The Title Tag — between 50 and 60 characters (count them), includes the focus keyphrase near the start. Do not exceed 60.
-metaDescription: Between 150 and 160 characters (count them), includes the focus keyphrase, ends with a reason to click. Do not exceed 160.
-focusKeyphrase: The single most important 2–5 word phrase this article should rank for.
-primaryKeyword: A distinct broader search term/category (not identical to focusKeyphrase).`;
+Return ONLY a JSON object with these exact keys:
+- title: specific, factual, under 70 chars (omit if current title is good)
+- excerpt: 300–350 chars summarising the article's value
+- tags: array of 4–7 lowercase topic tags
+- seoTitle: 50–60 chars, focus keyphrase near the start
+- metaDescription: 150–160 chars, includes focus keyphrase, ends with reason to click
+- focusKeyphrase: single 2–5 word phrase to rank for
+- primaryKeyword: broader category term distinct from focusKeyphrase`;
 }
 
 /** Hard ceiling for fields with strict SEO character limits — trims to the last whole word within bounds. */
@@ -91,6 +77,7 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
         { role: "user", content: prompt },
       ],
       temperature: 0.4,
+      max_tokens: 600,
       response_format: { type: "json_object" },
     }),
   });
@@ -112,6 +99,7 @@ async function callOpenRouter(prompt: string, model: string, apiKey: string): Pr
       model,
       messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY valid JSON matching: {"title":string,"excerpt":string,"tags":string[],"seoTitle":string,"metaDescription":string,"focusKeyphrase":string,"primaryKeyword":string}` }],
       temperature: 0.4,
+      max_tokens: 600,
     }),
   });
   const d = await res.json();
