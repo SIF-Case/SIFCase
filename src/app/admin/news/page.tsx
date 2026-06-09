@@ -3,15 +3,17 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   RefreshCw, Plus, Trash2, Eye, EyeOff, FileText, Rss,
-  Search, ChevronLeft, ChevronRight, Loader2, X, ExternalLink,
+  Search, ChevronLeft, ChevronRight, Loader2, X, ExternalLink, Sparkles, CheckSquare,
 } from "lucide-react";
 
 type RssFeed = { name: string; url: string; enabled: boolean };
 
 type NewsConfig = {
   keywords: string[];
+  blacklistedKeywords: string[];
   rssFeeds: RssFeed[];
   aiPrompt: string;
+  articleGenerationPrompt: string;
   maxItemsPerFetch: number;
   retentionDays: number;
 };
@@ -29,17 +31,64 @@ type NewsItem = {
   promotedArticleId: string | null;
 };
 
-const DEFAULT_PROMPT =
-  "You are a financial news summariser for SIFcase, an Indian SIF (Specialised Investment Fund) education platform. Summarise the following news item in 1-2 concise sentences. Focus on what matters to SIF investors. Be factual, professional, and avoid hype.";
+const DEFAULT_GEN_PROMPT =
+  `You are a senior financial journalist with 15 years of experience covering Indian capital markets, mutual funds, and investment regulation. You write with depth, authority, and clarity — like a seasoned writer at The Economic Times or Mint.
+
+You will receive a set of news items fetched from financial RSS feeds, all related to the Indian SIF (Specialised Investment Fund) space.
+
+Your task:
+
+STEP 1 — DEDUPLICATE
+Carefully read all provided items. Identify which ones cover the same underlying story (same event, same announcement, same regulatory development) — even if the titles are worded differently. Group them.
+
+STEP 2 — SYNTHESIZE AND WRITE
+For each unique story, write one original, in-depth article of 900–1200 words. The article must:
+
+- Open with a compelling lead paragraph that captures the most important angle of the story
+- Develop the story across 6–8 well-structured paragraphs
+- Include relevant background context that helps SIF investors understand why this matters
+- Explain the implications for fund managers, distributors, HNI/UHNIs, and the broader wealth management ecosystem
+- Reference regulatory context (SEBI circulars, AMFI guidelines, etc.) where relevant — paraphrase from the source material, do not fabricate specifics
+- Include an analytical or forward-looking paragraph ("What this means going forward...")
+- End with a strong concluding paragraph
+
+Writing style:
+- Write the way a senior human journalist writes — varied sentence lengths, confident voice, no fluff
+- Use active voice predominantly
+- Avoid corporate jargon and buzzwords like "transformative", "game-changer", "revolutionary"
+- Do NOT write in bullet points — this is a flowing prose article
+- No sub-headings inside the article body
+- Do NOT cite, name, or reference any source publication, URL, or author name
+
+OUTPUT FORMAT — return ONLY a valid JSON array, nothing else before or after:
+
+[
+  {
+    "title": "Original article headline (not copied from any source)",
+    "body": "Full 900–1200 word article in plain prose paragraphs separated by \\n\\n"
+  }
+]
+
+Rules:
+- Return ONLY the JSON array — no preamble, no explanation, no markdown fences
+- Each article body must use \\n\\n between paragraphs (no HTML, no markdown)
+- If all items are about the same story, return a single-item array
+- Never invent quotes, statistics, or facts not present in the source material`;
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
 
 export default function AdminNews() {
-  const [tab, setTab] = useState<"config" | "feed">("config");
+  const [tab, setTab] = useState<"config" | "feed" | "review">("config");
 
   // Config state
   const [config, setConfig] = useState<NewsConfig>({
     keywords: [],
+    blacklistedKeywords: [],
     rssFeeds: [],
-    aiPrompt: DEFAULT_PROMPT,
+    aiPrompt: "",
+    articleGenerationPrompt: DEFAULT_GEN_PROMPT,
     maxItemsPerFetch: 30,
     retentionDays: 30,
   });
@@ -49,6 +98,7 @@ export default function AdminNews() {
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<{ stored: number; fetched: number; skipped: number; errors: number } | null>(null);
   const [newKeyword, setNewKeyword] = useState("");
+  const [newBlacklisted, setNewBlacklisted] = useState("");
   const [newFeed, setNewFeed] = useState({ name: "", url: "" });
 
   // Feed state
@@ -61,13 +111,24 @@ export default function AdminNews() {
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [visibilityFilter, setVisibilityFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [generating, setGenerating] = useState(false);
+  const [genResult, setGenResult] = useState<{ title: string; body: string }[] | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  // Review tab — editable drafts before saving
+  const [drafts, setDrafts] = useState<{ title: string; body: string }[]>([]);
+  const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
+  const [savingIdx, setSavingIdx] = useState<Set<number>>(new Set());
 
   const fetchConfig = useCallback(async () => {
     setConfigLoading(true);
     const res = await fetch("/api/admin/news-config");
     const data = await res.json();
-    if (data.config) setConfig(data.config);
+    if (data.config) setConfig(c => ({ ...c, keywords: [], blacklistedKeywords: [], ...data.config }));
     setConfigLoading(false);
   }, []);
 
@@ -76,6 +137,8 @@ export default function AdminNews() {
     const params = new URLSearchParams({ page: String(page), q: search });
     if (sourceFilter) params.set("source", sourceFilter);
     if (visibilityFilter) params.set("visibility", visibilityFilter);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
     const res = await fetch(`/api/admin/news-items?${params}`);
     const data = await res.json();
     setItems(data.items ?? []);
@@ -83,7 +146,7 @@ export default function AdminNews() {
     setPages(data.pages ?? 1);
     setSources(data.sources ?? []);
     setFeedLoading(false);
-  }, [page, search, sourceFilter, visibilityFilter]);
+  }, [page, search, sourceFilter, visibilityFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
   useEffect(() => { if (tab === "feed") fetchFeed(); }, [tab, fetchFeed]);
@@ -124,6 +187,17 @@ export default function AdminNews() {
 
   function removeKeyword(kw: string) {
     setConfig(c => ({ ...c, keywords: c.keywords.filter(k => k !== kw) }));
+  }
+
+  function addBlacklisted() {
+    const kw = newBlacklisted.trim();
+    if (!kw || config.blacklistedKeywords.includes(kw)) return;
+    setConfig(c => ({ ...c, blacklistedKeywords: [...c.blacklistedKeywords, kw] }));
+    setNewBlacklisted("");
+  }
+
+  function removeBlacklisted(kw: string) {
+    setConfig(c => ({ ...c, blacklistedKeywords: c.blacklistedKeywords.filter(k => k !== kw) }));
   }
 
   function addFeed() {
@@ -180,6 +254,77 @@ export default function AdminNews() {
     setActionLoading(null);
   }
 
+  async function clearAll() {
+    if (!confirm(`Delete all ${total} news items? This cannot be undone.`)) return;
+    setClearing(true);
+    await fetch("/api/admin/news-items", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clearAll: true }),
+    });
+    setItems([]);
+    setTotal(0);
+    setPages(1);
+    setSelected(new Set());
+    setClearing(false);
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(s => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (items.every(i => selected.has(i._id))) {
+      setSelected(s => { const next = new Set(s); items.forEach(i => next.delete(i._id)); return next; });
+    } else {
+      setSelected(s => { const next = new Set(s); items.forEach(i => next.add(i._id)); return next; });
+    }
+  }
+
+  async function generateArticles() {
+    if (selected.size === 0) return;
+    setGenerating(true);
+    setGenResult(null);
+    setGenError(null);
+    const res = await fetch("/api/admin/news-items/generate-articles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: Array.from(selected) }),
+    });
+    const data = await res.json();
+    setGenerating(false);
+    if (!res.ok) {
+      setGenError(data.error ?? "Generation failed");
+    } else {
+      setDrafts(data.articles);
+      setSavedIdx(new Set());
+      setSavingIdx(new Set());
+      setSelected(new Set());
+      setTab("review");
+    }
+  }
+
+  async function saveDraft(idx: number) {
+    const draft = drafts[idx];
+    if (!draft) return;
+    setSavingIdx(s => new Set(s).add(idx));
+    const res = await fetch("/api/admin/articles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: draft.title, content: draft.body, status: "draft", category: "General" }),
+    });
+    const data = await res.json();
+    setSavingIdx(s => { const next = new Set(s); next.delete(idx); return next; });
+    if (res.ok && data.id) {
+      setSavedIdx(s => new Set(s).add(idx));
+      window.open(`/admin/articles/${data.id}/edit`, "_blank");
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -187,14 +332,26 @@ export default function AdminNews() {
           <h1 className="text-[28px] font-bold text-heading tracking-[-0.3px]">SIF News</h1>
           <p className="text-[14px] text-muted mt-1">Configure news sources and manage the fetched news feed</p>
         </div>
-        <button
-          onClick={triggerFetch}
-          disabled={fetching}
-          className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:opacity-90 disabled:opacity-50"
-        >
-          {fetching ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-          {fetching ? "Fetching…" : "Fetch Now"}
-        </button>
+        <div className="flex items-center gap-2">
+          {tab === "feed" && total > 0 && (
+            <button
+              onClick={clearAll}
+              disabled={clearing}
+              className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-red-200 text-loss text-[13px] font-semibold hover:bg-red-50 disabled:opacity-50"
+            >
+              {clearing ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+              {clearing ? "Clearing…" : "Clear All"}
+            </button>
+          )}
+          <button
+            onClick={triggerFetch}
+            disabled={fetching}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:opacity-90 disabled:opacity-50"
+          >
+            {fetching ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            {fetching ? "Fetching…" : "Fetch Now"}
+          </button>
+        </div>
       </div>
 
       {fetchResult && (
@@ -206,17 +363,20 @@ export default function AdminNews() {
         </div>
       )}
 
+
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-rule">
-        {(["config", "feed"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === t ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}
-          >
-            {t === "config" ? "Configuration" : `News Feed (${total})`}
-          </button>
-        ))}
+        <button onClick={() => setTab("config")} className={`px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === "config" ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}>
+          Configuration
+        </button>
+        <button onClick={() => setTab("feed")} className={`px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === "feed" ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}>
+          News Feed ({total})
+        </button>
+        <button onClick={() => setTab("review")} className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === "review" ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}>
+          <Sparkles className="size-3.5" />
+          Review
+          {drafts.length > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === "review" ? "bg-primary text-white" : "bg-mist text-muted"}`}>{drafts.length}</span>}
+        </button>
       </div>
 
       {/* ── Config Tab ──────────────────────────────────────────────────────── */}
@@ -229,7 +389,7 @@ export default function AdminNews() {
               {/* Keywords */}
               <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
                 <h2 className="text-[14px] font-bold text-heading mb-1">Search Keywords</h2>
-                <p className="text-[12px] text-muted mb-4">Google News is searched for each keyword daily. Use specific terms for better results.</p>
+                <p className="text-[12px] text-muted mb-4">News is searched for each keyword daily.</p>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {config.keywords.map((kw) => (
                     <span key={kw} className="flex items-center gap-1.5 text-[12px] bg-mist border border-rule px-2.5 py-1 rounded-full">
@@ -253,13 +413,40 @@ export default function AdminNews() {
                 </div>
               </div>
 
+              {/* Blacklisted Keywords */}
+              <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
+                <h2 className="text-[14px] font-bold text-heading mb-1">Blacklisted Keywords</h2>
+                <p className="text-[12px] text-muted mb-4">Articles whose title or excerpt contains any of these terms will be silently skipped during fetch.</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {config.blacklistedKeywords.map((kw) => (
+                    <span key={kw} className="flex items-center gap-1.5 text-[12px] bg-red-50 border border-red-200 text-loss px-2.5 py-1 rounded-full">
+                      {kw}
+                      <button onClick={() => removeBlacklisted(kw)} className="text-red-300 hover:text-loss"><X className="size-3" /></button>
+                    </span>
+                  ))}
+                  {config.blacklistedKeywords.length === 0 && <span className="text-[12px] text-faint">No blacklisted terms</span>}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newBlacklisted}
+                    onChange={e => setNewBlacklisted(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && addBlacklisted()}
+                    placeholder="e.g. sponsored, press release"
+                    className="flex-1 h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] outline-none focus:border-primary"
+                  />
+                  <button onClick={addBlacklisted} className="flex items-center gap-1.5 px-3 h-9 rounded-[8px] border border-red-200 text-[12px] text-loss hover:bg-red-50">
+                    <Plus className="size-3.5" /> Add
+                  </button>
+                </div>
+              </div>
+
               {/* RSS Feeds */}
               <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
                 <div className="flex items-center gap-2 mb-1">
                   <Rss className="size-4 text-muted" />
                   <h2 className="text-[14px] font-bold text-heading">RSS Feeds</h2>
                 </div>
-                <p className="text-[12px] text-muted mb-4">Add custom RSS feeds from financial news sites (Economic Times, Mint, etc.)</p>
+                <p className="text-[12px] text-muted mb-4">Direct RSS feeds from financial news sites. Fetched daily alongside the keyword searches above.</p>
 
                 {config.rssFeeds.length > 0 && (
                   <div className="border border-rule rounded-[10px] overflow-hidden mb-4">
@@ -305,18 +492,24 @@ export default function AdminNews() {
                 </div>
               </div>
 
-              {/* AI Prompt */}
+              {/* Article Generation Prompt */}
               <div className="bg-white rounded-[14px] border border-rule shadow-card p-5">
-                <h2 className="text-[14px] font-bold text-heading mb-1">AI Summarisation Prompt</h2>
-                <p className="text-[12px] text-muted mb-3">This prompt is sent to the AI model configured under Settings → AI Settings → News Summarisation.</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="size-4 text-muted" />
+                  <h2 className="text-[14px] font-bold text-heading">Article Generation Prompt</h2>
+                </div>
+                <p className="text-[12px] text-muted mb-3">
+                  Used when you select news items in the Feed tab and click "Generate Articles". The AI receives all selected items and returns a JSON array of synthesized original articles.
+                  Requires an AI setting configured for <strong>articleGeneration</strong> under Settings → AI Settings.
+                </p>
                 <textarea
-                  value={config.aiPrompt}
-                  onChange={e => setConfig(c => ({ ...c, aiPrompt: e.target.value }))}
-                  rows={4}
-                  className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[13px] text-body outline-none focus:border-primary resize-none"
+                  value={config.articleGenerationPrompt}
+                  onChange={e => setConfig(c => ({ ...c, articleGenerationPrompt: e.target.value }))}
+                  rows={12}
+                  className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[13px] text-body outline-none focus:border-primary resize-y font-mono"
                 />
                 <button
-                  onClick={() => setConfig(c => ({ ...c, aiPrompt: DEFAULT_PROMPT }))}
+                  onClick={() => setConfig(c => ({ ...c, articleGenerationPrompt: DEFAULT_GEN_PROMPT }))}
                   className="mt-1.5 text-[11px] text-muted hover:text-primary"
                 >
                   Reset to default
@@ -398,14 +591,67 @@ export default function AdminNews() {
               <option value="visible">Visible</option>
               <option value="hidden">Hidden</option>
             </select>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+              className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-body outline-none"
+              title="From date"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPage(1); }}
+              className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-body outline-none"
+              title="To date"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(""); setDateTo(""); setPage(1); }}
+                className="h-10 px-2 rounded-[10px] border border-rule text-[12px] text-muted hover:text-loss"
+                title="Clear date filter"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
             <button onClick={fetchFeed} className="flex items-center gap-1.5 h-10 px-3 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
               <RefreshCw className="size-3.5" /> Refresh
             </button>
           </div>
 
+          {/* Generate bar — visible when items are selected */}
+          {selected.size > 0 && (
+            <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-primary/5 border border-primary/20 rounded-[12px]">
+              <Sparkles className="size-4 text-primary shrink-0" />
+              <span className="text-[13px] text-primary font-medium flex-1">{selected.size} item{selected.size > 1 ? "s" : ""} selected</span>
+              <button onClick={() => setSelected(new Set())} className="text-[12px] text-muted hover:text-body px-2 py-1 rounded-[6px] hover:bg-white">Deselect all</button>
+              <button
+                onClick={generateArticles}
+                disabled={generating}
+                className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {generating ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                {generating ? "Generating…" : `Generate Article${selected.size > 1 ? "s" : ""}`}
+              </button>
+            </div>
+          )}
+
+          {genError && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-[10px] text-[13px] text-loss flex items-start gap-3">
+              <span className="flex-1"><strong>Generation failed:</strong> {genError}</span>
+              <button onClick={() => setGenError(null)}><X className="size-3.5" /></button>
+            </div>
+          )}
+
+
           <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
-            <div className="grid grid-cols-[60px_minmax(0,2fr)_120px_minmax(0,2fr)_110px_120px] gap-3 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
-              <div>Image</div><div>Title</div><div>Source</div><div>AI Summary</div><div>Published</div><div>Actions</div>
+            <div className="grid grid-cols-[36px_60px_minmax(0,2fr)_120px_minmax(0,2fr)_110px_120px] gap-3 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
+              <div>
+                <button onClick={toggleSelectAll} className="size-5 flex items-center justify-center text-muted hover:text-primary" title="Select all on page">
+                  <CheckSquare className="size-3.5" />
+                </button>
+              </div>
+              <div>Image</div><div>Title</div><div>Source</div><div>Excerpt</div><div>Published</div><div>Actions</div>
             </div>
 
             {feedLoading ? (
@@ -417,8 +663,16 @@ export default function AdminNews() {
             ) : items.map((item) => (
               <div
                 key={item._id}
-                className={`grid grid-cols-[60px_minmax(0,2fr)_120px_minmax(0,2fr)_110px_120px] gap-3 px-5 py-3 border-b border-rule last:border-0 items-start ${!item.isVisible ? "opacity-50 bg-mist/40" : ""}`}
+                className={`grid grid-cols-[36px_60px_minmax(0,2fr)_120px_minmax(0,2fr)_110px_120px] gap-3 px-5 py-3 border-b border-rule last:border-0 items-start ${!item.isVisible ? "opacity-50 bg-mist/40" : selected.has(item._id) ? "bg-primary/5" : ""}`}
               >
+                <div className="pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item._id)}
+                    onChange={() => toggleSelect(item._id)}
+                    className="size-4 rounded accent-primary cursor-pointer"
+                  />
+                </div>
                 <div>
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -437,7 +691,7 @@ export default function AdminNews() {
                   )}
                 </div>
                 <div className="text-[11px] text-muted truncate">{item.source}</div>
-                <div className="text-[12px] text-body line-clamp-3">{item.aiSummary || <span className="text-faint italic">No summary</span>}</div>
+                <div className="text-[12px] text-body line-clamp-3">{item.originalExcerpt ? stripHtml(item.originalExcerpt) : <span className="text-faint italic">No excerpt</span>}</div>
                 <div className="text-[11px] text-muted">{new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
@@ -486,6 +740,74 @@ export default function AdminNews() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Review Tab ───────────────────────────────────────────────────────── */}
+      {tab === "review" && (
+        <div className="space-y-6">
+          {drafts.length === 0 ? (
+            <div className="bg-white rounded-[14px] border border-rule shadow-card p-10 text-center">
+              <Sparkles className="size-8 text-muted mx-auto mb-3" />
+              <p className="text-[14px] font-semibold text-heading mb-1">No generated articles yet</p>
+              <p className="text-[13px] text-muted mb-4">Select items in the News Feed tab and click "Generate Articles".</p>
+              <button onClick={() => setTab("feed")} className="px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:opacity-90">
+                Go to News Feed
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-muted">{drafts.length} article{drafts.length > 1 ? "s" : ""} generated · review, edit, then save as draft</p>
+                <button onClick={() => { setDrafts([]); setSavedIdx(new Set()); setTab("feed"); }} className="text-[12px] text-muted hover:text-loss">
+                  Clear all
+                </button>
+              </div>
+
+              {drafts.map((draft, idx) => (
+                <div key={idx} className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-rule bg-surface">
+                    <span className="text-[11px] font-mono text-muted">Article {idx + 1} of {drafts.length}</span>
+                    {savedIdx.has(idx) ? (
+                      <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gain">
+                        <FileText className="size-3.5" /> Saved as draft — <a href="#" className="text-primary underline" onClick={e => { e.preventDefault(); }}>open in editor</a>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => saveDraft(idx)}
+                        disabled={savingIdx.has(idx)}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-primary text-white text-[12px] font-semibold hover:opacity-90 disabled:opacity-50"
+                      >
+                        {savingIdx.has(idx) ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
+                        {savingIdx.has(idx) ? "Saving…" : "Save as Draft"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">Headline</label>
+                      <input
+                        value={draft.title}
+                        onChange={e => setDrafts(d => d.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))}
+                        className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[16px] font-semibold text-heading outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+                        Body · {draft.body.split(/\s+/).filter(Boolean).length} words
+                      </label>
+                      <textarea
+                        value={draft.body}
+                        onChange={e => setDrafts(d => d.map((x, i) => i === idx ? { ...x, body: e.target.value } : x))}
+                        rows={28}
+                        className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[14px] text-body leading-relaxed outline-none focus:border-primary resize-y font-serif"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>

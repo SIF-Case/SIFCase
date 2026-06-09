@@ -1,86 +1,74 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Eye, Send, ArrowLeft, Loader2, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, Plus, Check, Pencil, Sparkles } from "lucide-react";
+import { Save, Eye, Send, ArrowLeft, Loader2, ToggleLeft, ToggleRight, Search, Globe, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Plus, Check, Pencil, Sparkles } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { ImageUploader } from "./ImageUploader";
 
-function ComboSelect({ value, options, placeholder, onChange, storageKey }: {
-  value: string; options: string[]; placeholder?: string;
-  onChange: (v: string) => void; storageKey: string;
+// DB-backed select — options are stored in MongoDB and reflect everywhere
+function ComboSelect({ value, options, placeholder, onChange, onAddOption, onRenameOption, onReorderOptions }: {
+  value: string;
+  options: string[];
+  placeholder?: string;
+  onChange: (v: string) => void;
+  onAddOption?: (v: string) => Promise<void>;
+  onRenameOption?: (oldVal: string, newVal: string) => Promise<void>;
+  onReorderOptions?: (newOrder: string[]) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [all, setAll] = useState<string[]>(options);
   const [adding, setAdding] = useState(false);
   const [newVal, setNewVal] = useState("");
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editingOption, setEditingOption] = useState<string | null>(null);
   const [editVal, setEditVal] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
+  // Always include the current value in the list even if it's not yet in options
+  const all = value && !options.includes(value) ? [...options, value] : options;
 
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
-      const merged = [...new Set([...options, ...saved])];
-      setAll(merged);
-    } catch { setAll(options); }
-  }, [storageKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  function close() { setOpen(false); setAdding(false); setNewVal(""); setEditingOption(null); }
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false); setAdding(false); setNewVal("");
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  function addNew() {
+  async function addNew() {
     const v = newVal.trim();
     if (!v || all.includes(v)) { setAdding(false); setNewVal(""); return; }
-    const next = [...all, v];
-    setAll(next);
-    try {
-      const existing = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
-      localStorage.setItem(storageKey, JSON.stringify([...new Set([...existing, v])]));
-    } catch { /* ignore */ }
+    if (onAddOption) {
+      setSaving(true);
+      await onAddOption(v);
+      setSaving(false);
+    }
     onChange(v);
     setAdding(false); setNewVal(""); setOpen(false);
   }
 
-  function startEdit(idx: number, e: React.MouseEvent) {
-    e.stopPropagation();
-    setEditingIdx(idx);
-    setEditVal(all[idx]);
-    setAdding(false);
+  async function move(idx: number, dir: -1 | 1) {
+    const next = [...all];
+    const target = idx + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    if (onReorderOptions) await onReorderOptions(next);
   }
 
-  function commitEdit(idx: number) {
+  async function commitRename() {
     const v = editVal.trim();
-    if (!v || (v !== all[idx] && all.includes(v))) { setEditingIdx(null); return; }
-    const next = all.map((o, i) => (i === idx ? v : o));
-    setAll(next);
-    try {
-      const existing = JSON.parse(localStorage.getItem(storageKey) ?? "[]") as string[];
-      const updated = existing.map((o) => (o === all[idx] ? v : o));
-      if (!updated.includes(v) && !options.includes(v)) updated.push(v);
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch { /* ignore */ }
-    if (value === all[idx]) onChange(v);
-    setEditingIdx(null);
+    const old = editingOption!;
+    setEditingOption(null);
+    if (!v || v === old || all.includes(v)) return;
+    if (onRenameOption) await onRenameOption(old, v);
+    if (value === old) onChange(v);
   }
 
   return (
-    <div ref={ref} className="relative">
-      <button type="button" onClick={() => { setOpen((o) => !o); setAdding(false); }}
+    <div className="relative">
+      <button type="button" onClick={() => { setOpen((o) => !o); setAdding(false); setEditingOption(null); }}
         className="w-full h-9 px-3 flex items-center justify-between rounded-[8px] border border-rule bg-white text-[13px] text-body focus:outline-none focus:ring-2 focus:ring-primary/30">
         <span className={value ? "text-body" : "text-faint"}>{value || placeholder || "— select —"}</span>
         <ChevronDown className={`size-3.5 text-muted shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-rule rounded-[10px] shadow-premium overflow-hidden">
+        <>
+          {/* Backdrop — clicks outside the panel close the dropdown */}
+          <div className="fixed inset-0 z-40" onClick={close} />
+          <div className="absolute z-50 mt-1 w-full bg-white border border-rule rounded-[10px] shadow-premium overflow-hidden">
           <div className="max-h-48 overflow-y-auto">
             {placeholder && (
               <button type="button" onClick={() => { onChange(""); setOpen(false); }}
@@ -88,16 +76,19 @@ function ComboSelect({ value, options, placeholder, onChange, storageKey }: {
                 — select —
               </button>
             )}
-            {all.map((o, idx) => (
+            {all.map((o) => (
               <div key={o} className={`group flex items-center gap-1 px-2 transition-colors ${value === o ? "bg-primary/8" : "hover:bg-surface"}`}>
-                {editingIdx === idx ? (
+                {editingOption === o ? (
                   <div className="flex items-center gap-1.5 flex-1 py-1.5">
-                    <input autoFocus value={editVal} onChange={(e) => setEditVal(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") commitEdit(idx); if (e.key === "Escape") setEditingIdx(null); }}
-                      onBlur={() => commitEdit(idx)}
+                    <input
+                      autoFocus
+                      value={editVal}
+                      onChange={(e) => setEditVal(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setEditingOption(null); }}
                       className="flex-1 h-7 px-2 text-[12px] border border-primary rounded-[6px] outline-none"
                     />
-                    <button type="button" onMouseDown={() => commitEdit(idx)}
+                    {/* onMouseDown fires before onBlur so the click registers before input loses focus */}
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); commitRename(); }}
                       className="h-7 px-2 rounded-[6px] bg-primary text-white text-[11px] font-semibold shrink-0">Save</button>
                   </div>
                 ) : (
@@ -107,35 +98,57 @@ function ComboSelect({ value, options, placeholder, onChange, storageKey }: {
                       {value === o ? <Check className="size-3 shrink-0" /> : <span className="size-3 shrink-0" />}
                       {o}
                     </button>
-                    <button type="button" onClick={(e) => startEdit(idx, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded-[5px] text-muted hover:text-primary hover:bg-primary/10 transition-all shrink-0"
-                      title="Rename">
-                      <Pencil className="size-3" />
-                    </button>
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 transition-all">
+                      {onReorderOptions && (
+                        <>
+                          <button type="button" onMouseDown={(e) => { e.preventDefault(); move(all.indexOf(o), -1); }}
+                            disabled={all.indexOf(o) === 0}
+                            className="p-1 rounded-[5px] text-muted hover:text-primary hover:bg-primary/10 disabled:opacity-30" title="Move up">
+                            <ChevronUp className="size-3" />
+                          </button>
+                          <button type="button" onMouseDown={(e) => { e.preventDefault(); move(all.indexOf(o), 1); }}
+                            disabled={all.indexOf(o) === all.length - 1}
+                            className="p-1 rounded-[5px] text-muted hover:text-primary hover:bg-primary/10 disabled:opacity-30" title="Move down">
+                            <ChevronDown className="size-3" />
+                          </button>
+                        </>
+                      )}
+                      {onRenameOption && (
+                        <button type="button"
+                          onMouseDown={(e) => { e.preventDefault(); setEditingOption(o); setEditVal(o); setAdding(false); }}
+                          className="p-1 rounded-[5px] text-muted hover:text-primary hover:bg-primary/10" title="Rename">
+                          <Pencil className="size-3" />
+                        </button>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
             ))}
           </div>
-          {/* Add new */}
-          <div className="border-t border-rule px-2 py-2">
-            {adding ? (
-              <div className="flex items-center gap-1.5">
-                <input autoFocus value={newVal} onChange={(e) => setNewVal(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") addNew(); if (e.key === "Escape") { setAdding(false); setNewVal(""); } }}
-                  placeholder="New option…"
-                  className="flex-1 h-7 px-2 text-[12px] border border-primary rounded-[6px] outline-none" />
-                <button type="button" onClick={addNew}
-                  className="h-7 px-2.5 rounded-[6px] bg-primary text-white text-[11px] font-semibold">Add</button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => setAdding(true)}
-                className="flex items-center gap-1.5 w-full px-2 py-1 text-[12px] text-primary hover:bg-primary/5 rounded-[6px] font-medium">
-                <Plus className="size-3" /> Add new option
-              </button>
-            )}
-          </div>
+          {onAddOption && (
+            <div className="border-t border-rule px-2 py-2">
+              {adding ? (
+                <div className="flex items-center gap-1.5">
+                  <input autoFocus value={newVal} onChange={(e) => setNewVal(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") addNew(); if (e.key === "Escape") { setAdding(false); setNewVal(""); } }}
+                    placeholder="New option…"
+                    className="flex-1 h-7 px-2 text-[12px] border border-primary rounded-[6px] outline-none" />
+                  <button type="button" onMouseDown={(e) => { e.preventDefault(); addNew(); }} disabled={saving}
+                    className="h-7 px-2.5 rounded-[6px] bg-primary text-white text-[11px] font-semibold disabled:opacity-50">
+                    {saving ? "…" : "Add"}
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setAdding(true)}
+                  className="flex items-center gap-1.5 w-full px-2 py-1 text-[12px] text-primary hover:bg-primary/5 rounded-[6px] font-medium">
+                  <Plus className="size-3" /> Add new option
+                </button>
+              )}
+            </div>
+          )}
         </div>
+        </>
       )}
     </div>
   );
@@ -175,8 +188,10 @@ const DEFAULTS: ArticleData = {
   ogImage: "", primaryKeyword: "", focusKeyphrase: "",
 };
 
-const TOP_CATEGORIES = ["General", "Fund Houses", "Interviews"];
-const GENERAL_SUBS = ["Market Insights", "SIF Education", "Strategy", "Regulatory"];
+const DEFAULT_CATEGORIES = ["General", "Fund Houses", "Interviews"];
+const DEFAULT_SUBS: Record<string, string[]> = {
+  General: ["Market Insights", "SIF Education", "Strategy", "Regulatory", "Derivative Strategies"],
+};
 
 async function uploadImage(file: File): Promise<string> {
   const form = new FormData();
@@ -196,16 +211,74 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [fundHouses, setFundHouses] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [subcategories, setSubcategories] = useState<Record<string, string[]>>(DEFAULT_SUBS);
   const [generatingMeta, setGeneratingMeta] = useState(false);
   const [metaError, setMetaError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/amcs")
+    fetch("/api/admin/article-options")
       .then((r) => r.json())
-      .then((d) => setFundHouses(d.amcs ?? []))
+      .then((d) => {
+        if (d.categories) setCategories(d.categories);
+        if (d.subcategories) setSubcategories(d.subcategories);
+      })
       .catch(() => {});
   }, []);
+
+  async function addCategory(v: string) {
+    const res = await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add_category", value: v }),
+    });
+    const d = await res.json();
+    if (d.categories) setCategories(d.categories);
+    if (d.subcategories) setSubcategories(d.subcategories);
+  }
+
+  async function addSubcategory(category: string, v: string) {
+    const res = await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add_subcategory", category, value: v }),
+    });
+    const d = await res.json();
+    if (d.subcategories) setSubcategories(d.subcategories);
+  }
+
+  async function renameCategory(oldVal: string, newVal: string) {
+    const res = await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename_category", oldValue: oldVal, value: newVal }),
+    });
+    const d = await res.json();
+    if (d.categories) setCategories(d.categories);
+    if (d.subcategories) setSubcategories(d.subcategories);
+  }
+
+  async function reorderCategories(order: string[]) {
+    setCategories(order);
+    await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reorder_categories", value: "", order }),
+    });
+  }
+
+  async function reorderSubcategories(order: string[]) {
+    setSubcategories(s => ({ ...s, [form.category]: order }));
+    await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reorder_subcategories", value: "", category: form.category, order }),
+    });
+  }
+
+  async function renameSubcategory(oldVal: string, newVal: string) {
+    const res = await fetch("/api/admin/article-options", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename_subcategory", category: form.category, oldValue: oldVal, value: newVal }),
+    });
+    const d = await res.json();
+    if (d.subcategories) setSubcategories(d.subcategories);
+  }
 
   function set<K extends keyof ArticleData>(key: K, val: ArticleData[K]) {
     setForm((f) => ({ ...f, [key]: val }));
@@ -372,24 +445,26 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
               <label className="block text-[11px] font-medium text-muted mb-1">Category</label>
               <ComboSelect
                 value={form.category}
-                options={TOP_CATEGORIES}
+                options={categories}
                 onChange={handleCategoryChange}
-                storageKey="article_categories"
+                onAddOption={addCategory}
+                onRenameOption={renameCategory}
+                onReorderOptions={reorderCategories}
               />
             </div>
 
-            {form.category !== "Interviews" && (
-              <div>
-                <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
-                <ComboSelect
-                  value={form.subcategory}
-                  placeholder="— select —"
-                  options={form.category === "General" ? GENERAL_SUBS : fundHouses}
-                  onChange={(v) => set("subcategory", v)}
-                  storageKey={`article_subs_${form.category}`}
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
+              <ComboSelect
+                value={form.subcategory}
+                placeholder="— select —"
+                options={subcategories[form.category] ?? []}
+                onChange={(v) => set("subcategory", v)}
+                onAddOption={(v) => addSubcategory(form.category, v)}
+                onRenameOption={renameSubcategory}
+                onReorderOptions={reorderSubcategories}
+              />
+            </div>
 
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Tags <span className="text-faint">(comma separated)</span></label>

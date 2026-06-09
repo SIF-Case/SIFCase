@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
   const source = searchParams.get("source") ?? "";
   const visibility = searchParams.get("visibility") ?? "";
   const q = searchParams.get("q") ?? "";
+  const from = searchParams.get("from") ?? "";
+  const to = searchParams.get("to") ?? "";
 
   const filter: Record<string, unknown> = {};
   if (source) filter.source = source;
@@ -23,6 +25,12 @@ export async function GET(req: NextRequest) {
     { aiSummary: { $regex: q, $options: "i" } },
     { source: { $regex: q, $options: "i" } },
   ];
+  if (from || to) {
+    const dateFilter: Record<string, Date> = {};
+    if (from) dateFilter.$gte = new Date(from);
+    if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); dateFilter.$lte = d; }
+    filter.publishedAt = dateFilter;
+  }
 
   const [items, total, sources] = await Promise.all([
     NewsItem.find(filter).sort({ publishedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -36,7 +44,14 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!await hasPageAccess(req, "news", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
-  const { ids } = await req.json();
+  const body = await req.json();
+
+  if (body.clearAll === true) {
+    const { deletedCount } = await NewsItem.deleteMany({});
+    return NextResponse.json({ ok: true, deleted: deletedCount });
+  }
+
+  const { ids } = body;
   if (!Array.isArray(ids) || !ids.length) return NextResponse.json({ error: "ids required" }, { status: 400 });
   await NewsItem.deleteMany({ _id: { $in: ids } });
   return NextResponse.json({ ok: true });

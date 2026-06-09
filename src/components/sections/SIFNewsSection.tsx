@@ -1,4 +1,4 @@
-import { ExternalLink, Newspaper } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { connectDB } from "@/lib/mongodb";
 import NewsItem from "@/models/NewsItem";
 
@@ -10,7 +10,7 @@ function timeAgo(date: Date): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export async function SIFNewsSection() {
@@ -23,7 +23,7 @@ export async function SIFNewsSection() {
   if (items.length === 0) return null;
 
   return (
-    <section className="bg-surface py-section">
+    <section className="bg-white py-section">
       <div className="max-w-[1320px] mx-auto px-6 lg:px-8">
         <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
           <div>
@@ -31,13 +31,8 @@ export async function SIFNewsSection() {
             <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-1">SIF News</h2>
             <p className="text-[15px] text-muted">Curated news from across the SIF ecosystem</p>
           </div>
-          <div className="flex items-center gap-1.5 text-[12px] text-muted">
-            <Newspaper className="size-3.5" />
-            <span>{items.length} articles</span>
-          </div>
         </div>
 
-        {/* Mobile: vertical stack, Desktop: 4-col grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {items.map((item) => (
             <a
@@ -45,34 +40,30 @@ export async function SIFNewsSection() {
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group bg-white rounded-[14px] border border-rule shadow-card p-5 flex flex-col gap-3 hover:shadow-card-hover hover:border-primary/20 transition-all"
+              className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow"
             >
-              {item.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.imageUrl}
-                  alt=""
-                  className="w-full h-36 object-cover rounded-[8px] bg-mist"
-                  loading="lazy"
-                />
-              )}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-primary bg-primary/5 border border-primary/15 px-2 py-0.5 rounded-full truncate max-w-[140px]">
+              <div className="flex items-center justify-between mb-4">
+                <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary truncate max-w-[160px]">
                   {item.source}
                 </span>
                 <span className="text-[11px] text-faint shrink-0">{timeAgo(new Date(item.publishedAt))}</span>
               </div>
-              <h3 className="text-[13.5px] font-semibold text-heading leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+
+              <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
                 {item.title}
               </h3>
+
               {item.aiSummary && (
-                <p className="text-[12.5px] text-muted leading-relaxed line-clamp-3 flex-1">
-                  {item.aiSummary}
-                </p>
+                <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">{item.aiSummary}</p>
               )}
-              <div className="flex items-center gap-1 text-[12px] text-primary mt-auto pt-1">
-                <span>Read article</span>
-                <ExternalLink className="size-3" />
+
+              <div className="mt-auto pt-2 flex items-center justify-between">
+                <span className="text-[11px] text-faint">
+                  {new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
+                  Read article <ArrowUpRight className="w-3.5 h-3.5" />
+                </span>
               </div>
             </a>
           ))}

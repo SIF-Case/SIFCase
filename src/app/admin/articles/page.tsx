@@ -38,6 +38,7 @@ function ReorderModal({ articles, onClose, onSaved }: {
   }, [articles]);
 
   const [groups, setGroups] = useState(initial.grouped);
+  const [sectionOrder, setSectionOrder] = useState(initial.order);
   const [saving, setSaving] = useState(false);
 
   function move(sub: string, idx: number, dir: -1 | 1) {
@@ -50,15 +51,32 @@ function ReorderModal({ articles, onClose, onSaved }: {
     });
   }
 
+  function moveSection(idx: number, dir: -1 | 1) {
+    setSectionOrder((order) => {
+      const next = [...order];
+      const j = idx + dir;
+      if (j < 0 || j >= next.length) return order;
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
+  }
+
   async function save() {
     setSaving(true);
     try {
-      const items = initial.order.flatMap((sub) => groups[sub].map((a, i) => ({ id: a._id, order: i })));
-      await fetch("/api/admin/articles/reorder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
-      });
+      const items = sectionOrder.flatMap((sub) => groups[sub].map((a, i) => ({ id: a._id, order: i })));
+      await Promise.all([
+        fetch("/api/admin/articles/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        }),
+        fetch("/api/admin/article-options", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reorder_subcategories", value: "", category: "General", order: sectionOrder }),
+        }),
+      ]);
       onSaved();
       onClose();
     } finally {
@@ -80,11 +98,23 @@ function ReorderModal({ articles, onClose, onSaved }: {
         </div>
 
         <div className="p-6 space-y-6">
-          {initial.order.length === 0 ? (
+          {sectionOrder.length === 0 ? (
             <p className="text-[13px] text-muted text-center py-8">No General-category articles to reorder yet.</p>
-          ) : initial.order.map((sub) => (
+          ) : sectionOrder.map((sub, sIdx) => (
             <div key={sub}>
-              <p className="text-[11px] font-mono font-semibold uppercase tracking-widest text-primary mb-2">{sub}</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-mono font-semibold uppercase tracking-widest text-primary">{sub}</p>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => moveSection(sIdx, -1)} disabled={sIdx === 0}
+                    className="size-5 inline-flex items-center justify-center rounded-[4px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30">
+                    <ChevronUp className="size-3" />
+                  </button>
+                  <button type="button" onClick={() => moveSection(sIdx, 1)} disabled={sIdx === sectionOrder.length - 1}
+                    className="size-5 inline-flex items-center justify-center rounded-[4px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30">
+                    <ChevronDown className="size-3" />
+                  </button>
+                </div>
+              </div>
               <div className="border border-rule rounded-[10px] overflow-hidden">
                 {groups[sub].map((a, idx) => (
                   <div key={a._id} className="flex items-center gap-3 px-4 py-2.5 border-b border-rule last:border-0">

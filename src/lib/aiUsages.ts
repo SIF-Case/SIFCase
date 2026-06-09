@@ -19,9 +19,9 @@ export const AI_USAGES: AiUsageDef[] = [
     description: "Generates title, excerpt, tags, and SEO fields from article content.",
   },
   {
-    key: "newsSummarisation",
-    label: "News — AI Summarisation",
-    description: "Summarises fetched RSS/news items into concise 1-2 sentence summaries.",
+    key: "articleGeneration",
+    label: "News — Article Generation",
+    description: "Synthesizes selected news items into full original articles (500–700 words each).",
   },
 ];
 

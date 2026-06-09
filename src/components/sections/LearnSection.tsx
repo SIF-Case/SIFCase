@@ -4,7 +4,7 @@ import Article from "@/models/Article";
 
 export async function LearnSection() {
   await connectDB();
-  const articles = await Article.find({ status: "published" })
+  const articles = await Article.find({ status: "published" }, "title slug category excerpt readTime publishedAt coverDesktop coverMobile")
     .sort({ publishedAt: -1 })
     .limit(4)
     .lean();
@@ -30,32 +30,43 @@ export async function LearnSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {articles.map((a) => (
             <a key={String(a._id)} href={`/read/${a.slug}`}
-              className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary">
-                  {a.category}
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-faint">
-                  <Clock className="w-3 h-3" strokeWidth={2} />
-                  {a.readTime} min
-                </span>
-              </div>
-
-              <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
-                {a.title}
-              </h3>
-
-              {a.excerpt && (
-                <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">{a.excerpt}</p>
+              className="group flex flex-col bg-white rounded-[18px] border border-rule overflow-hidden shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow">
+              {(a.coverDesktop || a.coverMobile) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.coverDesktop || a.coverMobile}
+                  alt=""
+                  className="w-full h-36 object-cover bg-mist"
+                  loading="lazy"
+                />
               )}
+              <div className="flex flex-col flex-1 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary">
+                    {a.category}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-faint">
+                    <Clock className="w-3 h-3" strokeWidth={2} />
+                    {a.readTime} min
+                  </span>
+                </div>
 
-              <div className="mt-auto pt-2 flex items-center justify-between">
-                <span className="text-[11px] text-faint">
-                  {a.publishedAt ? new Date(a.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : ""}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
-                  Read <ArrowRight className="w-3.5 h-3.5" />
-                </span>
+                <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
+                  {a.title}
+                </h3>
+
+                {a.excerpt && (
+                  <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">{a.excerpt}</p>
+                )}
+
+                <div className="mt-auto pt-2 flex items-center justify-between">
+                  <span className="text-[11px] text-faint">
+                    {a.publishedAt ? new Date(a.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
+                    Read <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
               </div>
             </a>
           ))}
