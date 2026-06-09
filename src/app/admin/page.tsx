@@ -3,7 +3,8 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import CronLog from "@/models/CronLog";
 import mongoose from "mongoose";
-import { Users, Database, Activity, Clock, CheckCircle, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Users, Database, Activity, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,34 @@ export default async function AdminDashboard() {
   const db = mongoose.connection.db!;
 
   const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs] = await Promise.all([
+  const CRITICAL_FIELDS = ["amc", "isinGrowth", "companyName", "companyName_short", "brandName"];
+  const FIELD_LABELS: Record<string, string> = {
+    amc: "AMC",
+    isinGrowth: "ISIN Growth",
+    companyName: "Company",
+    companyName_short: "Co Short",
+    brandName: "Brand",
+  };
+
+  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, incompleteSchemes] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: last7Days } }),
     User.countDocuments({ isAdmin: true }),
     db.collection("sifschemes").countDocuments(),
     db.collection("sifnavs").countDocuments(),
     CronLog.find().sort({ createdAt: -1 }).limit(8).lean(),
+    db.collection("sifschemes").find({
+      $or: CRITICAL_FIELDS.map(f => ({ [f]: { $in: ["", null] } })),
+    }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, isinGrowth: 1, companyName: 1, companyName_short: 1, brandName: 1 } })
+      .sort({ schemeCode: 1 }).toArray(),
   ]);
+
+  type FlaggedScheme = { schemeCode: string; schemeName: string; missing: string[] };
+  const redFlags: FlaggedScheme[] = incompleteSchemes.map((s) => ({
+    schemeCode: s.schemeCode as string,
+    schemeName: s.schemeName as string,
+    missing: CRITICAL_FIELDS.filter(f => !s[f]),
+  }));
 
   const stats = [
     { label: "Total Users", value: totalUsers, sub: `+${newUsers} this week`, icon: Users, color: "text-primary" },
@@ -49,6 +70,39 @@ export default async function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Red Flags */}
+      {redFlags.length > 0 && (
+        <div className="bg-white rounded-[14px] border border-red-200 shadow-card mb-8">
+          <div className="px-5 py-4 border-b border-red-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-loss" />
+              <h2 className="text-[15px] font-bold text-heading">Red Flags</h2>
+              <span className="text-[11px] font-semibold text-loss bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">{redFlags.length} scheme{redFlags.length === 1 ? "" : "s"}</span>
+            </div>
+            <p className="text-[12px] text-muted">Schemes with missing critical fields</p>
+          </div>
+          <div className="divide-y divide-rule">
+            {redFlags.map((f) => (
+              <Link
+                key={f.schemeCode}
+                href={`/admin/schemes?q=${encodeURIComponent(f.schemeCode)}`}
+                className="flex items-center gap-4 px-5 py-3 hover:bg-red-50/50 transition-colors group"
+              >
+                <span className="text-[12px] font-mono font-semibold text-primary w-16 shrink-0">{f.schemeCode}</span>
+                <span className="text-[13px] text-body flex-1 min-w-0 truncate group-hover:text-heading">{f.schemeName}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {f.missing.map(field => (
+                    <span key={field} className="text-[10px] font-semibold text-loss bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-[4px] font-mono uppercase tracking-wide">
+                      {FIELD_LABELS[field]}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent cron logs */}
       <div className="bg-white rounded-[14px] border border-rule shadow-card">

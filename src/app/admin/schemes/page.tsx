@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, RefreshCw, Save, X, Pencil, ChevronLeft, ChevronRight, Loader2, Check, SlidersHorizontal } from "lucide-react";
 import { deriveCompanyNameShort } from "@/lib/schemeHelpers";
 
@@ -57,13 +58,19 @@ const COLUMNS: {
 
 const GRID = COLUMNS.map((c) => c.width).join(" ");
 
-export default function AdminSchemes() {
+export default function AdminSchemesPage() {
+  return <Suspense><AdminSchemes /></Suspense>;
+}
+
+function AdminSchemes() {
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<SchemeRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [inputSearch, setInputSearch] = useState("");
-  const [search, setSearch] = useState("");
+  const initialQ = searchParams.get("q") ?? "";
+  const [inputSearch, setInputSearch] = useState(initialQ);
+  const [search, setSearch] = useState(initialQ);
   const [filterPlan, setFilterPlan] = useState("");
   const [filterOption, setFilterOption] = useState("");
   const [filterStrategy, setFilterStrategy] = useState("");

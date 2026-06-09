@@ -86,7 +86,10 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: "You are an SEO copywriter. Always respond with a valid JSON object." },
+        { role: "user", content: prompt },
+      ],
       temperature: 0.4,
       response_format: { type: "json_object" },
     }),

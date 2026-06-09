@@ -14,6 +14,7 @@ type Client = {
   assignedTo?: { _id: string; name?: string; email?: string } | null;
   lastContactedAt?: string | null;
   createdAt: string;
+  _isRawUser?: boolean;
 };
 
 type Staff = { _id: string; name?: string; email?: string };
@@ -152,7 +153,10 @@ export default function AdminClients() {
             className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface transition-colors">
             <div className="min-w-0 flex items-center gap-2">
               <UserSquare2 className="size-3.5 text-muted shrink-0" />
-              <p className="text-[13px] font-semibold text-heading truncate">{c.name}</p>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-heading truncate">{c.name}</p>
+                {c._isRawUser && <span className="text-[9px] font-mono uppercase tracking-wider text-primary">App user</span>}
+              </div>
             </div>
             <div className="min-w-0">
               <p className="text-[12px] text-body truncate">{c.email ?? <span className="text-faint">—</span>}</p>
