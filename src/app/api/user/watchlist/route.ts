@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import Watchlist from "@/models/Watchlist";
+import SIFScheme from "@/models/SIFScheme";
 import { logClientActivity } from "@/lib/activityLogger";
 
 async function getUserId() {
@@ -28,8 +29,19 @@ export async function POST(req: NextRequest) {
     { $addToSet: { schemeCodes: schemeCode } },
     { upsert: true },
   );
+  let schemeInfo = schemeCode;
   try {
-    await logClientActivity(userId, "Wishlist", `Added scheme to watchlist: ${schemeCode}`);
+    const scheme = await SIFScheme.findOne({ schemeCode }).lean();
+    if (scheme) {
+      const isin = scheme.isinGrowth || scheme.isinReinvestment || "";
+      schemeInfo = `${scheme.schemeName}${isin ? ` (${isin})` : ""}`;
+    }
+  } catch (err) {
+    console.error("Watchlist SIFScheme lookup error:", err);
+  }
+
+  try {
+    await logClientActivity(userId, "Wishlist", `Added scheme to watchlist: ${schemeInfo}`);
   } catch (err) {
     console.error("Watchlist activity logger error:", err);
   }
@@ -42,8 +54,19 @@ export async function DELETE(req: NextRequest) {
   const { schemeCode } = await req.json();
   await connectDB();
   await Watchlist.findOneAndUpdate({ userId }, { $pull: { schemeCodes: schemeCode } });
+  let schemeInfo = schemeCode;
   try {
-    await logClientActivity(userId, "Wishlist", `Removed scheme from watchlist: ${schemeCode}`);
+    const scheme = await SIFScheme.findOne({ schemeCode }).lean();
+    if (scheme) {
+      const isin = scheme.isinGrowth || scheme.isinReinvestment || "";
+      schemeInfo = `${scheme.schemeName}${isin ? ` (${isin})` : ""}`;
+    }
+  } catch (err) {
+    console.error("Watchlist SIFScheme lookup error:", err);
+  }
+
+  try {
+    await logClientActivity(userId, "Wishlist", `Removed scheme from watchlist: ${schemeInfo}`);
   } catch (err) {
     console.error("Watchlist activity logger error:", err);
   }

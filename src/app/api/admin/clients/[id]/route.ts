@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasPageAccess } from "@/lib/adminAuth";
+import { hasPageAccess, getEffectiveAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Client, { CLIENT_STAGES, ClientStage } from "@/models/Client";
 import User from "@/models/User";
+import SIFScheme from "@/models/SIFScheme";
 import { auth } from "@/auth";
 
 type Params = { params: Promise<{ id: string }> };
@@ -54,6 +55,53 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const session = await auth();
+  const loggedInUserId = session?.user?.id;
+  if (loggedInUserId) {
+    // Reuse the cached access object — no extra DB query
+    const access = await getEffectiveAccess(loggedInUserId);
+    const isSales = !access?.isSuperAdmin && access?.user?.role;
+    if (isSales) {
+      const isAssigned = client.assignedTo?._id?.toString() === loggedInUserId ||
+                         client.assignedTo?.toString() === loggedInUserId;
+      if (!isAssigned) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  if (client.activities?.length) {
+    // Collect all scheme codes that need resolution in one pass, then batch-fetch
+    const codeToResolve = new Map<string, { actionType: string; idx: number }[]>();
+    for (let i = 0; i < client.activities.length; i++) {
+      const act = client.activities[i];
+      if (act.action === "Wishlist" && act.description) {
+        const match = act.description.match(/^(Added|Removed) scheme to watchlist: (.+)$/);
+        if (match && !match[2].includes("(")) {
+          const code = match[2];
+          if (!codeToResolve.has(code)) codeToResolve.set(code, []);
+          codeToResolve.get(code)!.push({ actionType: match[1], idx: i });
+        }
+      }
+    }
+    if (codeToResolve.size > 0) {
+      const schemes = await SIFScheme.find(
+        { schemeCode: { $in: Array.from(codeToResolve.keys()) } },
+        "schemeCode schemeName isinGrowth isinReinvestment",
+      ).lean();
+      const schemeMap = new Map(schemes.map(s => [s.schemeCode, s]));
+      for (const [code, refs] of codeToResolve) {
+        const scheme = schemeMap.get(code);
+        if (scheme) {
+          const isin = scheme.isinGrowth || scheme.isinReinvestment || "";
+          const schemeInfo = `${scheme.schemeName}${isin ? ` (${isin})` : ""}`;
+          for (const { actionType, idx } of refs) {
+            client.activities[idx].description = `${actionType} scheme to watchlist: ${schemeInfo}`;
+          }
+        }
+      }
+    }
+  }
+
   return NextResponse.json({ client });
 }
 
@@ -73,6 +121,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     client = await Client.findOne({ linkedUserId: id });
   }
   if (!client) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const access = authorId ? await getEffectiveAccess(authorId) : null;
+  const isSales = !access?.isSuperAdmin && !!access?.user?.role;
+  if (isSales) {
+    const isAssigned = client.assignedTo?.toString() === authorId;
+    if (!isAssigned) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (action === "assign" && isSales) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (action === "addNote") {
     const text = String(body.text || "").trim();
@@ -119,6 +178,23 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!await hasPageAccess(req, "clients", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   await connectDB();
+
+  const session = await auth();
+  const loggedInUserId = session?.user?.id;
+  if (!loggedInUserId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const access = await getEffectiveAccess(loggedInUserId);
+  const isSales = !access?.isSuperAdmin && !!access?.user?.role;
+
+  let client = await Client.findById(id);
+  if (!client) {
+    client = await Client.findOne({ linkedUserId: id });
+  }
+  if (client && isSales) {
+    const isAssigned = client.assignedTo?.toString() === loggedInUserId;
+    if (!isAssigned) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const deleted = await Client.findByIdAndDelete(id);
   if (!deleted) {
     await Client.findOneAndDelete({ linkedUserId: id });

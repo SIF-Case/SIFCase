@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
@@ -39,7 +40,7 @@ export interface PagePermission {
 }
 
 export interface EffectiveAccess {
-  user: Awaited<ReturnType<typeof User.findById>>;
+  user: { _id: unknown; isAdmin?: boolean; role?: unknown; isBlocked?: boolean } | null;
   isSuperAdmin: boolean;
   permissions: Map<string, PagePermission>;
 }
@@ -49,7 +50,7 @@ function permissionAllows(perm: PagePermission | undefined, action: PageAction):
   return action === "edit" ? perm.edit : perm.view || perm.edit;
 }
 
-export async function getEffectiveAccess(userId: string): Promise<EffectiveAccess | null> {
+async function _getEffectiveAccess(userId: string): Promise<EffectiveAccess | null> {
   await connectDB();
   const user = await User.findById(userId).lean();
   if (!user || user.isBlocked) return null;
@@ -74,6 +75,9 @@ export async function getEffectiveAccess(userId: string): Promise<EffectiveAcces
 
   return { user, isSuperAdmin: false, permissions };
 }
+
+// Cached per-request — multiple hasPageAccess calls in one route share one DB lookup
+export const getEffectiveAccess = cache(_getEffectiveAccess);
 
 export function isInternalStaff(user: { isAdmin?: boolean; role?: unknown } | null | undefined): boolean {
   return !!user && (!!user.isAdmin || !!user.role);

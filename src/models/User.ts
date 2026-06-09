@@ -31,6 +31,11 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true },
 );
 
+UserSchema.index({ createdAt: -1 });
+UserSchema.index({ isAdmin: 1 });
+UserSchema.index({ isBlocked: 1 });
+UserSchema.index({ name: "text", email: "text", phone: "text" });
+
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
 

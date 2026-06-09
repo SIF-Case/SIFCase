@@ -90,6 +90,9 @@ const ClientSchema = new Schema<IClient>(
 );
 
 ClientSchema.index({ assignedTo: 1, stage: 1 });
+ClientSchema.index({ createdAt: -1 });
+ClientSchema.index({ stage: 1, createdAt: -1 });
+ClientSchema.index({ name: "text", email: "text", phone: "text", company: "text" });
 
 const Client: Model<IClient> =
   mongoose.models.Client || mongoose.model<IClient>("Client", ClientSchema);
