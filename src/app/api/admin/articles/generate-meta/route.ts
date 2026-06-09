@@ -77,13 +77,15 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
         { role: "user", content: prompt },
       ],
       temperature: 0.4,
-      max_tokens: 1000,
+      max_tokens: 1500,
       response_format: { type: "json_object" },
     }),
   });
   const d = await res.json();
   if (!res.ok) throw new Error(d.error?.message || "DeepSeek API error");
-  return parseAiJson(d.choices[0].message.content);
+  const choice = d.choices[0];
+  if (choice.finish_reason === "length") throw new Error("DeepSeek output was truncated — try a shorter article excerpt or switch to a model with a larger output window.");
+  return parseAiJson(choice.message.content);
 }
 
 async function callOpenRouter(prompt: string, model: string, apiKey: string): Promise<Record<string, unknown>> {
@@ -99,12 +101,14 @@ async function callOpenRouter(prompt: string, model: string, apiKey: string): Pr
       model,
       messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY valid JSON matching: {"title":string,"excerpt":string,"tags":string[],"seoTitle":string,"metaDescription":string,"focusKeyphrase":string,"primaryKeyword":string}` }],
       temperature: 0.4,
-      max_tokens: 1000,
+      max_tokens: 1500,
     }),
   });
   const d = await res.json();
   if (!res.ok) throw new Error(d.error?.message || "OpenRouter API error");
-  return parseAiJson(d.choices[0].message.content);
+  const choice = d.choices[0];
+  if (choice.finish_reason === "length") throw new Error("Output was truncated — try a shorter article or switch models.");
+  return parseAiJson(choice.message.content);
 }
 
 async function callGemini(prompt: string, model: string, apiKey: string): Promise<Record<string, unknown>> {

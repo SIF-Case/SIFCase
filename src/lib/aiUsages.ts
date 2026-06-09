@@ -18,6 +18,11 @@ export const AI_USAGES: AiUsageDef[] = [
     label: "Articles — Title, Excerpt & SEO Generation",
     description: "Generates title, excerpt, tags, and SEO fields from article content.",
   },
+  {
+    key: "newsSummarisation",
+    label: "News — AI Summarisation",
+    description: "Summarises fetched RSS/news items into concise 1-2 sentence summaries.",
+  },
 ];
 
 const AI_USAGE_KEYS = new Set(AI_USAGES.map(u => u.key));

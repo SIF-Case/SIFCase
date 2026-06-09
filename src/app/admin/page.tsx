@@ -2,9 +2,10 @@ import { requirePageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import CronLog from "@/models/CronLog";
+import NewsItem from "@/models/NewsItem";
 import mongoose from "mongoose";
 import Link from "next/link";
-import { Users, Database, Activity, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Users, Database, Activity, Clock, CheckCircle, XCircle, AlertTriangle, Newspaper } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,14 @@ export default async function AdminDashboard() {
     brandName: "Brand",
   };
 
-  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, incompleteSchemes] = await Promise.all([
+  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, latestNews, incompleteSchemes] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: last7Days } }),
     User.countDocuments({ isAdmin: true }),
     db.collection("sifschemes").countDocuments(),
     db.collection("sifnavs").countDocuments(),
     CronLog.find().sort({ createdAt: -1 }).limit(8).lean(),
+    NewsItem.find({ isVisible: true }).sort({ fetchedAt: -1 }).limit(5).lean(),
     db.collection("sifschemes").find({
       $or: CRITICAL_FIELDS.map(f => ({ [f]: { $in: ["", null] } })),
     }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, isinGrowth: 1, companyName: 1, companyName_short: 1, brandName: 1 } })
@@ -99,6 +101,28 @@ export default async function AdminDashboard() {
                   ))}
                 </div>
               </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Latest SIF News */}
+      {latestNews.length > 0 && (
+        <div className="bg-white rounded-[14px] border border-rule shadow-card mb-8">
+          <div className="px-5 py-4 border-b border-rule flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Newspaper className="size-4 text-primary" />
+              <h2 className="text-[15px] font-bold text-heading">Latest SIF News</h2>
+            </div>
+            <Link href="/admin/news?tab=feed" className="text-[12px] text-primary hover:opacity-80">View all →</Link>
+          </div>
+          <div className="divide-y divide-rule">
+            {latestNews.map((item) => (
+              <div key={String(item._id)} className="px-5 py-3 flex items-center gap-3">
+                <span className="text-[10px] font-mono text-primary bg-primary/5 border border-primary/15 px-2 py-0.5 rounded-full shrink-0 truncate max-w-[120px]">{item.source}</span>
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-[13px] text-body hover:text-primary truncate flex-1">{item.title}</a>
+                <span className="text-[11px] text-faint shrink-0">{new Date(item.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+              </div>
             ))}
           </div>
         </div>

@@ -15,6 +15,7 @@ import { UniverseMap } from "@/components/sections/UniverseMap";
 import { BuildYourCompare } from "@/components/sections/BuildYourCompare";
 import { WhySIFcase } from "@/components/sections/WhySIFcase";
 import { LearnSection } from "@/components/sections/LearnSection";
+import { SIFNewsSection } from "@/components/sections/SIFNewsSection";
 import { CTABand } from "@/components/sections/CTABand";
 import { Providers } from "@/app/providers";
 import {
@@ -52,6 +53,7 @@ export default async function HomePage() {
         <SIFComparisonTable sifs={sifs} />
         <WhySIFcase />
         <LearnSection />
+        <SIFNewsSection />
         <CTABand />
         <Footer />
       </main>
