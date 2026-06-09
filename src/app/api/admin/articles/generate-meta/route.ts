@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAdminRequest } from "@/lib/adminAuth";
+import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import AISetting from "@/models/AISetting";
 import { generateObject } from "ai";
@@ -127,7 +127,7 @@ async function callGemini(prompt: string, model: string, apiKey: string): Promis
 }
 
 export async function GET(req: NextRequest) {
-  if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!await hasPageAccess(req, "articles", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const config = await AISetting.findOne({ usages: "articleMetaGeneration" }, "label provider modelName").lean();
   return NextResponse.json({ config: config ? { label: config.label, provider: config.provider, modelName: config.modelName } : null });
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!await hasPageAccess(req, "articles", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json() as {
       title: string;
