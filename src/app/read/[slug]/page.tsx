@@ -141,7 +141,7 @@ export default async function ArticlePage({ params }: Props) {
         {/* Body content */}
         <article
           className="max-w-[1000px] mx-auto px-6 pb-16 article-body"
-          dangerouslySetInnerHTML={{ __html: article.content }}
+          dangerouslySetInnerHTML={{ __html: article.content.replace(/<table/g, '<div class="table-wrapper"><table').replace(/<\/table>/g, '</table></div>') }}
         />
 
         {/* Author bio */}
@@ -203,6 +203,12 @@ export default async function ArticlePage({ params }: Props) {
         .article-body td, .article-body th { border: 1px solid #E5E5E5; padding: 10px 16px; vertical-align: top; text-align: left; }
         .article-body th { background: #F8F8F8; font-weight: 600; color: #1a1a1a; }
         .article-body tr:nth-child(even) td { background: #FAFAFA; }
+        .article-body .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.5em 0; border-radius: 6px; }
+        .article-body .table-wrapper table { margin: 0; width: max-content; min-width: 100%; }
+        @media (max-width: 640px) {
+          .article-body table { font-size: 14px; }
+          .article-body td, .article-body th { padding: 8px 12px; }
+        }
       `}</style>
     </main>
   );
