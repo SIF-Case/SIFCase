@@ -35,6 +35,9 @@ export async function issueEmailOtp(opts: {
 
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
+
+  await sendOtpEmail(opts.email, otp);
+
   await EmailOtp.findOneAndUpdate(
     { key: opts.key, purpose: opts.purpose },
     {
@@ -47,7 +50,6 @@ export async function issueEmailOtp(opts: {
     { upsert: true },
   );
 
-  await sendOtpEmail(opts.email, otp);
   return { ok: true };
 }
 

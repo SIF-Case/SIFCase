@@ -183,7 +183,7 @@ export default function AdminUsers() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[28px] font-bold text-heading tracking-[-0.3px]">Users</h1>
-          <p className="text-[14px] text-muted mt-1">{total} internal staff member{total === 1 ? "" : "s"} (admins, researchers and sales; external customers are managed under Clients)</p>
+          <p className="text-[14px] text-muted mt-1">{total} user{total === 1 ? "" : "s"} registered</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={openRoles} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">

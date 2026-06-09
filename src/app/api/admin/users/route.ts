@@ -4,8 +4,6 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import Role from "@/models/Role";
 
-const STAFF_FILTER = { $or: [{ isAdmin: true }, { role: { $ne: null } }] };
-
 export async function GET(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -16,8 +14,8 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("q") ?? "";
 
   const query = search
-    ? { $and: [STAFF_FILTER, { $or: [{ email: { $regex: search, $options: "i" } }, { name: { $regex: search, $options: "i" } }, { phone: { $regex: search, $options: "i" } }] }] }
-    : STAFF_FILTER;
+    ? { $or: [{ email: { $regex: search, $options: "i" } }, { name: { $regex: search, $options: "i" } }, { phone: { $regex: search, $options: "i" } }] }
+    : {};
 
   const [users, total, roles] = await Promise.all([
     User.find(query, "-passwordHash").populate("role", "name").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),

@@ -190,7 +190,7 @@ export function BuildYourCompare({ funds }: Props) {
           {/* Chart */}
           {series.length > 0 && chartData.length > 1 ? (
             <div className="px-2 pt-6 pb-2" style={{ height: 380 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={380}>
                 <AreaChart data={chartData} margin={{ top: 8, right: 32, bottom: 8, left: 8 }}>
                   <defs>
                     {series.map((s) => (
