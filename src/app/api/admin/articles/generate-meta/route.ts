@@ -73,11 +73,11 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
     body: JSON.stringify({
       model,
       messages: [
-        { role: "system", content: "You are an SEO copywriter. Always respond with a valid JSON object." },
+        { role: "system", content: "You are an SEO copywriter. Always respond with a single compact minified JSON object on one line, no whitespace or indentation." },
         { role: "user", content: prompt },
       ],
       temperature: 0.4,
-      max_tokens: 1500,
+      max_tokens: 800,
       response_format: { type: "json_object" },
     }),
   });
@@ -99,9 +99,9 @@ async function callOpenRouter(prompt: string, model: string, apiKey: string): Pr
     },
     body: JSON.stringify({
       model,
-      messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY valid JSON matching: {"title":string,"excerpt":string,"tags":string[],"seoTitle":string,"metaDescription":string,"focusKeyphrase":string,"primaryKeyword":string}` }],
+      messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY a single compact minified JSON object on one line: {"title":"...","excerpt":"...","tags":[...],"seoTitle":"...","metaDescription":"...","focusKeyphrase":"...","primaryKeyword":"..."}` }],
       temperature: 0.4,
-      max_tokens: 1500,
+      max_tokens: 800,
     }),
   });
   const d = await res.json();
