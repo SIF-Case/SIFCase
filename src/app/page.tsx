@@ -1,6 +1,10 @@
 // Re-fetch from MongoDB every hour; cron updates NAV nightly
 export const revalidate = 3600;
 
+import { auth } from "@/auth";
+import { getEffectiveAccess } from "@/lib/adminAuth";
+import { redirect } from "next/navigation";
+
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
@@ -28,6 +32,14 @@ import {
 } from "@/lib/sifData";
 
 export default async function HomePage() {
+  const session = await auth();
+  if (session?.user?.id) {
+    const access = await getEffectiveAccess(session.user.id);
+    if (access && (access.isSuperAdmin || access.permissions.size > 0)) {
+      redirect("/admin");
+    }
+  }
+
   const [stats, sifs, topFunds, tickerNavs, heatmap, latestReport] = await Promise.all([
     getSnapshotStats(),
     getSIFsWithReturns("Regular", "Growth"),

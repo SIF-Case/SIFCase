@@ -148,6 +148,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.name = dbUser.name ?? token.name;
           token.email = dbUser.email ?? token.email;
           token.picture = dbUser.image ?? token.picture;
+          token.isAdmin = !!dbUser.isAdmin;
+          token.role = dbUser.role ? String(dbUser.role) : undefined;
         }
         return token;
       }
@@ -155,6 +157,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.phone = (user as { phone?: string }).phone;
         if (user.name) token.name = user.name;
+        await connectDB();
+        const dbUser = await User.findById(user.id).lean();
+        if (dbUser) {
+          token.isAdmin = !!dbUser.isAdmin;
+          token.role = dbUser.role ? String(dbUser.role) : undefined;
+        }
       }
       if (account?.provider === "google" && profile?.email) {
         await connectDB();
@@ -162,6 +170,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (dbUser) {
           token.id = (dbUser._id as { toString(): string }).toString();
           if (dbUser.name) token.name = dbUser.name;
+          token.isAdmin = !!dbUser.isAdmin;
+          token.role = dbUser.role ? String(dbUser.role) : undefined;
         }
         if (profile.name) token.name = profile.name;
       }
@@ -169,7 +179,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     session({ session, token }) {
       session.user.id = token.id as string;
-      (session.user as { phone?: string }).phone = token.phone as string | undefined;
+      session.user.phone = token.phone as string | undefined;
+      session.user.isAdmin = !!token.isAdmin;
+      session.user.role = token.role as string | null | undefined;
       if (token.name) session.user.name = token.name as string;
       return session;
     },

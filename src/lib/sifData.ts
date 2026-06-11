@@ -16,6 +16,7 @@ export interface SIFRow {
   fundName: string;
   amc: string;
   companyName: string;
+  brandName: string;
   strategy: string;
   plan: "Regular" | "Direct";
   option: string;
@@ -191,12 +192,13 @@ export async function getSnapshotStats(): Promise<SnapshotStats> {
   };
 }
 
-export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string): Promise<SIFRow[]> {
+export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string, brandName?: string): Promise<SIFRow[]> {
   const { schemes, navs } = await getCollections();
 
   const filter: Record<string, string> = {};
   if (plan) filter.plan = plan;
   if (option) filter.option = option;
+  if (brandName) filter.brandName = brandName;
   const allSchemes = await schemes
     .find(filter, { projection: { _id: 0 } })
     .sort({ amc: 1, schemeName: 1 })
@@ -247,6 +249,7 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: s
       fundName: (s.fundName as string) || (s.schemeName as string),
       amc: s.amc as string,
       companyName: (s.companyName as string) || (s.amc as string),
+      brandName: (s.brandName as string) || "",
       strategy: s.strategy as string,
       plan: s.plan as "Regular" | "Direct",
       option: s.option as string,
@@ -277,6 +280,37 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: s
   }
 
   return rows;
+}
+
+function brandNameToSlug(brandName: string): string {
+  return brandName.toLowerCase().replace(/\s+/g, "-");
+}
+
+export interface FundHouseInfo {
+  brandName: string;
+  companyName: string;
+  schemeCount: number;
+}
+
+// Resolve a URL slug (e.g. "abc-mutual-fund") back to its brandName (e.g. "ABC Mutual Fund")
+export async function getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> {
+  const { schemes } = await getCollections();
+  const rows = await schemes.aggregate([
+    { $match: { brandName: { $exists: true, $ne: "" } } },
+    { $group: { _id: "$brandName", companyName: { $first: "$companyName" }, schemeCount: { $sum: 1 } } },
+  ]).toArray();
+
+  for (const r of rows) {
+    const brandName = r._id as string;
+    if (brandNameToSlug(brandName) === slug) {
+      return {
+        brandName,
+        companyName: (r.companyName as string) || brandName,
+        schemeCount: r.schemeCount as number,
+      };
+    }
+  }
+  return null;
 }
 
 const RISK_BAND_STRING_MAP_EARLY: Record<string, 1 | 2 | 3 | 4 | 5> = {
@@ -332,11 +366,13 @@ export async function getTopFunds(): Promise<FundRow[]> {
   const db = mongoose.connection.db!;
   const fundNames = sorted.map((s) => s.fundName);
   const detailsDocs = await db.collection("funddetails")
-    .find({ fundName: { $in: fundNames } }, { projection: { fundName: 1, riskBand: 1, _id: 0 } })
+    .find({ fundName: { $in: fundNames } }, { projection: { fundName: 1, riskBand: 1, aumCurrent: 1, aumAggregate: 1, aumEnd: 1, _id: 0 } })
     .toArray();
   const riskBandByName = new Map<string, 1 | 2 | 3 | 4 | 5 | null>();
+  const aumByName = new Map<string, number | null>();
   for (const d of detailsDocs) {
     riskBandByName.set(d.fundName as string, normaliseRiskBandEarly(d.riskBand));
+    aumByName.set(d.fundName as string, d.aumCurrent ?? d.aumAggregate ?? d.aumEnd ?? null);
   }
 
   const funds: FundRow[] = sorted.map((s) => {
@@ -402,7 +438,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
         nav: parseFloat(s.nav),
         navDate: s.navDate,
         isin: s.isin,
-        aum: (s as any).aum ?? null,
+        aum: aumByName.get(s.fundName) ?? (s as any).aum ?? null,
         returns: {
           "1M": s.return1m ? parseFloat(s.return1m) : null,
           "3M": s.return3m ? parseFloat(s.return3m) : null,

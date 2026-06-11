@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getEffectiveAccess } from "@/lib/adminAuth";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { DashboardClient } from "./DashboardClient";
@@ -13,6 +14,11 @@ export const metadata = { title: "Dashboard — SIFcase" };
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user) redirect("/");
+
+  const access = await getEffectiveAccess(session.user.id);
+  if (access && (access.isSuperAdmin || access.permissions.size > 0)) {
+    redirect("/admin");
+  }
 
   const funds = await getTopFunds();
 

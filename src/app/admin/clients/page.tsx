@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, Plus, RefreshCw, X, UserSquare2, Trash2, Send, Activity, Eye } from "lucide-react";
+import { Search, Plus, RefreshCw, X, UserSquare2, Trash2, Send, Activity, Eye, Settings, Pencil, Check, ArrowUp, ArrowDown, ArrowUpDown, CalendarDays } from "lucide-react";
 
 type Client = {
   _id: string;
@@ -13,11 +13,13 @@ type Client = {
   stage: string;
   assignedTo?: { _id: string; name?: string; email?: string } | null;
   lastContactedAt?: string | null;
+  nextFollowUpAt?: string | null;
   createdAt: string;
+  source?: string;
   _isRawUser?: boolean;
 };
 
-type Note = { _id?: string; text: string; authorName: string; createdAt: string };
+type Note = { _id?: string; text: string; authorName: string; createdAt: string; nextFollowUpAt?: string | null };
 type PageVisit = { path: string; visitedAt: string };
 type UserActivity = { action: string; description: string; createdAt: string };
 type ClientDetail = {
@@ -36,6 +38,7 @@ type ClientDetail = {
   pageVisits?: PageVisit[];
   activities?: UserActivity[];
   lastContactedAt?: string | null;
+  nextFollowUpAt?: string | null;
   tags: string[];
   createdAt: string;
 };
@@ -49,6 +52,12 @@ const ACTIVITY_STYLES: Record<string, { badge: string; text: string }> = {
   "Booklet": { badge: "bg-amber-50 text-amber-700 border border-amber-200", text: "Booklet" },
 };
 
+function isOverdue(dateStr: string) {
+  const d = new Date(dateStr);
+  d.setHours(23, 59, 59, 999);
+  return d.getTime() < Date.now();
+}
+
 function field(label: string, value: React.ReactNode) {
   return (
     <div>
@@ -58,22 +67,45 @@ function field(label: string, value: React.ReactNode) {
   );
 }
 
-const STAGES = ["lead", "contacted", "qualified", "proposal", "onboarded", "lost"];
+type PipelineStage = { key: string; label: string };
 
-const STAGE_STYLES: Record<string, string> = {
-  lead: "text-muted bg-mist border-rule",
-  contacted: "text-blue-600 bg-blue-50 border-blue-200",
-  qualified: "text-violet-600 bg-violet-50 border-violet-200",
-  proposal: "text-amber-600 bg-amber-50 border-amber-200",
-  onboarded: "text-gain bg-emerald-50 border-emerald-200",
-  lost: "text-loss bg-red-50 border-red-200",
-};
+// Cycled by stage position so newly added stages still get a distinct color.
+const STAGE_STYLE_PALETTE = [
+  "text-muted bg-mist border-rule",
+  "text-blue-600 bg-blue-50 border-blue-200",
+  "text-violet-600 bg-violet-50 border-violet-200",
+  "text-amber-600 bg-amber-50 border-amber-200",
+  "text-gain bg-emerald-50 border-emerald-200",
+  "text-loss bg-red-50 border-red-200",
+];
 
-function StageBadge({ stage }: { stage: string }) {
-  const style = STAGE_STYLES[stage] ?? STAGE_STYLES.lead;
+function stageStyle(stages: PipelineStage[], key: string) {
+  if (key === "call_req") {
+    return "text-amber-700 bg-amber-50 border-amber-300";
+  }
+  const idx = stages.findIndex(s => s.key === key);
+  return STAGE_STYLE_PALETTE[idx >= 0 ? idx % STAGE_STYLE_PALETTE.length : 0];
+}
+
+function stageLabel(stages: PipelineStage[], key: string) {
+  const label = stages.find(s => s.key === key)?.label;
+  if (label) return label;
+  if (key === "call_req") return "Call Req";
+  return key;
+}
+
+function StageBadge({ stage, stages, source }: { stage: string; stages: PipelineStage[]; source?: string }) {
+  if (stage === "call_req" || (source === "callback_popup" && stage === "lead")) {
+    return (
+      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border text-amber-700 bg-amber-50 border-amber-300">
+        Call Req
+      </span>
+    );
+  }
+  const style = stageStyle(stages, stage);
   return (
-    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize ${style}`}>
-      {stage}
+    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${style}`}>
+      {stageLabel(stages, stage)}
     </span>
   );
 }
@@ -87,6 +119,22 @@ export default function AdminClients() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [assignedFilter, setAssignedFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"createdAt" | "lastContactedAt" | "nextFollowUpAt">("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [lastContactedFrom, setLastContactedFrom] = useState("");
+  const [lastContactedTo, setLastContactedTo] = useState("");
+  const [nextFollowUpFrom, setNextFollowUpFrom] = useState("");
+  const [nextFollowUpTo, setNextFollowUpTo] = useState("");
+
+  function toggleSort(field: "lastContactedAt" | "nextFollowUpAt") {
+    if (sortBy === field) {
+      setSortDir(d => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(field);
+      setSortDir("desc");
+    }
+    setPage(1);
+  }
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -100,6 +148,8 @@ export default function AdminClients() {
   const [selectedClient, setSelectedClient] = useState<ClientDetail | null>(null);
   const [sidebarLoading, setSidebarLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(500);
+  const [isDragging, setIsDragging] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -111,7 +161,66 @@ export default function AdminClients() {
     tags: "",
   });
   const [noteText, setNoteText] = useState("");
+  const [noteNextDate, setNoteNextDate] = useState("");
   const [sidebarBusy, setSidebarBusy] = useState(false);
+
+  // Pipeline stage configuration
+  const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [showStageManager, setShowStageManager] = useState(false);
+  const [newStageLabel, setNewStageLabel] = useState("");
+  const [editingStageKey, setEditingStageKey] = useState<string | null>(null);
+  const [editingStageLabel, setEditingStageLabel] = useState("");
+  const [stageBusy, setStageBusy] = useState(false);
+
+  const fetchStages = useCallback(async () => {
+    const res = await fetch("/api/admin/pipeline-stages");
+    const data = await res.json();
+    setStages(data.stages ?? []);
+  }, []);
+
+  useEffect(() => { fetchStages(); }, [fetchStages]);
+
+  async function addStage() {
+    const label = newStageLabel.trim();
+    if (!label) return;
+    setStageBusy(true);
+    await fetch("/api/admin/pipeline-stages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add", label }),
+    });
+    setNewStageLabel("");
+    await fetchStages();
+    setStageBusy(false);
+  }
+
+  async function renameStage(key: string) {
+    const label = editingStageLabel.trim();
+    if (!label) { setEditingStageKey(null); return; }
+    setStageBusy(true);
+    await fetch("/api/admin/pipeline-stages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename", key, label }),
+    });
+    setEditingStageKey(null);
+    await fetchStages();
+    fetchClients();
+    if (selectedClientId) fetchSelectedClient(selectedClientId);
+    setStageBusy(false);
+  }
+
+  async function deleteStage(key: string) {
+    if (!confirm("Delete this stage? Clients currently in this stage will keep it as a label until reassigned.")) return;
+    setStageBusy(true);
+    await fetch("/api/admin/pipeline-stages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", key }),
+    });
+    await fetchStages();
+    setStageBusy(false);
+  }
 
   const fetchSelectedClient = useCallback(async (id: string) => {
     setSidebarLoading(true);
@@ -150,6 +259,53 @@ export default function AdminClients() {
     }
   }, [selectedClientId, fetchSelectedClient]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("client-sidebar-width");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 360 && parsed <= window.innerWidth - 80) {
+          setSidebarWidth(parsed);
+        }
+      }
+    }
+  }, []);
+
+  const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
+    mouseDownEvent.preventDefault();
+    setIsDragging(true);
+    
+    const startWidth = sidebarWidth;
+    const startX = mouseDownEvent.clientX;
+    
+    const doDrag = (mouseMoveEvent: MouseEvent) => {
+      const deltaX = mouseMoveEvent.clientX - startX;
+      const maxW = typeof window !== 'undefined' ? window.innerWidth - 80 : 800;
+      const newWidth = Math.max(360, Math.min(maxW, startWidth - deltaX));
+      setSidebarWidth(newWidth);
+    };
+    
+    const stopDrag = (mouseUpEvent: MouseEvent) => {
+      setIsDragging(false);
+      window.removeEventListener("mousemove", doDrag);
+      window.removeEventListener("mouseup", stopDrag);
+      
+      const deltaX = mouseUpEvent.clientX - startX;
+      const maxW = typeof window !== 'undefined' ? window.innerWidth - 80 : 800;
+      const finalWidth = Math.max(360, Math.min(maxW, startWidth - deltaX));
+      localStorage.setItem("client-sidebar-width", String(finalWidth));
+      
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "ew-resize";
+    
+    window.addEventListener("mousemove", doDrag);
+    window.addEventListener("mouseup", stopDrag);
+  }, [sidebarWidth]);
+
   async function patchSidebar(body: Record<string, unknown>) {
     if (!selectedClientId) return;
     setSidebarBusy(true);
@@ -165,8 +321,9 @@ export default function AdminClients() {
 
   async function addSidebarNote() {
     if (!noteText.trim()) return;
-    await patchSidebar({ action: "addNote", text: noteText.trim() });
+    await patchSidebar({ action: "addNote", text: noteText.trim(), nextFollowUpAt: noteNextDate || null });
     setNoteText("");
+    setNoteNextDate("");
   }
 
   async function saveClientDetails() {
@@ -196,9 +353,13 @@ export default function AdminClients() {
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), q: search });
+    const params = new URLSearchParams({ page: String(page), q: search, sortBy, sortDir });
     if (stageFilter) params.set("stage", stageFilter);
     if (assignedFilter) params.set("assignedTo", assignedFilter);
+    if (lastContactedFrom) params.set("lastContactedFrom", lastContactedFrom);
+    if (lastContactedTo) params.set("lastContactedTo", lastContactedTo);
+    if (nextFollowUpFrom) params.set("nextFollowUpFrom", nextFollowUpFrom);
+    if (nextFollowUpTo) params.set("nextFollowUpTo", nextFollowUpTo);
     const res = await fetch(`/api/admin/clients?${params.toString()}`);
     const data = await res.json();
     setClients(data.clients ?? []);
@@ -206,7 +367,7 @@ export default function AdminClients() {
     setPages(data.pages ?? 1);
     setCanEdit(!!data.canEdit);
     setLoading(false);
-  }, [page, search, stageFilter, assignedFilter]);
+  }, [page, search, stageFilter, assignedFilter, sortBy, sortDir, lastContactedFrom, lastContactedTo, nextFollowUpFrom, nextFollowUpTo]);
 
   useEffect(() => { fetchClients(); }, [fetchClients]);
 
@@ -264,20 +425,64 @@ export default function AdminClients() {
             className="flex-1 text-[13px] bg-transparent outline-none" />
         </div>
         <select value={stageFilter} onChange={(e) => { setStageFilter(e.target.value); setPage(1); }}
-          className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-body outline-none focus:border-primary capitalize">
+          className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-body outline-none focus:border-primary">
           <option value="">All stages</option>
-          {STAGES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+          {stages.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
         <select value={assignedFilter} onChange={(e) => { setAssignedFilter(e.target.value); setPage(1); }}
           className="h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-body outline-none focus:border-primary">
           <option value="">All assignees</option>
           {staff.map(s => <option key={s._id} value={s._id}>{s.name || s.email}</option>)}
         </select>
+        {canEdit && (
+          <button onClick={() => setShowStageManager(true)}
+            className="flex items-center gap-2 h-10 px-3 rounded-[10px] border border-rule bg-white text-[13px] text-muted hover:text-body">
+            <Settings className="size-3.5" /> Edit stages
+          </button>
+        )}
+      </div>
+
+      {/* Date filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 bg-white border border-rule rounded-[10px] px-3 h-10 shadow-card">
+          <CalendarDays className="size-3.5 text-muted shrink-0" />
+          <span className="text-[12px] text-muted whitespace-nowrap">Last contacted</span>
+          <input type="date" value={lastContactedFrom} onChange={(e) => { setLastContactedFrom(e.target.value); setPage(1); }}
+            className="text-[13px] bg-transparent outline-none text-body" />
+          <span className="text-[12px] text-faint">–</span>
+          <input type="date" value={lastContactedTo} onChange={(e) => { setLastContactedTo(e.target.value); setPage(1); }}
+            className="text-[13px] bg-transparent outline-none text-body" />
+        </div>
+        <div className="flex items-center gap-2 bg-white border border-rule rounded-[10px] px-3 h-10 shadow-card">
+          <CalendarDays className="size-3.5 text-muted shrink-0" />
+          <span className="text-[12px] text-muted whitespace-nowrap">Next follow-up</span>
+          <input type="date" value={nextFollowUpFrom} onChange={(e) => { setNextFollowUpFrom(e.target.value); setPage(1); }}
+            className="text-[13px] bg-transparent outline-none text-body" />
+          <span className="text-[12px] text-faint">–</span>
+          <input type="date" value={nextFollowUpTo} onChange={(e) => { setNextFollowUpTo(e.target.value); setPage(1); }}
+            className="text-[13px] bg-transparent outline-none text-body" />
+        </div>
+        {(lastContactedFrom || lastContactedTo || nextFollowUpFrom || nextFollowUpTo) && (
+          <button
+            onClick={() => { setLastContactedFrom(""); setLastContactedTo(""); setNextFollowUpFrom(""); setNextFollowUpTo(""); setPage(1); }}
+            className="flex items-center gap-1.5 h-10 px-3 rounded-[10px] border border-rule text-[12px] text-muted hover:text-loss"
+          >
+            <X className="size-3.5" /> Clear dates
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px] gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
-          <div>Client</div><div>Contact</div><div>Company</div><div>Stage</div><div>Assigned to</div><div>Last contacted</div>
+        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px_120px] gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
+          <div>Client</div><div>Contact</div><div>Company</div><div>Stage</div><div>Assigned to</div>
+          <button onClick={() => toggleSort("lastContactedAt")} className="flex items-center gap-1 hover:text-body">
+            Last contacted
+            {sortBy === "lastContactedAt" ? (sortDir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : <ArrowUpDown className="size-3 opacity-40" />}
+          </button>
+          <button onClick={() => toggleSort("nextFollowUpAt")} className="flex items-center gap-1 hover:text-body">
+            Next follow-up
+            {sortBy === "nextFollowUpAt" ? (sortDir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />) : <ArrowUpDown className="size-3 opacity-40" />}
+          </button>
         </div>
 
         {loading ? (
@@ -288,7 +493,7 @@ export default function AdminClients() {
           </div>
         ) : clients.map((c) => (
           <div key={c._id} onClick={() => setSelectedClientId(c._id)}
-            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface transition-colors cursor-pointer ${selectedClientId === c._id ? "bg-slate-50 border-l-2 border-l-brand-navy" : ""}`}>
+            className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_minmax(0,1fr)_120px_minmax(0,1fr)_120px_120px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface transition-colors cursor-pointer ${selectedClientId === c._id ? "bg-slate-50 border-l-2 border-l-brand-navy" : ""}`}>
             <div className="min-w-0 flex items-center gap-2">
               <UserSquare2 className="size-3.5 text-muted shrink-0" />
               <div className="min-w-0">
@@ -303,12 +508,19 @@ export default function AdminClients() {
             <div className="min-w-0">
               <p className="text-[12px] text-body truncate">{c.company || <span className="text-faint">—</span>}</p>
             </div>
-            <div><StageBadge stage={c.stage} /></div>
+            <div><StageBadge stage={c.stage} stages={stages} source={c.source} /></div>
             <div className="min-w-0">
               <p className="text-[12px] text-body truncate">{c.assignedTo?.name || c.assignedTo?.email || <span className="text-faint">Unassigned</span>}</p>
             </div>
             <div className="text-[12px] text-muted">
               {c.lastContactedAt ? new Date(c.lastContactedAt).toLocaleDateString("en-IN") : <span className="text-faint">—</span>}
+            </div>
+            <div className="text-[12px]">
+              {c.nextFollowUpAt
+                ? <span className={isOverdue(c.nextFollowUpAt) ? "text-loss font-semibold" : "text-body"}>
+                    {new Date(c.nextFollowUpAt).toLocaleDateString("en-IN")}
+                  </span>
+                : <span className="text-faint">—</span>}
             </div>
           </div>
         ))}
@@ -385,6 +597,61 @@ export default function AdminClients() {
         </div>
       )}
 
+      {showStageManager && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="bg-white rounded-[14px] border border-rule shadow-xl w-full max-w-md max-h-[88vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-rule sticky top-0 bg-white">
+              <h2 className="text-[16px] font-bold text-heading">Pipeline stages</h2>
+              <button onClick={() => setShowStageManager(false)} className="size-8 inline-flex items-center justify-center rounded-[8px] text-muted hover:text-body hover:bg-surface">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-2">
+              {stages.map(s => (
+                <div key={s.key} className="flex items-center gap-2">
+                  {editingStageKey === s.key ? (
+                    <>
+                      <input value={editingStageLabel} autoFocus
+                        onChange={e => setEditingStageLabel(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") renameStage(s.key); if (e.key === "Escape") setEditingStageKey(null); }}
+                        className="flex-1 h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" />
+                      <button onClick={() => renameStage(s.key)} disabled={stageBusy}
+                        className="size-9 inline-flex items-center justify-center rounded-[8px] text-gain hover:bg-emerald-50">
+                        <Check className="size-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`flex-1 h-9 px-3 inline-flex items-center rounded-[8px] border text-[13px] ${stageStyle(stages, s.key)}`}>
+                        {s.label}
+                      </span>
+                      <button onClick={() => { setEditingStageKey(s.key); setEditingStageLabel(s.label); }}
+                        className="size-9 inline-flex items-center justify-center rounded-[8px] text-muted hover:text-body hover:bg-surface">
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button onClick={() => deleteStage(s.key)} disabled={stageBusy || stages.length <= 1}
+                        className="size-9 inline-flex items-center justify-center rounded-[8px] text-loss hover:bg-red-50 disabled:opacity-30">
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center gap-2 pt-2">
+                <input value={newStageLabel} onChange={e => setNewStageLabel(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") addStage(); }}
+                  placeholder="New stage name…"
+                  className="flex-1 h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" />
+                <button onClick={addStage} disabled={stageBusy || !newStageLabel.trim()}
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-[8px] bg-brand-navy text-white text-[13px] font-medium hover:bg-brand-navy/90 disabled:opacity-50">
+                  <Plus className="size-3.5" /> Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar Detail View */}
       {selectedClientId && (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -395,7 +662,27 @@ export default function AdminClients() {
           />
           
           {/* Panel */}
-          <div className="relative w-full max-w-lg md:w-[500px] h-full bg-white shadow-premium border-l border-rule flex flex-col z-10 transition-transform duration-300">
+          <div 
+            className={`relative w-full md:w-[var(--sidebar-width)] h-full bg-white shadow-premium border-l border-rule flex flex-col z-10 ${
+              isDragging ? "" : "transition-[width] duration-300"
+            }`}
+            style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
+          >
+            {/* Drag Resize Handle */}
+            <div
+              onMouseDown={startResizing}
+              className="absolute left-0 top-0 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize group z-50 flex items-center justify-center"
+              title="Drag to resize panel"
+            >
+              {/* Draggable visual indicator line */}
+              <div 
+                className={`w-[2.5px] rounded-full transition-all duration-150 ${
+                  isDragging 
+                    ? "bg-primary h-24 w-[3.5px]" 
+                    : "bg-slate-200 group-hover:bg-primary/70 group-hover:h-16 h-10"
+                }`}
+              />
+            </div>
             {sidebarLoading ? (
               <div className="flex-1 flex items-center justify-center text-muted text-[13px]">
                 Loading details…
@@ -549,13 +836,13 @@ export default function AdminClients() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-mist/30 border border-rule/50 rounded-[10px] p-3">
                           <label className="block text-[9px] font-mono uppercase tracking-widest text-muted mb-1">Pipeline Stage</label>
-                          <select 
-                            value={selectedClient.stage} 
+                          <select
+                            value={selectedClient.stage}
                             disabled={!canEdit || sidebarBusy}
                             onChange={e => patchSidebar({ action: "setStage", stage: e.target.value })}
-                            className={`w-full h-8 px-2 rounded-[6px] border text-[12px] outline-none capitalize disabled:opacity-60 bg-white ${STAGE_STYLES[selectedClient.stage] ?? STAGE_STYLES.lead}`}
+                            className={`w-full h-8 px-2 rounded-[6px] border text-[12px] outline-none disabled:opacity-60 bg-white ${selectedClient.source === "callback_popup" && selectedClient.stage === "lead" ? "text-amber-700 bg-amber-50 border-amber-300" : stageStyle(stages, selectedClient.stage)}`}
                           >
-                            {STAGES.map(s => <option key={s} value={s} className="capitalize bg-white text-body">{s}</option>)}
+                            {stages.map(s => <option key={s.key} value={s.key} className="bg-white text-body">{s.label}</option>)}
                           </select>
                         </div>
                         <div className="bg-mist/30 border border-rule/50 rounded-[10px] p-3">
@@ -599,20 +886,34 @@ export default function AdminClients() {
                       <div className="border border-rule/60 rounded-[12px] p-4 bg-white space-y-4">
                         <h3 className="text-[12px] font-bold text-heading uppercase tracking-wide border-b border-rule/50 pb-1">Notes & History</h3>
                         {canEdit && (
-                          <div className="flex items-start gap-2">
-                            <textarea 
-                              value={noteText} 
-                              onChange={e => setNoteText(e.target.value)}
-                              placeholder="Log updates, call details..."
-                              className="flex-1 h-14 px-2.5 py-1.5 rounded-[8px] border border-rule text-[12px] outline-none focus:border-primary resize-none" 
-                            />
-                            <button 
-                              onClick={addSidebarNote} 
-                              disabled={sidebarBusy || !noteText.trim()}
-                              className="h-14 px-3 inline-flex items-center justify-center rounded-[8px] bg-brand-navy text-white text-[12px] font-medium hover:bg-brand-navy/90 disabled:opacity-40"
-                            >
-                              <Send className="size-3.5" />
-                            </button>
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <textarea
+                                value={noteText}
+                                onChange={e => setNoteText(e.target.value)}
+                                placeholder="Log updates, call details..."
+                                className="flex-1 h-14 px-2.5 py-1.5 rounded-[8px] border border-rule text-[12px] outline-none focus:border-primary resize-none"
+                              />
+                              <button
+                                onClick={addSidebarNote}
+                                disabled={sidebarBusy || !noteText.trim()}
+                                className="h-14 px-3 inline-flex items-center justify-center rounded-[8px] bg-brand-navy text-white text-[12px] font-medium hover:bg-brand-navy/90 disabled:opacity-40"
+                              >
+                                <Send className="size-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] font-mono uppercase tracking-widest text-muted">Next date</label>
+                              <input
+                                type="date"
+                                value={noteNextDate}
+                                onChange={e => setNoteNextDate(e.target.value)}
+                                className="h-8 px-2 rounded-[6px] border border-rule text-[12px] outline-none focus:border-primary"
+                              />
+                              {noteNextDate && (
+                                <button onClick={() => setNoteNextDate("")} className="text-[11px] text-muted hover:text-body">Clear</button>
+                              )}
+                            </div>
                           </div>
                         )}
                         {!selectedClient.notes || selectedClient.notes.length === 0 ? (
@@ -623,6 +924,11 @@ export default function AdminClients() {
                               <div key={n._id ?? idx} className="border-l border-rule pl-3">
                                 <p className="text-[12px] text-body">{n.text}</p>
                                 <p className="text-[10px] text-faint mt-0.5">{n.authorName} · {new Date(n.createdAt).toLocaleString("en-IN")}</p>
+                                {n.nextFollowUpAt && (
+                                  <p className={`text-[10px] mt-0.5 font-medium ${isOverdue(n.nextFollowUpAt) ? "text-loss" : "text-primary"}`}>
+                                    Next: {new Date(n.nextFollowUpAt).toLocaleDateString("en-IN")}
+                                  </p>
+                                )}
                               </div>
                             ))}
                           </div>

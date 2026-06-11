@@ -174,6 +174,10 @@ export function AuthModal({ open, onClose, reason }: Props) {
       const res = await signIn("phone", { idToken, redirect: false });
       if (res?.error) throw new Error(res.error);
       const freshSession = await getSession();
+      if (freshSession?.user?.isAdmin) {
+        window.location.href = "/admin";
+        return;
+      }
       if (freshSession?.user?.email) {
         handleClose();
       } else {
@@ -194,6 +198,11 @@ export function AuthModal({ open, onClose, reason }: Props) {
     try {
       const res = await signIn("email-otp", { phone: fullPhone, otp, redirect: false });
       if (res?.error) { setError("Incorrect or expired code"); return; }
+      const freshSession = await getSession();
+      if (freshSession?.user?.isAdmin) {
+        window.location.href = "/admin";
+        return;
+      }
       handleClose();
     } catch (e: unknown) {
       setError((e as Error).message ?? "Invalid code");

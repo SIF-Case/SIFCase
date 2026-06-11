@@ -5,7 +5,7 @@ import { Plus, Check } from "lucide-react";
 import type { FundRow } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { Sparkline } from "@/components/ui/Sparkline";
-import { RiskGauge } from "@/components/ui/RiskMeter";
+import { SEBIRiskometer } from "@/components/ui/RiskMeter";
 import { SourceBadge } from "@/components/ui/SourceBadge";
 
 export function FundCard({ f }: { f: FundRow }) {
@@ -78,7 +78,7 @@ export function FundCard({ f }: { f: FundRow }) {
         </div>
       </div>
 
-      <RiskGauge level={3} />
+      {f.riskBand != null && <SEBIRiskometer level={f.riskBand} size="sm" />}
 
       <div className="flex items-center gap-2 pt-1">
         <button

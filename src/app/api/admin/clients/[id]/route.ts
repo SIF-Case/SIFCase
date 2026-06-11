@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess, getEffectiveAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
-import Client, { CLIENT_STAGES, ClientStage } from "@/models/Client";
+import Client from "@/models/Client";
 import User from "@/models/User";
 import SIFScheme from "@/models/SIFScheme";
+import PipelineStages, { DEFAULT_PIPELINE_STAGES } from "@/models/PipelineStages";
 import { auth } from "@/auth";
 
 type Params = { params: Promise<{ id: string }> };
-
-const STAGE_LABELS: Record<ClientStage, string> = {
-  lead: "Lead",
-  contacted: "Contacted",
-  qualified: "Qualified",
-  proposal: "Proposal",
-  onboarded: "Onboarded",
-  lost: "Lost",
-};
 
 export async function GET(req: NextRequest, { params }: Params) {
   if (!await hasPageAccess(req, "clients", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -136,18 +128,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (action === "addNote") {
     const text = String(body.text || "").trim();
     if (!text) return NextResponse.json({ error: "Note text required" }, { status: 400 });
-    client.notes.push({ text, authorId, authorName, createdAt: new Date() } as never);
+    const nextFollowUpAt = body.nextFollowUpAt ? new Date(body.nextFollowUpAt) : null;
+    client.notes.push({ text, authorId, authorName, createdAt: new Date(), nextFollowUpAt } as never);
     client.lastContactedAt = new Date();
+    if (nextFollowUpAt) client.nextFollowUpAt = nextFollowUpAt;
     await client.save();
     return NextResponse.json({ ok: true });
   }
 
   if (action === "setStage") {
-    const stage = body.stage as ClientStage;
-    if (!CLIENT_STAGES.includes(stage)) return NextResponse.json({ error: "Invalid stage" }, { status: 400 });
+    const stage = String(body.stage ?? "");
+    const stagesDoc = await PipelineStages.findOne({}).lean();
+    const stages = stagesDoc?.stages?.length ? stagesDoc.stages : DEFAULT_PIPELINE_STAGES;
+    const stageLabels = Object.fromEntries(stages.map(s => [s.key, s.label]));
+    if (!stage || !stageLabels[stage]) return NextResponse.json({ error: "Invalid stage" }, { status: 400 });
     if (stage !== client.stage) {
       client.notes.push({
-        text: `Stage changed: ${STAGE_LABELS[client.stage]} → ${STAGE_LABELS[stage]}`,
+        text: `Stage changed: ${stageLabels[client.stage] ?? client.stage} → ${stageLabels[stage]}`,
         authorId, authorName, createdAt: new Date(),
       } as never);
       client.stage = stage;

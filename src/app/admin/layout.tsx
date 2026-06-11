@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { getEffectiveAccess } from "@/lib/adminAuth";
 import { ADMIN_PAGES } from "@/lib/adminPages";
 import Link from "next/link";
@@ -54,10 +54,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </nav>
 
         <div className="px-3 py-4 border-t border-white/10">
-          <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13px] text-white/50 hover:text-white hover:bg-white/10 transition-colors">
-            <LogOut className="size-4" />
-            Back to site
-          </Link>
+          <form action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/" });
+          }}>
+            <button type="submit" className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13px] text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer border-0 bg-transparent">
+              <LogOut className="size-4" />
+              Logout
+            </button>
+          </form>
         </div>
       </aside>
 

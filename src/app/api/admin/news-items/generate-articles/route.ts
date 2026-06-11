@@ -25,6 +25,7 @@ async function callAi(
           { role: "user", content: userContent },
         ],
         temperature: 0.7,
+        max_tokens: 8000,
       }),
       signal: AbortSignal.timeout(120000),
     });
@@ -49,6 +50,7 @@ async function callAi(
           { role: "user", content: userContent },
         ],
         temperature: 0.7,
+        max_tokens: 8000,
       }),
       signal: AbortSignal.timeout(120000),
     });
@@ -65,7 +67,7 @@ async function callAi(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: `${prompt}\n\n${userContent}` }] }],
-          generationConfig: { temperature: 0.7 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8000 },
         }),
         signal: AbortSignal.timeout(120000),
       },
@@ -130,12 +132,48 @@ export async function POST(req: NextRequest) {
   // Strip markdown code fences if present
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
 
+  // Escape raw control characters (literal newlines/tabs) inside JSON string
+  // literals — models often forget to escape them as \n in long article bodies.
+  function escapeControlCharsInStrings(s: string): string {
+    let out = "";
+    let inString = false;
+    let escaped = false;
+    for (const ch of s) {
+      if (inString) {
+        if (escaped) {
+          out += ch;
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          out += ch;
+          escaped = true;
+          continue;
+        }
+        if (ch === "\n") { out += "\\n"; continue; }
+        if (ch === "\r") { out += "\\r"; continue; }
+        if (ch === "\t") { out += "\\t"; continue; }
+        if (ch === '"') { inString = false; out += ch; continue; }
+        out += ch;
+        continue;
+      }
+      if (ch === '"') inString = true;
+      out += ch;
+    }
+    return out;
+  }
+
   let parsed: { title: string; body: string }[];
   try {
     parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed)) throw new Error("Not an array");
   } catch {
-    return NextResponse.json({ error: "AI returned invalid JSON. Raw response: " + cleaned.slice(0, 500) }, { status: 500 });
+    try {
+      parsed = JSON.parse(escapeControlCharsInStrings(cleaned));
+      if (!Array.isArray(parsed)) throw new Error("Not an array");
+    } catch {
+      return NextResponse.json({ error: "AI returned invalid JSON. Raw response: " + cleaned.slice(0, 500) }, { status: 500 });
+    }
   }
 
   // Return content only — user reviews and saves from the UI

@@ -82,6 +82,21 @@ function AdminSchemes() {
   const [drafts, setDrafts] = useState<Record<string, Partial<SchemeRow>>>({});
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => ({
+    schemeCode: 80,
+    schemeName: 240,
+    fundName: 200,
+    brandName: 100,
+    amc: 120,
+    companyName: 160,
+    companyName_short: 100,
+    isinGrowth: 130,
+    isinReinvestment: 130,
+    plan: 90,
+    option: 120,
+    strategy: 160,
+    isActive: 64,
+  }));
 
   const activeFilterCount = [filterPlan, filterOption, filterStrategy, filterActive].filter(Boolean).length;
 
@@ -104,6 +119,89 @@ function AdminSchemes() {
   }, [page, search, filterPlan, filterOption, filterStrategy, filterActive]);
 
   useEffect(() => { fetchSchemes(); }, [fetchSchemes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("scheme-column-widths");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === "object") {
+            const validated = {
+              schemeCode: 80,
+              schemeName: 240,
+              fundName: 200,
+              brandName: 100,
+              amc: 120,
+              companyName: 160,
+              companyName_short: 100,
+              isinGrowth: 130,
+              isinReinvestment: 130,
+              plan: 90,
+              option: 120,
+              strategy: 160,
+              isActive: 64,
+            };
+            let hasChanges = false;
+            (Object.keys(validated) as Array<keyof typeof validated>).forEach((k) => {
+              if (typeof parsed[k] === "number" && parsed[k] > 40) {
+                validated[k] = parsed[k];
+                hasChanges = true;
+              }
+            });
+            if (hasChanges) {
+              setColumnWidths(validated);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse column widths", e);
+        }
+      }
+    }
+  }, []);
+
+  const startResizingColumn = useCallback((key: string, mouseDownEvent: React.MouseEvent) => {
+    mouseDownEvent.preventDefault();
+    mouseDownEvent.stopPropagation();
+    
+    const startWidth = columnWidths[key] ?? 100;
+    const startX = mouseDownEvent.clientX;
+    
+    const doDrag = (mouseMoveEvent: MouseEvent) => {
+      const deltaX = mouseMoveEvent.clientX - startX;
+      const newWidth = Math.max(50, startWidth + deltaX);
+      setColumnWidths(prev => ({
+        ...prev,
+        [key]: newWidth
+      }));
+    };
+    
+    const stopDrag = (mouseUpEvent: MouseEvent) => {
+      window.removeEventListener("mousemove", doDrag);
+      window.removeEventListener("mouseup", stopDrag);
+      
+      const deltaX = mouseUpEvent.clientX - startX;
+      const finalWidth = Math.max(50, startWidth + deltaX);
+      
+      setColumnWidths(prev => {
+        const updated = {
+          ...prev,
+          [key]: finalWidth
+        };
+        localStorage.setItem("scheme-column-widths", JSON.stringify(updated));
+        return updated;
+      });
+      
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    
+    window.addEventListener("mousemove", doDrag);
+    window.addEventListener("mouseup", stopDrag);
+  }, [columnWidths]);
 
   // Debounce search input → committed search
   useEffect(() => {
@@ -175,6 +273,9 @@ function AdminSchemes() {
   }
 
   const dirtyCount = rows.filter((r) => isDirty(r.schemeCode)).length;
+
+  const gridTemplateColumns = COLUMNS.map((c) => `${columnWidths[c.key]}px`).join(" ");
+  const minTableWidth = Object.values(columnWidths).reduce((a, b) => a + b, 0);
 
   return (
     <div className="p-8">
@@ -305,12 +406,25 @@ function AdminSchemes() {
               <Loader2 className="size-5 animate-spin text-primary" />
             </div>
           )}
-          <div style={{ minWidth: "1600px" }}>
+          <div style={{ minWidth: `${minTableWidth}px` }}>
             {/* Header */}
-            <div className="grid items-center border-b border-rule bg-mist" style={{ gridTemplateColumns: GRID }}>
+            <div className="grid items-stretch border-b border-rule bg-mist" style={{ gridTemplateColumns }}>
               {COLUMNS.map((c) => (
-                <div key={c.key} className="px-3 py-2.5 text-[9.5px] font-mono uppercase tracking-widest text-muted">
-                  {c.label}
+                <div 
+                  key={c.key} 
+                  className="relative px-3 py-2.5 text-[9.5px] font-mono uppercase tracking-widest text-muted h-full flex items-center select-none group"
+                >
+                  <span className="truncate pr-2">{c.label}</span>
+                  
+                  {/* Resize handle */}
+                  <div
+                    onMouseDown={(e) => startResizingColumn(c.key, e)}
+                    className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-20 group/handle flex justify-end"
+                    title={`Drag to resize ${c.label}`}
+                  >
+                    {/* Visual drag line divider */}
+                    <div className="w-[1.5px] h-full bg-slate-300/40 group-hover/handle:bg-primary group-hover/handle:w-[2.5px] transition-all" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -329,7 +443,7 @@ function AdminSchemes() {
                 <div
                   key={row.schemeCode}
                   className={`grid items-stretch border-b border-rule last:border-0 ${dirty ? "bg-amber-50/70" : ""}`}
-                  style={{ gridTemplateColumns: GRID }}
+                  style={{ gridTemplateColumns }}
                 >
                   {COLUMNS.map((col) => {
                     const val = (draft as Record<string, unknown>)[col.key];

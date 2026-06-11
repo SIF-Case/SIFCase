@@ -31,21 +31,24 @@ function getSlice(
   return idx >= 0 ? history.slice(idx) : history;
 }
 
-function fmt(v: number | null, suffix = "%"): string {
-  if (v === null) return "—";
-  return `${v >= 0 ? "+" : ""}${v.toFixed(2)}${suffix}`;
+function fmtAxisDate(dateStr: string, spanDays: number): string {
+  const d = new Date(dateStr);
+  if (spanDays <= 60) return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  if (spanDays <= 730) return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-US", { year: "numeric" });
 }
+
 function fmtNum(v: number | null): string {
   if (v === null) return "—";
   return v.toFixed(2);
 }
 
-export function FundDetailPanel({ fund }: { fund: FundDetail }) {
+export function FundDetailPanel({ fund, header }: { fund: FundDetail; header?: React.ReactNode }) {
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("All");
   const svgRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; idx: number } | null>(null);
 
-  const W = 800, H = 200, PL = 10, PR = 10, PT = 16, PB = 30;
+  const W = 800, H = 220, PL = 48, PR = 12, PT = 16, PB = 30;
 
   const visible = useMemo(
     () => getSlice(fund.navHistory, chartPeriod),
@@ -71,20 +74,6 @@ export function FundDetailPanel({ fund }: { fund: FundDetail }) {
   );
 
   const periodKey: PeriodKey = chartPeriod === "All" ? "SI" : (chartPeriod as PeriodKey);
-  const periodReturn =
-    chartPeriod === "All" ? fund.returns.SI : fund.returns[chartPeriod as "1M" | "3M" | "6M" | "1Y"];
-
-  const retCls = (v: number | null) =>
-    v === null ? "text-muted" : v >= 0 ? "text-gain" : "text-loss";
-
-  const RETURN_COLS: { label: string; value: number | null }[] = [
-    { label: "YTD", value: fund.returns.YTD },
-    { label: "1M", value: fund.returns["1M"] },
-    { label: "3M", value: fund.returns["3M"] },
-    { label: "6M", value: fund.returns["6M"] },
-    { label: "1Y", value: fund.returns["1Y"] },
-    { label: "Since Inception", value: fund.returns.SI },
-  ];
 
   const RISK_ROWS: { label: string; value: string; cls: string }[] = [
     {
@@ -136,17 +125,16 @@ export function FundDetailPanel({ fund }: { fund: FundDetail }) {
 
   return (
     <div className="space-y-6">
-      {/* Period selector + chart label */}
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-muted uppercase tracking-wide">Performance · Live NAV</p>
-        <div className="flex items-center gap-1 bg-surface rounded-full border border-rule p-1">
+      {/* Header + period selector */}
+      <div className="flex items-start justify-between gap-3">
+        {header}
+        <div className="flex items-center gap-1 bg-surface rounded-full border border-rule p-1 shrink-0">
           {CHART_PERIODS.map((p) => (
             <button
               key={p}
               onClick={() => { setChartPeriod(p); setTooltip(null); }}
-              className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-                chartPeriod === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"
-              }`}
+              className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${chartPeriod === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"
+                }`}
             >
               {p}
             </button>
@@ -179,6 +167,62 @@ export function FundDetailPanel({ fund }: { fund: FundDetail }) {
                     <stop offset="100%" stopColor="#1E4ED8" stopOpacity="0" />
                   </linearGradient>
                 </defs>
+                {/* Y-axis gridlines + labels */}
+                {(() => {
+                  const navs = visible.map((h) => h.nav);
+                  const min = Math.min(...navs), max = Math.max(...navs);
+                  const range = max - min || 0.01;
+                  const TICKS = 4;
+                  return Array.from({ length: TICKS + 1 }, (_, i) => {
+                    const v = min + (range * i) / TICKS;
+                    const y = PT + ((max - v) / range) * (H - PT - PB);
+                    return (
+                      <g key={i}>
+                        <line
+                          x1={PL} y1={y} x2={W - PR} y2={y}
+                          stroke="#E2E8F0" strokeWidth="1"
+                          strokeDasharray={i === 0 || i === TICKS ? undefined : "3 3"}
+                        />
+                        <text x={PL - 6} y={y + 3} fontSize="9" fill="#94A3B8" textAnchor="end">
+                          ₹{v.toFixed(4)}
+                        </text>
+                      </g>
+                    );
+                  });
+                })()}
+
+                {/* X-axis ticks + date labels */}
+                {(() => {
+                  const TICKS = 6;
+                  const count = Math.min(TICKS, visible.length);
+                  if (count < 2) return null;
+                  const spanDays =
+                    (new Date(visible[visible.length - 1].date).getTime() - new Date(visible[0].date).getTime()) /
+                    (1000 * 60 * 60 * 24);
+                  let lastLabel = "";
+                  return Array.from({ length: count }, (_, i) => {
+                    const idx = Math.round((i / (count - 1)) * (visible.length - 1));
+                    const x = PL + (idx / (visible.length - 1)) * (W - PL - PR);
+                    const label = fmtAxisDate(visible[idx].date, spanDays);
+                    if (label === lastLabel) return null;
+                    lastLabel = label;
+                    return (
+                      <g key={i}>
+                        <line x1={x} y1={H - PB} x2={x} y2={H - PB + 4} stroke="#CBD5E1" strokeWidth="1" />
+                        <text
+                          x={x}
+                          y={H - 6}
+                          fontSize="9"
+                          fill="#94A3B8"
+                          textAnchor={i === 0 ? "start" : i === count - 1 ? "end" : "middle"}
+                        >
+                          {label}
+                        </text>
+                      </g>
+                    );
+                  });
+                })()}
+
                 <path d={areaPath} fill="url(#fund-detail-grad)" />
                 <path
                   d={linePath}
@@ -188,24 +232,6 @@ export function FundDetailPanel({ fund }: { fund: FundDetail }) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-
-                {/* Y-axis min/max */}
-                {(() => {
-                  const navs = visible.map((h) => h.nav);
-                  const min = Math.min(...navs), max = Math.max(...navs);
-                  return (
-                    <>
-                      <text x={PL} y={PT + 5} fontSize="9" fill="#94A3B8">₹{max.toFixed(4)}</text>
-                      <text x={PL} y={H - PB - 3} fontSize="9" fill="#94A3B8">₹{min.toFixed(4)}</text>
-                    </>
-                  );
-                })()}
-
-                {/* X-axis dates */}
-                <text x={PL} y={H - 6} fontSize="9" fill="#94A3B8">{visible[0].date}</text>
-                <text x={W - PR} y={H - 6} fontSize="9" fill="#94A3B8" textAnchor="end">
-                  {visible[visible.length - 1].date}
-                </text>
 
                 {tip && (
                   <>
@@ -235,16 +261,6 @@ export function FundDetailPanel({ fund }: { fund: FundDetail }) {
               )}
             </div>
           )}
-
-          {/* Return summary row */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-5 pt-5 border-t border-rule">
-            {RETURN_COLS.map(({ label, value }) => (
-              <div key={label} className="text-center">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-faint mb-1">{label}</p>
-                <p className={`text-[13px] font-bold nums ${retCls(value)}`}>{fmt(value)}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Risk metrics panel */}

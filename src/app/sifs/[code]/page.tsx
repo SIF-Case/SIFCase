@@ -269,12 +269,16 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
 
           {/* ── PERFORMANCE CHART + RISK METRICS ─────────────────────────── */}
           <section>
-            <div className="mb-4">
-              <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Performance</div>
-              <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">NAV chart & risk-adjusted metrics</h2>
-              <p className="mt-1 text-[13px] text-muted">Source: AMFI NAV data. Returns calculated by SIFcase.</p>
-            </div>
-            <FundDetailPanel fund={fund} />
+            <FundDetailPanel
+              fund={fund}
+              header={
+                <div className="mb-4">
+                  <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Performance</div>
+                  <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">NAV chart & risk-adjusted metrics</h2>
+                  <p className="mt-1 text-[13px] text-muted">Source: AMFI NAV data. Returns calculated by SIFcase.</p>
+                </div>
+              }
+            />
           </section>
 
           {/* ── STRATEGY EXPLAINER ───────────────────────────────────────── */}

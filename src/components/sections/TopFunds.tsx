@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ChevronDown, ArrowRight, Bookmark } from "lucide-react";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
-import { RiskGauge } from "@/components/ui/RiskMeter";
+import { SEBIRiskometer } from "@/components/ui/RiskMeter";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { trackActivity } from "@/components/UserTracker";
@@ -149,16 +149,12 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
           <p className="text-[18px] font-bold text-heading nums leading-tight">₹{fund.nav.toFixed(4)}</p>
           <p className="text-[9.5px] font-semibold uppercase tracking-widest text-faint mt-1.5">AUM</p>
           <p className="text-[12px] font-semibold text-muted nums">
-            {fund.aum != null
-              ? fund.aum >= 1e7
-                ? `₹${(fund.aum / 1e7).toFixed(1)}Cr`
-                : `₹${(fund.aum / 1e5).toFixed(1)}L`
-              : "—"}
+            {fund.aum != null ? `₹${fund.aum.toFixed(0)} Cr` : "—"}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex gap-4 -mt-7">
         <div>
           <p className="text-[8.5px] font-semibold uppercase tracking-[0.1em] text-faint mb-1">{period} RETURN</p>
           <p className={`text-[14px] nums ${retCls(periodRet)}`}>{fmtRet(periodRet)}</p>
@@ -187,12 +183,11 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
         </div>
       </div>
 
-      <div className="flex items-end gap-3">
-        <div className="flex-1 min-w-0">
-          <Sparkline data={fund.sparklines?.[period] ?? []} dates={fund.sparklineDates?.[period] ?? []} id={`${fund.schemeCode}-${period}`} />
-        </div>
-        {fund.riskBand != null && <RiskGauge level={fund.riskBand} />}
+      <div className="min-w-0">
+        <Sparkline data={fund.sparklines?.[period] ?? []} dates={fund.sparklineDates?.[period] ?? []} id={`${fund.schemeCode}-${period}`} />
       </div>
+
+      {fund.riskBand != null && <SEBIRiskometer level={fund.riskBand} size="sm" />}
 
       <div className="flex items-center gap-2.5 pt-1">
         <a

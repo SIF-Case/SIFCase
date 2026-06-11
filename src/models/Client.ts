@@ -1,14 +1,15 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-export type ClientStage = "lead" | "contacted" | "qualified" | "proposal" | "onboarded" | "lost";
-
-export const CLIENT_STAGES: ClientStage[] = ["lead", "contacted", "qualified", "proposal", "onboarded", "lost"];
+// Pipeline stages are configurable at runtime via the PipelineStages model
+// (see /api/admin/pipeline-stages). Stage values are arbitrary string keys.
+export type ClientStage = string;
 
 export interface IClientNote {
   text: string;
   authorId: Types.ObjectId;
   authorName: string;
   createdAt: Date;
+  nextFollowUpAt?: Date | null;
 }
 
 export interface IPageVisit {
@@ -38,6 +39,7 @@ export interface IClient extends Document {
   pageVisits: IPageVisit[];
   activities: IUserActivity[];
   lastContactedAt?: Date | null;
+  nextFollowUpAt?: Date | null;
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +51,7 @@ const ClientNoteSchema = new Schema<IClientNote>(
     authorId: { type: Schema.Types.ObjectId, ref: "User" },
     authorName: { type: String, default: "" },
     createdAt: { type: Date, default: Date.now },
+    nextFollowUpAt: { type: Date, default: null },
   },
 );
 
@@ -73,7 +76,7 @@ const ClientSchema = new Schema<IClient>(
     email: { type: String, sparse: true },
     phone: { type: String, sparse: true },
     company: { type: String, default: "" },
-    stage: { type: String, enum: CLIENT_STAGES, default: "lead", index: true },
+    stage: { type: String, default: "lead", index: true },
     source: { type: String, default: "" },
     assignedTo: { type: Schema.Types.ObjectId, ref: "User", index: true },
     investmentInterest: { type: [String], default: [] },
@@ -84,6 +87,7 @@ const ClientSchema = new Schema<IClient>(
     pageVisits: { type: [PageVisitSchema], default: [] },
     activities: { type: [UserActivitySchema], default: [] },
     lastContactedAt: { type: Date, default: null },
+    nextFollowUpAt: { type: Date, default: null, index: true },
     tags: { type: [String], default: [] },
   },
   { timestamps: true },

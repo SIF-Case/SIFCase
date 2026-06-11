@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess, getEffectiveAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
-import Client, { CLIENT_STAGES } from "@/models/Client";
+import Client from "@/models/Client";
 import User from "@/models/User";
 import { auth } from "@/auth";
 import mongoose from "mongoose";
@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("q") ?? "";
   const stage = searchParams.get("stage") ?? "";
   const assignedTo = searchParams.get("assignedTo") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "createdAt";
+  const sortDir = searchParams.get("sortDir") === "asc" ? 1 : -1;
+  const SORTABLE_FIELDS = new Set(["createdAt", "lastContactedAt", "nextFollowUpAt"]);
+  const sortField = SORTABLE_FIELDS.has(sortBy) ? sortBy : "createdAt";
 
   const filters: Record<string, unknown>[] = [];
   if (search) {
@@ -34,7 +38,23 @@ export async function GET(req: NextRequest) {
       { company: { $regex: search, $options: "i" } },
     ] });
   }
-  if (stage && CLIENT_STAGES.includes(stage as never)) filters.push({ stage });
+  if (stage) filters.push({ stage });
+
+  function dateRangeFilter(field: string, fromKey: string, toKey: string) {
+    const from = searchParams.get(fromKey);
+    const to = searchParams.get(toKey);
+    if (!from && !to) return;
+    const range: Record<string, Date> = {};
+    if (from) range.$gte = new Date(from);
+    if (to) {
+      const end = new Date(to);
+      end.setHours(23, 59, 59, 999);
+      range.$lte = end;
+    }
+    filters.push({ [field]: range });
+  }
+  dateRangeFilter("lastContactedAt", "lastContactedFrom", "lastContactedTo");
+  dateRangeFilter("nextFollowUpAt", "nextFollowUpFrom", "nextFollowUpTo");
 
   if (isSales) {
     filters.push({ assignedTo: new mongoose.Types.ObjectId(loggedInUserId) });
@@ -45,12 +65,12 @@ export async function GET(req: NextRequest) {
   const query = filters.length ? { $and: filters } : {};
 
   // Projection: exclude fat subdoc arrays from list view
-  const listProjection = "name email phone company stage assignedTo linkedUserId lastContactedAt createdAt tags _isRawUser";
+  const listProjection = "name email phone company stage source assignedTo linkedUserId lastContactedAt nextFollowUpAt createdAt tags _isRawUser";
 
   const [existingClients, crmTotal, canEdit] = await Promise.all([
     Client.find(query, listProjection)
       .populate("assignedTo", "name email")
-      .sort({ createdAt: -1 })
+      .sort({ [sortField]: sortDir })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
@@ -59,7 +79,8 @@ export async function GET(req: NextRequest) {
   ]);
 
   // Only include raw users on page 1 with no filters (they fill after CRM clients)
-  const includeRawUsers = !stage && !assignedTo && !isSales && !search;
+  const hasDateFilter = filters.length > (stage ? 1 : 0) + (isSales || assignedTo ? 1 : 0) + (search ? 1 : 0);
+  const includeRawUsers = !stage && !assignedTo && !isSales && !search && !hasDateFilter;
   let rawUsers: { _id: unknown; name?: string; email?: string; phone?: string; createdAt: Date }[] = [];
   let rawTotal = 0;
 
@@ -117,7 +138,7 @@ export async function POST(req: NextRequest) {
     email: email || undefined,
     phone: phone || undefined,
     company: company || "",
-    stage: CLIENT_STAGES.includes(stage) ? stage : "lead",
+    stage: typeof stage === "string" && stage.trim() ? stage : "lead",
     source: source || "",
     assignedTo: assignedTo || undefined,
     investmentInterest: Array.isArray(investmentInterest) ? investmentInterest : [],

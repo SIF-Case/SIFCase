@@ -105,6 +105,7 @@ export async function fetchAndStoreNews(): Promise<FetchNewsResult> {
   const rssFeeds = (config?.rssFeeds ?? []).filter((f) => f.enabled);
   const maxItems = config?.maxItemsPerFetch ?? 30;
   const retentionDays = config?.retentionDays ?? 30;
+  const cutoff = retentionDays > 0 ? new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000) : null;
 
   // Collect all raw items
   const rawItemsMap = new Map<string, RawNewsItem>();
@@ -133,6 +134,9 @@ export async function fetchAndStoreNews(): Promise<FetchNewsResult> {
 
   const allRaw = Array.from(rawItemsMap.values())
     .filter((i) => {
+      // Filter out items older than retention cutoff immediately
+      if (cutoff && i.publishedAt < cutoff) return false;
+
       // For Google News feeds the source IS the keyword so always relevant.
       // For direct RSS feeds, require at least one keyword in title or excerpt.
       if (keywordsLower.length === 0) return true;
@@ -191,7 +195,7 @@ export async function fetchAndStoreNews(): Promise<FetchNewsResult> {
   return {
     fetched: allRaw.length,
     stored,
-    skipped: existingUrls.size,
+    skipped: allRaw.length - stored - errors,
     errors,
   };
 }

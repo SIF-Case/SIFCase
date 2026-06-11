@@ -80,7 +80,7 @@ function stripHtml(html: string): string {
 }
 
 export default function AdminNews() {
-  const [tab, setTab] = useState<"config" | "feed" | "review">("config");
+  const [tab, setTab] = useState<"config" | "feed">("config");
 
   // Config state
   const [config, setConfig] = useState<NewsConfig>({
@@ -117,12 +117,8 @@ export default function AdminNews() {
   const [clearing, setClearing] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [generating, setGenerating] = useState(false);
-  const [genResult, setGenResult] = useState<{ title: string; body: string }[] | null>(null);
+  const [genResult, setGenResult] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
-  // Review tab — editable drafts before saving
-  const [drafts, setDrafts] = useState<{ title: string; body: string }[]>([]);
-  const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
-  const [savingIdx, setSavingIdx] = useState<Set<number>>(new Set());
 
   const fetchConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -296,33 +292,27 @@ export default function AdminNews() {
       body: JSON.stringify({ ids: Array.from(selected) }),
     });
     const data = await res.json();
-    setGenerating(false);
     if (!res.ok) {
+      setGenerating(false);
       setGenError(data.error ?? "Generation failed");
-    } else {
-      setDrafts(data.articles);
-      setSavedIdx(new Set());
-      setSavingIdx(new Set());
-      setSelected(new Set());
-      setTab("review");
+      return;
     }
-  }
 
-  async function saveDraft(idx: number) {
-    const draft = drafts[idx];
-    if (!draft) return;
-    setSavingIdx(s => new Set(s).add(idx));
-    const res = await fetch("/api/admin/articles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: draft.title, content: draft.body, status: "draft", category: "General" }),
-    });
-    const data = await res.json();
-    setSavingIdx(s => { const next = new Set(s); next.delete(idx); return next; });
-    if (res.ok && data.id) {
-      setSavedIdx(s => new Set(s).add(idx));
-      window.open(`/admin/articles/${data.id}/edit`, "_blank");
+    const articles: { title: string; body: string }[] = data.articles ?? [];
+    let saved = 0;
+    for (const draft of articles) {
+      const saveRes = await fetch("/api/admin/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: draft.title, content: draft.body, status: "draft", category: "General" }),
+      });
+      if (saveRes.ok) saved++;
     }
+
+    setGenerating(false);
+    setSelected(new Set());
+    setGenResult(`${saved} article${saved === 1 ? "" : "s"} saved as drafts in Articles.`);
+    fetchFeed();
   }
 
   return (
@@ -371,11 +361,6 @@ export default function AdminNews() {
         </button>
         <button onClick={() => setTab("feed")} className={`px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === "feed" ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}>
           News Feed ({total})
-        </button>
-        <button onClick={() => setTab("review")} className={`flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${tab === "review" ? "border-primary text-primary" : "border-transparent text-muted hover:text-body"}`}>
-          <Sparkles className="size-3.5" />
-          Review
-          {drafts.length > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab === "review" ? "bg-primary text-white" : "bg-mist text-muted"}`}>{drafts.length}</span>}
         </button>
       </div>
 
@@ -643,6 +628,16 @@ export default function AdminNews() {
             </div>
           )}
 
+          {genResult && (
+            <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-[10px] text-[13px] text-gain flex items-center gap-3">
+              <FileText className="size-3.5 shrink-0" />
+              <span className="flex-1">
+                {genResult} <a href="/admin/articles" className="underline font-semibold">Open Articles →</a>
+              </span>
+              <button onClick={() => setGenResult(null)}><X className="size-3.5" /></button>
+            </div>
+          )}
+
 
           <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
             <div className="grid grid-cols-[36px_60px_minmax(0,2fr)_120px_minmax(0,2fr)_110px_120px] gap-3 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
@@ -743,73 +738,6 @@ export default function AdminNews() {
         </div>
       )}
 
-      {/* ── Review Tab ───────────────────────────────────────────────────────── */}
-      {tab === "review" && (
-        <div className="space-y-6">
-          {drafts.length === 0 ? (
-            <div className="bg-white rounded-[14px] border border-rule shadow-card p-10 text-center">
-              <Sparkles className="size-8 text-muted mx-auto mb-3" />
-              <p className="text-[14px] font-semibold text-heading mb-1">No generated articles yet</p>
-              <p className="text-[13px] text-muted mb-4">Select items in the News Feed tab and click "Generate Articles".</p>
-              <button onClick={() => setTab("feed")} className="px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:opacity-90">
-                Go to News Feed
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-[13px] text-muted">{drafts.length} article{drafts.length > 1 ? "s" : ""} generated · review, edit, then save as draft</p>
-                <button onClick={() => { setDrafts([]); setSavedIdx(new Set()); setTab("feed"); }} className="text-[12px] text-muted hover:text-loss">
-                  Clear all
-                </button>
-              </div>
-
-              {drafts.map((draft, idx) => (
-                <div key={idx} className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-rule bg-surface">
-                    <span className="text-[11px] font-mono text-muted">Article {idx + 1} of {drafts.length}</span>
-                    {savedIdx.has(idx) ? (
-                      <span className="flex items-center gap-1.5 text-[12px] font-semibold text-gain">
-                        <FileText className="size-3.5" /> Saved as draft — <a href="#" className="text-primary underline" onClick={e => { e.preventDefault(); }}>open in editor</a>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => saveDraft(idx)}
-                        disabled={savingIdx.has(idx)}
-                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-primary text-white text-[12px] font-semibold hover:opacity-90 disabled:opacity-50"
-                      >
-                        {savingIdx.has(idx) ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
-                        {savingIdx.has(idx) ? "Saving…" : "Save as Draft"}
-                      </button>
-                    )}
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">Headline</label>
-                      <input
-                        value={draft.title}
-                        onChange={e => setDrafts(d => d.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))}
-                        className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[16px] font-semibold text-heading outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
-                        Body · {draft.body.split(/\s+/).filter(Boolean).length} words
-                      </label>
-                      <textarea
-                        value={draft.body}
-                        onChange={e => setDrafts(d => d.map((x, i) => i === idx ? { ...x, body: e.target.value } : x))}
-                        rows={28}
-                        className="w-full px-3 py-2.5 rounded-[8px] border border-rule bg-white text-[14px] text-body leading-relaxed outline-none focus:border-primary resize-y font-serif"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
