@@ -8,12 +8,25 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Manager = { name: string; designation: string };
+type Manager = { name: string; designation: string; experienceYears: string; managingSince: string };
 type Allocation = { assetClass: string; percentage: string };
 type IndustryAlloc = { industry: string; percentage: string };
 type RatingAlloc = { ratingClass: string; percentage: string };
 type Holding = { name: string; percentage: string; sector: string; rating: string };
-type Factsheet = { url: string; filename: string; uploadedAt: string };
+type Factsheet = { url: string; filename: string; documentType: string; uploadedAt: string };
+type PlanCode = { planName: string; isin: string };
+type SipDetail = { frequency: string; minAmount: string; minInstallments: string };
+type TerSlab = { aumSlab: string; ter: string };
+type AllocRange = { assetClass: string; min: string; max: string };
+type DerivativeStrategy = { name: string; description: string };
+
+const DOCUMENT_TYPES = [
+  "Factsheet",
+  "KIM",
+  "Excel",
+  "XLS - Summary Document",
+  "PPT",
+];
 
 type FormState = {
   riskBand: string;
@@ -32,6 +45,38 @@ type FormState = {
   portfolioByRatingClass: RatingAlloc[];
   topHoldings: Holding[];
   factsheets: Factsheet[];
+  // Fund Structure
+  schemeCategory: string;
+  schemeNature: string;
+  inceptionDate: string;
+  planCodes: PlanCode[];
+  // Redemption & Liquidity
+  redemptionFrequency: string;
+  navCutoffTime: string;
+  redemptionPayoutDays: string;
+  redemptionNoticePeriod: string;
+  penalInterestRate: string;
+  // Investment Limits
+  panInvestmentThreshold: string;
+  accreditedInvestorMinInvestment: string;
+  sipDetails: SipDetail[];
+  // Expenses & Taxation
+  terMax: string;
+  terSlabs: TerSlab[];
+  taxationSummary: string;
+  // Asset Allocation Ranges
+  assetAllocationRanges: AllocRange[];
+  // Derivatives & Risk Controls
+  grossExposureLimit: string;
+  derivativesRestrictions: string;
+  // Strategy Detail
+  derivativeStrategies: DerivativeStrategy[];
+  alphaGenerationApproach: string;
+  // Fund Administration
+  sponsorName: string;
+  amcName: string;
+  trusteeName: string;
+  registrarName: string;
   // Investor Suitability
   suitableFor: string;
   notSuitableFor: string;
@@ -53,7 +98,7 @@ type AiResult = Partial<{
   aumAggregate: number | null;
   minInvestment: number | null;
   additionalInvestment: number | null;
-  fundManagers: { name: string; designation?: string }[];
+  fundManagers: { name: string; designation?: string; experienceYears?: string | null; managingSince?: string | null }[];
   benchmarkName: string | null;
   benchmarkRiskBand: number | null;
   benchmarkDetails: string | null;
@@ -61,6 +106,38 @@ type AiResult = Partial<{
   portfolioByIndustry: { industry: string; percentage: number }[];
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
+  planCodes: { planName: string; isin: string }[];
+  // Fund Structure
+  schemeCategory: string | null;
+  schemeNature: string | null;
+  inceptionDate: string | null;
+  // Redemption & Liquidity
+  redemptionFrequency: string | null;
+  navCutoffTime: string | null;
+  redemptionPayoutDays: string | null;
+  redemptionNoticePeriod: string | null;
+  penalInterestRate: string | null;
+  // Investment Limits
+  panInvestmentThreshold: string | null;
+  accreditedInvestorMinInvestment: number | null;
+  sipDetails: { frequency: string; minAmount: number; minInstallments: number }[];
+  // Expenses & Taxation
+  terMax: string | null;
+  terSlabs: { aumSlab: string; ter: string }[];
+  taxationSummary: string | null;
+  // Asset Allocation Ranges
+  assetAllocationRanges: { assetClass: string; min: number; max: number }[];
+  // Derivatives & Risk Controls
+  grossExposureLimit: string | null;
+  derivativesRestrictions: string | null;
+  // Strategy Detail
+  derivativeStrategies: { name: string; description: string }[];
+  alphaGenerationApproach: string | null;
+  // Fund Administration
+  sponsorName: string | null;
+  amcName: string | null;
+  trusteeName: string | null;
+  registrarName: string | null;
   // Investor Suitability
   suitableFor: string | null;
   notSuitableFor: string | null;
@@ -80,13 +157,26 @@ const EMPTY_FORM: FormState = {
   riskBand: "", schemeType: "", exitLoad: "",
   aumCurrent: "", aumAggregate: "",
   minInvestment: "1000000", additionalInvestment: "10000",
-  fundManagers: [{ name: "", designation: "" }],
+  fundManagers: [{ name: "", designation: "", experienceYears: "", managingSince: "" }],
   benchmarkName: "", benchmarkRiskBand: "", benchmarkDetails: "",
   assetAllocation: [{ assetClass: "", percentage: "" }],
   portfolioByIndustry: [{ industry: "", percentage: "" }],
   portfolioByRatingClass: [{ ratingClass: "", percentage: "" }],
   topHoldings: [{ name: "", percentage: "", sector: "", rating: "" }],
   factsheets: [],
+  schemeCategory: "", schemeNature: "", inceptionDate: "",
+  planCodes: [{ planName: "", isin: "" }],
+  redemptionFrequency: "", navCutoffTime: "", redemptionPayoutDays: "", redemptionNoticePeriod: "", penalInterestRate: "",
+  panInvestmentThreshold: "", accreditedInvestorMinInvestment: "",
+  sipDetails: [{ frequency: "", minAmount: "", minInstallments: "" }],
+  terMax: "",
+  terSlabs: [{ aumSlab: "", ter: "" }],
+  taxationSummary: "",
+  assetAllocationRanges: [{ assetClass: "", min: "", max: "" }],
+  grossExposureLimit: "", derivativesRestrictions: "",
+  derivativeStrategies: [{ name: "", description: "" }],
+  alphaGenerationApproach: "",
+  sponsorName: "", amcName: "", trusteeName: "", registrarName: "",
   suitableFor: "", notSuitableFor: "",
   bullMarket: "", bearMarket: "", sidewaysMarket: "",
   howItWorks: "", mfEquivalent: "", portfolioFit: "",
@@ -225,8 +315,8 @@ export default function FundDetailsPage() {
           minInvestment: det.minInvestment != null ? String(det.minInvestment) : "10000000",
           additionalInvestment: det.additionalInvestment != null ? String(det.additionalInvestment) : "10000",
           fundManagers: det.fundManagers?.length
-            ? det.fundManagers.map((m: Manager) => ({ name: m.name || "", designation: m.designation || "" }))
-            : [{ name: "", designation: "" }],
+            ? det.fundManagers.map((m: Manager) => ({ name: m.name || "", designation: m.designation || "", experienceYears: m.experienceYears || "", managingSince: m.managingSince || "" }))
+            : [{ name: "", designation: "", experienceYears: "", managingSince: "" }],
           benchmarkName: det.benchmarkName || "",
           benchmarkRiskBand: det.benchmarkRiskBand != null ? String(det.benchmarkRiskBand) : "",
           benchmarkDetails: det.benchmarkDetails || "",
@@ -242,9 +332,43 @@ export default function FundDetailsPage() {
           topHoldings: det.topHoldings?.length
             ? det.topHoldings.map((h: { name: string; percentage: number; sector?: string; rating?: string }) => ({ name: h.name || "", percentage: String(h.percentage), sector: h.sector || "", rating: h.rating || "" }))
             : [{ name: "", percentage: "", sector: "", rating: "" }],
-          factsheets: (det.factsheets || []).map((f: Factsheet) => ({
-            url: f.url, filename: f.filename, uploadedAt: f.uploadedAt,
+          factsheets: (det.factsheets || []).map((f: any) => ({
+            url: f.url, filename: f.filename, documentType: f.documentType || "", uploadedAt: f.uploadedAt,
           })),
+          schemeCategory: det.schemeCategory || "",
+          schemeNature: det.schemeNature || "",
+          inceptionDate: det.inceptionDate || "",
+          planCodes: det.planCodes?.length
+            ? det.planCodes.map((p: PlanCode) => ({ planName: p.planName || "", isin: p.isin || "" }))
+            : [{ planName: "", isin: "" }],
+          redemptionFrequency: det.redemptionFrequency || "",
+          navCutoffTime: det.navCutoffTime || "",
+          redemptionPayoutDays: det.redemptionPayoutDays || "",
+          redemptionNoticePeriod: det.redemptionNoticePeriod || "",
+          penalInterestRate: det.penalInterestRate || "",
+          panInvestmentThreshold: det.panInvestmentThreshold || "",
+          accreditedInvestorMinInvestment: det.accreditedInvestorMinInvestment != null ? String(det.accreditedInvestorMinInvestment) : "",
+          sipDetails: det.sipDetails?.length
+            ? det.sipDetails.map((s: { frequency: string; minAmount: number; minInstallments: number }) => ({ frequency: s.frequency || "", minAmount: String(s.minAmount ?? ""), minInstallments: String(s.minInstallments ?? "") }))
+            : [{ frequency: "", minAmount: "", minInstallments: "" }],
+          terMax: det.terMax || "",
+          terSlabs: det.terSlabs?.length
+            ? det.terSlabs.map((t: TerSlab) => ({ aumSlab: t.aumSlab || "", ter: t.ter || "" }))
+            : [{ aumSlab: "", ter: "" }],
+          taxationSummary: det.taxationSummary || "",
+          assetAllocationRanges: det.assetAllocationRanges?.length
+            ? det.assetAllocationRanges.map((a: { assetClass: string; min: number; max: number }) => ({ assetClass: a.assetClass || "", min: String(a.min ?? ""), max: String(a.max ?? "") }))
+            : [{ assetClass: "", min: "", max: "" }],
+          grossExposureLimit: det.grossExposureLimit || "",
+          derivativesRestrictions: det.derivativesRestrictions || "",
+          derivativeStrategies: det.derivativeStrategies?.length
+            ? det.derivativeStrategies.map((d: DerivativeStrategy) => ({ name: d.name || "", description: d.description || "" }))
+            : [{ name: "", description: "" }],
+          alphaGenerationApproach: det.alphaGenerationApproach || "",
+          sponsorName: det.sponsorName || "",
+          amcName: det.amcName || "",
+          trusteeName: det.trusteeName || "",
+          registrarName: det.registrarName || "",
           suitableFor: det.suitableFor || "",
           notSuitableFor: det.notSuitableFor || "",
           bullMarket: det.bullMarket || "",
@@ -274,13 +398,20 @@ export default function FundDetailsPage() {
       if (d.url) {
         setForm(prev => ({
           ...prev,
-          factsheets: [...prev.factsheets, { url: d.url, filename: d.filename, uploadedAt: new Date().toISOString() }],
+          factsheets: [...prev.factsheets, { url: d.url, filename: d.filename, documentType: "", uploadedAt: new Date().toISOString() }],
         }));
       }
     } finally {
       setUploadingPdf(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleDocumentTypeChange = (idx: number, type: string) => {
+    setForm(prev => ({
+      ...prev,
+      factsheets: prev.factsheets.map((f, i) => i === idx ? { ...f, documentType: type } : f),
+    }));
   };
 
   const removeFactsheet = (idx: number) => {
@@ -299,7 +430,7 @@ export default function FundDetailsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fundName: selectedFund,
-          pdfUrls: form.factsheets.map(f => f.url),
+          files: form.factsheets.map(f => ({ url: f.url, documentType: f.documentType })),
           ...(useManualEntry ? { provider, model: activeModel, apiKey } : {}),
         }),
       });
@@ -320,8 +451,23 @@ export default function FundDetailsPage() {
     if (!aiResult || aiResult[field] == null) return;
     const val = aiResult[field];
     if (field === "fundManagers") {
-      const arr = (val as { name: string; designation?: string }[]) || [];
-      setForm(prev => ({ ...prev, fundManagers: arr.map(m => ({ name: m.name, designation: m.designation || "" })) }));
+      const arr = (val as { name: string; designation?: string; experienceYears?: string | null; managingSince?: string | null }[]) || [];
+      setForm(prev => ({ ...prev, fundManagers: arr.map(m => ({ name: m.name, designation: m.designation || "", experienceYears: m.experienceYears || "", managingSince: m.managingSince || "" })) }));
+    } else if (field === "planCodes") {
+      const arr = (val as { planName: string; isin: string }[]) || [];
+      setForm(prev => ({ ...prev, planCodes: arr.map(p => ({ planName: p.planName, isin: p.isin })) }));
+    } else if (field === "sipDetails") {
+      const arr = (val as { frequency: string; minAmount: number; minInstallments: number }[]) || [];
+      setForm(prev => ({ ...prev, sipDetails: arr.map(s => ({ frequency: s.frequency, minAmount: String(s.minAmount), minInstallments: String(s.minInstallments) })) }));
+    } else if (field === "terSlabs") {
+      const arr = (val as { aumSlab: string; ter: string }[]) || [];
+      setForm(prev => ({ ...prev, terSlabs: arr.map(t => ({ aumSlab: t.aumSlab, ter: t.ter })) }));
+    } else if (field === "assetAllocationRanges") {
+      const arr = (val as { assetClass: string; min: number; max: number }[]) || [];
+      setForm(prev => ({ ...prev, assetAllocationRanges: arr.map(a => ({ assetClass: a.assetClass, min: String(a.min), max: String(a.max) })) }));
+    } else if (field === "derivativeStrategies") {
+      const arr = (val as { name: string; description: string }[]) || [];
+      setForm(prev => ({ ...prev, derivativeStrategies: arr.map(d => ({ name: d.name, description: d.description })) }));
     } else if (field === "assetAllocation") {
       const arr = (val as { assetClass: string; percentage: number }[]) || [];
       setForm(prev => ({ ...prev, assetAllocation: arr.map(a => ({ assetClass: a.assetClass, percentage: String(a.percentage) })) }));
@@ -363,7 +509,9 @@ export default function FundDetailsPage() {
           aumAggregate: form.aumAggregate !== "" ? Number(form.aumAggregate) : null,
           minInvestment: form.minInvestment !== "" ? Number(form.minInvestment) : 10_000_000,
           additionalInvestment: form.additionalInvestment !== "" ? Number(form.additionalInvestment) : 10_000,
-          fundManagers: form.fundManagers.filter(m => m.name.trim()),
+          fundManagers: form.fundManagers.filter(m => m.name.trim()).map(m => ({
+            name: m.name, designation: m.designation, experienceYears: m.experienceYears || undefined, managingSince: m.managingSince || undefined,
+          })),
           benchmarkName: form.benchmarkName,
           benchmarkRiskBand: form.benchmarkRiskBand !== "" ? Number(form.benchmarkRiskBand) : null,
           benchmarkDetails: form.benchmarkDetails,
@@ -380,6 +528,34 @@ export default function FundDetailsPage() {
             .filter(h => h.name.trim())
             .map(h => ({ name: h.name, percentage: Number(h.percentage) || 0, sector: h.sector, rating: h.rating || undefined })),
           factsheets: form.factsheets,
+          schemeCategory: form.schemeCategory,
+          schemeNature: form.schemeNature,
+          inceptionDate: form.inceptionDate,
+          planCodes: form.planCodes.filter(p => p.planName.trim()).map(p => ({ planName: p.planName, isin: p.isin })),
+          redemptionFrequency: form.redemptionFrequency,
+          navCutoffTime: form.navCutoffTime,
+          redemptionPayoutDays: form.redemptionPayoutDays,
+          redemptionNoticePeriod: form.redemptionNoticePeriod,
+          penalInterestRate: form.penalInterestRate,
+          panInvestmentThreshold: form.panInvestmentThreshold,
+          accreditedInvestorMinInvestment: form.accreditedInvestorMinInvestment !== "" ? Number(form.accreditedInvestorMinInvestment) : null,
+          sipDetails: form.sipDetails
+            .filter(s => s.frequency.trim())
+            .map(s => ({ frequency: s.frequency, minAmount: Number(s.minAmount) || 0, minInstallments: Number(s.minInstallments) || 0 })),
+          terMax: form.terMax,
+          terSlabs: form.terSlabs.filter(t => t.aumSlab.trim()).map(t => ({ aumSlab: t.aumSlab, ter: t.ter })),
+          taxationSummary: form.taxationSummary,
+          assetAllocationRanges: form.assetAllocationRanges
+            .filter(a => a.assetClass.trim())
+            .map(a => ({ assetClass: a.assetClass, min: Number(a.min) || 0, max: Number(a.max) || 0 })),
+          grossExposureLimit: form.grossExposureLimit,
+          derivativesRestrictions: form.derivativesRestrictions,
+          derivativeStrategies: form.derivativeStrategies.filter(d => d.name.trim()).map(d => ({ name: d.name, description: d.description })),
+          alphaGenerationApproach: form.alphaGenerationApproach,
+          sponsorName: form.sponsorName,
+          amcName: form.amcName,
+          trusteeName: form.trusteeName,
+          registrarName: form.registrarName,
           suitableFor: form.suitableFor,
           notSuitableFor: form.notSuitableFor,
           bullMarket: form.bullMarket,
@@ -405,8 +581,33 @@ export default function FundDetailsPage() {
 
   const updateManager = (i: number, k: keyof Manager, v: string) =>
     setForm(prev => ({ ...prev, fundManagers: prev.fundManagers.map((m, idx) => idx === i ? { ...m, [k]: v } : m) }));
-  const addManager = () => setForm(prev => ({ ...prev, fundManagers: [...prev.fundManagers, { name: "", designation: "" }] }));
+  const addManager = () => setForm(prev => ({ ...prev, fundManagers: [...prev.fundManagers, { name: "", designation: "", experienceYears: "", managingSince: "" }] }));
   const removeManager = (i: number) => setForm(prev => ({ ...prev, fundManagers: prev.fundManagers.filter((_, idx) => idx !== i) }));
+
+  const updatePlanCode = (i: number, k: keyof PlanCode, v: string) =>
+    setForm(prev => ({ ...prev, planCodes: prev.planCodes.map((p, idx) => idx === i ? { ...p, [k]: v } : p) }));
+  const addPlanCode = () => setForm(prev => ({ ...prev, planCodes: [...prev.planCodes, { planName: "", isin: "" }] }));
+  const removePlanCode = (i: number) => setForm(prev => ({ ...prev, planCodes: prev.planCodes.filter((_, idx) => idx !== i) }));
+
+  const updateSipDetail = (i: number, k: keyof SipDetail, v: string) =>
+    setForm(prev => ({ ...prev, sipDetails: prev.sipDetails.map((s, idx) => idx === i ? { ...s, [k]: v } : s) }));
+  const addSipDetail = () => setForm(prev => ({ ...prev, sipDetails: [...prev.sipDetails, { frequency: "", minAmount: "", minInstallments: "" }] }));
+  const removeSipDetail = (i: number) => setForm(prev => ({ ...prev, sipDetails: prev.sipDetails.filter((_, idx) => idx !== i) }));
+
+  const updateTerSlab = (i: number, k: keyof TerSlab, v: string) =>
+    setForm(prev => ({ ...prev, terSlabs: prev.terSlabs.map((t, idx) => idx === i ? { ...t, [k]: v } : t) }));
+  const addTerSlab = () => setForm(prev => ({ ...prev, terSlabs: [...prev.terSlabs, { aumSlab: "", ter: "" }] }));
+  const removeTerSlab = (i: number) => setForm(prev => ({ ...prev, terSlabs: prev.terSlabs.filter((_, idx) => idx !== i) }));
+
+  const updateAllocRange = (i: number, k: keyof AllocRange, v: string) =>
+    setForm(prev => ({ ...prev, assetAllocationRanges: prev.assetAllocationRanges.map((a, idx) => idx === i ? { ...a, [k]: v } : a) }));
+  const addAllocRange = () => setForm(prev => ({ ...prev, assetAllocationRanges: [...prev.assetAllocationRanges, { assetClass: "", min: "", max: "" }] }));
+  const removeAllocRange = (i: number) => setForm(prev => ({ ...prev, assetAllocationRanges: prev.assetAllocationRanges.filter((_, idx) => idx !== i) }));
+
+  const updateDerivativeStrategy = (i: number, k: keyof DerivativeStrategy, v: string) =>
+    setForm(prev => ({ ...prev, derivativeStrategies: prev.derivativeStrategies.map((d, idx) => idx === i ? { ...d, [k]: v } : d) }));
+  const addDerivativeStrategy = () => setForm(prev => ({ ...prev, derivativeStrategies: [...prev.derivativeStrategies, { name: "", description: "" }] }));
+  const removeDerivativeStrategy = (i: number) => setForm(prev => ({ ...prev, derivativeStrategies: prev.derivativeStrategies.filter((_, idx) => idx !== i) }));
 
   const updateAllocation = (i: number, k: keyof Allocation, v: string) =>
     setForm(prev => ({ ...prev, assetAllocation: prev.assetAllocation.map((a, idx) => idx === i ? { ...a, [k]: v } : a) }));
@@ -532,6 +733,23 @@ export default function FundDetailsPage() {
                   {aiResult?.exitLoad != null && <AiValueBadge value={String(aiResult.exitLoad)} onApply={() => applyField("exitLoad")} />}
                 </FieldRow>
 
+                {/* Fund Structure */}
+                <SectionHeader title="Fund Structure" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Scheme Category">
+                    <input className={inputCls} value={form.schemeCategory} onChange={setField("schemeCategory")} placeholder="e.g. SIF - Category III AIF, Hybrid Long-Short" />
+                    {aiResult?.schemeCategory != null && <AiValueBadge value={String(aiResult.schemeCategory)} onApply={() => applyField("schemeCategory")} />}
+                  </FieldRow>
+                  <FieldRow label="Scheme Nature">
+                    <input className={inputCls} value={form.schemeNature} onChange={setField("schemeNature")} placeholder="e.g. Open Ended / Interval" />
+                    {aiResult?.schemeNature != null && <AiValueBadge value={String(aiResult.schemeNature)} onApply={() => applyField("schemeNature")} />}
+                  </FieldRow>
+                </div>
+                <FieldRow label="Inception Date">
+                  <input className={inputCls} value={form.inceptionDate} onChange={setField("inceptionDate")} placeholder="e.g. 15 Mar 2025" />
+                  {aiResult?.inceptionDate != null && <AiValueBadge value={String(aiResult.inceptionDate)} onApply={() => applyField("inceptionDate")} />}
+                </FieldRow>
+
                 {/* AUM */}
                 <SectionHeader title="AUM (₹ Crore)" />
                 <div className="grid grid-cols-3 gap-x-4">
@@ -568,14 +786,20 @@ export default function FundDetailsPage() {
                 )}
                 <div className="space-y-2 mt-2">
                   {form.fundManagers.map((m, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input className={inputCls} value={m.name} onChange={e => updateManager(i, "name", e.target.value)} placeholder="Manager name" />
-                      <input className={inputCls} value={m.designation} onChange={e => updateManager(i, "designation", e.target.value)} placeholder="Designation" />
-                      {form.fundManagers.length > 1 && (
-                        <button onClick={() => removeManager(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      )}
+                    <div key={i} className="flex flex-col gap-1.5 pb-2 border-b border-[#F1F5F9] last:border-0">
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} flex-1`} value={m.name} onChange={e => updateManager(i, "name", e.target.value)} placeholder="Manager name" />
+                        <input className={`${inputFlexCls} flex-1`} value={m.designation} onChange={e => updateManager(i, "designation", e.target.value)} placeholder="Designation" />
+                        {form.fundManagers.length > 1 && (
+                          <button onClick={() => removeManager(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} flex-1`} value={m.experienceYears} onChange={e => updateManager(i, "experienceYears", e.target.value)} placeholder="Experience (e.g. 15+ years)" />
+                        <input className={`${inputFlexCls} flex-1`} value={m.managingSince} onChange={e => updateManager(i, "managingSince", e.target.value)} placeholder="Managing since (e.g. Mar 2025)" />
+                      </div>
                     </div>
                   ))}
                   <button onClick={addManager} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
@@ -719,6 +943,219 @@ export default function FundDetailsPage() {
                   </button>
                 </div>
 
+                {/* Plan Codes */}
+                <SectionHeader title="Plan Codes (ISIN)" />
+                {aiResult?.planCodes != null && (
+                  <AiValueBadge
+                    value={(aiResult.planCodes as { planName: string; isin: string }[]).map(p => `${p.planName}: ${p.isin}`).join(", ")}
+                    onApply={() => applyField("planCodes")}
+                  />
+                )}
+                <div className="space-y-2 mt-2">
+                  {form.planCodes.map((p, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input className={inputCls} value={p.planName} onChange={e => updatePlanCode(i, "planName", e.target.value)} placeholder="Plan name (e.g. Regular Growth)" />
+                      <input className={inputCls} value={p.isin} onChange={e => updatePlanCode(i, "isin", e.target.value)} placeholder="ISIN" />
+                      {form.planCodes.length > 1 && (
+                        <button onClick={() => removePlanCode(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={addPlanCode} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add plan code
+                  </button>
+                </div>
+
+                {/* Redemption & Liquidity */}
+                <SectionHeader title="Redemption & Liquidity" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Redemption Frequency">
+                    <input className={inputCls} value={form.redemptionFrequency} onChange={setField("redemptionFrequency")} placeholder="e.g. Every Monday and Wednesday" />
+                    {aiResult?.redemptionFrequency != null && <AiValueBadge value={String(aiResult.redemptionFrequency)} onApply={() => applyField("redemptionFrequency")} />}
+                  </FieldRow>
+                  <FieldRow label="NAV Cut-off Time">
+                    <input className={inputCls} value={form.navCutoffTime} onChange={setField("navCutoffTime")} placeholder="e.g. 3:00 p.m." />
+                    {aiResult?.navCutoffTime != null && <AiValueBadge value={String(aiResult.navCutoffTime)} onApply={() => applyField("navCutoffTime")} />}
+                  </FieldRow>
+                  <FieldRow label="Redemption Payout">
+                    <input className={inputCls} value={form.redemptionPayoutDays} onChange={setField("redemptionPayoutDays")} placeholder="e.g. 3 business days" />
+                    {aiResult?.redemptionPayoutDays != null && <AiValueBadge value={String(aiResult.redemptionPayoutDays)} onApply={() => applyField("redemptionPayoutDays")} />}
+                  </FieldRow>
+                  <FieldRow label="Redemption Notice Period">
+                    <input className={inputCls} value={form.redemptionNoticePeriod} onChange={setField("redemptionNoticePeriod")} placeholder="e.g. 15 days" />
+                    {aiResult?.redemptionNoticePeriod != null && <AiValueBadge value={String(aiResult.redemptionNoticePeriod)} onApply={() => applyField("redemptionNoticePeriod")} />}
+                  </FieldRow>
+                </div>
+                <FieldRow label="Penal Interest Rate (delayed payout)">
+                  <input className={inputCls} value={form.penalInterestRate} onChange={setField("penalInterestRate")} placeholder="e.g. 15% p.a." />
+                  {aiResult?.penalInterestRate != null && <AiValueBadge value={String(aiResult.penalInterestRate)} onApply={() => applyField("penalInterestRate")} />}
+                </FieldRow>
+
+                {/* Investment Limits */}
+                <SectionHeader title="Investment Limits" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="PAN-Level Investment Threshold">
+                    <input className={inputCls} value={form.panInvestmentThreshold} onChange={setField("panInvestmentThreshold")} placeholder="e.g. ₹10,00,000 across all SIF strategies of the AMC" />
+                    {aiResult?.panInvestmentThreshold != null && <AiValueBadge value={String(aiResult.panInvestmentThreshold)} onApply={() => applyField("panInvestmentThreshold")} />}
+                  </FieldRow>
+                  <FieldRow label="Accredited Investor Min. Investment (₹)">
+                    <input type="number" className={inputCls} value={form.accreditedInvestorMinInvestment} onChange={setField("accreditedInvestorMinInvestment")} placeholder="10000" />
+                    {aiResult?.accreditedInvestorMinInvestment != null && <AiValueBadge value={String(aiResult.accreditedInvestorMinInvestment)} onApply={() => applyField("accreditedInvestorMinInvestment")} />}
+                  </FieldRow>
+                </div>
+                <p className="text-[12px] font-medium text-[#64748B] mb-1 mt-3">SIP Details</p>
+                {aiResult?.sipDetails != null && (
+                  <AiValueBadge
+                    value={(aiResult.sipDetails as { frequency: string; minAmount: number; minInstallments: number }[]).map(s => `${s.frequency}: ₹${s.minAmount} × ${s.minInstallments}`).join(", ")}
+                    onApply={() => applyField("sipDetails")}
+                  />
+                )}
+                <div className="space-y-2 mt-2">
+                  {form.sipDetails.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input className={`${inputFlexCls} flex-1`} value={s.frequency} onChange={e => updateSipDetail(i, "frequency", e.target.value)} placeholder="Frequency (e.g. Monthly)" />
+                      <input type="number" className={`${inputFlexCls} w-32 shrink-0`} value={s.minAmount} onChange={e => updateSipDetail(i, "minAmount", e.target.value)} placeholder="Min amount (₹)" />
+                      <input type="number" className={`${inputFlexCls} w-32 shrink-0`} value={s.minInstallments} onChange={e => updateSipDetail(i, "minInstallments", e.target.value)} placeholder="Min installments" />
+                      {form.sipDetails.length > 1 && (
+                        <button onClick={() => removeSipDetail(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={addSipDetail} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add SIP option
+                  </button>
+                </div>
+
+                {/* Expenses & Taxation */}
+                <SectionHeader title="Expenses & Taxation" />
+                <FieldRow label="Maximum TER">
+                  <input className={inputCls} value={form.terMax} onChange={setField("terMax")} placeholder="e.g. 2.25%" />
+                  {aiResult?.terMax != null && <AiValueBadge value={String(aiResult.terMax)} onApply={() => applyField("terMax")} />}
+                </FieldRow>
+                <p className="text-[12px] font-medium text-[#64748B] mb-1 mt-3">TER Slabs</p>
+                {aiResult?.terSlabs != null && (
+                  <AiValueBadge
+                    value={(aiResult.terSlabs as { aumSlab: string; ter: string }[]).map(t => `${t.aumSlab}: ${t.ter}`).join(", ")}
+                    onApply={() => applyField("terSlabs")}
+                  />
+                )}
+                <div className="space-y-2 mt-2">
+                  {form.terSlabs.map((t, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input className={`${inputFlexCls} flex-1`} value={t.aumSlab} onChange={e => updateTerSlab(i, "aumSlab", e.target.value)} placeholder="AUM slab (e.g. First ₹500 Cr)" />
+                      <input className={`${inputFlexCls} w-28 shrink-0`} value={t.ter} onChange={e => updateTerSlab(i, "ter", e.target.value)} placeholder="TER (e.g. 2.00%)" />
+                      {form.terSlabs.length > 1 && (
+                        <button onClick={() => removeTerSlab(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={addTerSlab} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add TER slab
+                  </button>
+                </div>
+                <FieldRow label="Taxation Summary">
+                  <textarea className={`${textareaCls} h-24`} value={form.taxationSummary} onChange={setField("taxationSummary")} placeholder="Capital gains treatment, holding periods, applicable rates..." />
+                  {aiResult?.taxationSummary != null && <AiValueBadge value={String(aiResult.taxationSummary)} onApply={() => applyField("taxationSummary")} />}
+                </FieldRow>
+
+                {/* Asset Allocation Ranges */}
+                <SectionHeader title="Asset Allocation Ranges (Permitted)" />
+                {aiResult?.assetAllocationRanges != null && (
+                  <AiValueBadge
+                    value={(aiResult.assetAllocationRanges as { assetClass: string; min: number; max: number }[]).map(a => `${a.assetClass}: ${a.min}–${a.max}%`).join(", ")}
+                    onApply={() => applyField("assetAllocationRanges")}
+                  />
+                )}
+                <div className="space-y-2 mt-2">
+                  {form.assetAllocationRanges.map((a, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input className={`${inputFlexCls} flex-1`} value={a.assetClass} onChange={e => updateAllocRange(i, "assetClass", e.target.value)} placeholder="Asset class" />
+                      <input type="number" className={`${inputFlexCls} w-24 shrink-0`} value={a.min} onChange={e => updateAllocRange(i, "min", e.target.value)} placeholder="Min %" />
+                      <input type="number" className={`${inputFlexCls} w-24 shrink-0`} value={a.max} onChange={e => updateAllocRange(i, "max", e.target.value)} placeholder="Max %" />
+                      {form.assetAllocationRanges.length > 1 && (
+                        <button onClick={() => removeAllocRange(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={addAllocRange} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add range
+                  </button>
+                </div>
+
+                {/* Derivatives & Risk Controls */}
+                <SectionHeader title="Derivatives & Risk Controls" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Gross Exposure Limit">
+                    <input className={inputCls} value={form.grossExposureLimit} onChange={setField("grossExposureLimit")} placeholder="e.g. Up to 100% of NAV" />
+                    {aiResult?.grossExposureLimit != null && <AiValueBadge value={String(aiResult.grossExposureLimit)} onApply={() => applyField("grossExposureLimit")} />}
+                  </FieldRow>
+                </div>
+                <FieldRow label="Derivatives Restrictions">
+                  <textarea className={`${textareaCls} h-16`} value={form.derivativesRestrictions} onChange={setField("derivativesRestrictions")} placeholder="e.g. CDS not permitted; unhedged exposure ≤ 25%, overseas ≤ 35%" />
+                  {aiResult?.derivativesRestrictions != null && <AiValueBadge value={String(aiResult.derivativesRestrictions)} onApply={() => applyField("derivativesRestrictions")} />}
+                </FieldRow>
+
+                {/* Strategy Detail */}
+                <SectionHeader title="Strategy Detail" />
+                <p className="text-[12px] font-medium text-[#64748B] mb-1">Derivative Strategies</p>
+                {aiResult?.derivativeStrategies != null && (
+                  <AiValueBadge
+                    value={(aiResult.derivativeStrategies as { name: string; description: string }[]).map(d => `${d.name}: ${d.description}`).join(" | ")}
+                    onApply={() => applyField("derivativeStrategies")}
+                  />
+                )}
+                <div className="space-y-2 mt-2">
+                  {form.derivativeStrategies.map((d, i) => (
+                    <div key={i} className="flex flex-col gap-1.5 pb-2 border-b border-[#F1F5F9] last:border-0">
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} flex-1`} value={d.name} onChange={e => updateDerivativeStrategy(i, "name", e.target.value)} placeholder="Strategy name (e.g. Cash-Future Arbitrage)" />
+                        {form.derivativeStrategies.length > 1 && (
+                          <button onClick={() => removeDerivativeStrategy(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <textarea className={`${textareaCls} h-14`} value={d.description} onChange={e => updateDerivativeStrategy(i, "description", e.target.value)} placeholder="Short description of how this strategy works..." />
+                    </div>
+                  ))}
+                  <button onClick={addDerivativeStrategy} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add strategy
+                  </button>
+                </div>
+                <FieldRow label="Alpha Generation Approach">
+                  <textarea className={`${textareaCls} h-20`} value={form.alphaGenerationApproach} onChange={setField("alphaGenerationApproach")} placeholder="How the fund seeks to generate alpha beyond market beta..." />
+                  {aiResult?.alphaGenerationApproach != null && <AiValueBadge value={String(aiResult.alphaGenerationApproach)} onApply={() => applyField("alphaGenerationApproach")} />}
+                </FieldRow>
+
+                {/* Fund Administration */}
+                <SectionHeader title="Fund Administration" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Sponsor">
+                    <input className={inputCls} value={form.sponsorName} onChange={setField("sponsorName")} placeholder="Sponsor name" />
+                    {aiResult?.sponsorName != null && <AiValueBadge value={String(aiResult.sponsorName)} onApply={() => applyField("sponsorName")} />}
+                  </FieldRow>
+                  <FieldRow label="AMC / Investment Manager">
+                    <input className={inputCls} value={form.amcName} onChange={setField("amcName")} placeholder="AMC name" />
+                    {aiResult?.amcName != null && <AiValueBadge value={String(aiResult.amcName)} onApply={() => applyField("amcName")} />}
+                  </FieldRow>
+                  <FieldRow label="Trustee">
+                    <input className={inputCls} value={form.trusteeName} onChange={setField("trusteeName")} placeholder="Trustee company name" />
+                    {aiResult?.trusteeName != null && <AiValueBadge value={String(aiResult.trusteeName)} onApply={() => applyField("trusteeName")} />}
+                  </FieldRow>
+                  <FieldRow label="Registrar (RTA)">
+                    <input className={inputCls} value={form.registrarName} onChange={setField("registrarName")} placeholder="Registrar / transfer agent name" />
+                    {aiResult?.registrarName != null && <AiValueBadge value={String(aiResult.registrarName)} onApply={() => applyField("registrarName")} />}
+                  </FieldRow>
+                </div>
+
                 {/* Investor Suitability */}
                 <SectionHeader title="Investor Suitability" />
                 <FieldRow label="Suitable For">
@@ -791,15 +1228,31 @@ export default function FundDetailsPage() {
             {form.factsheets.length > 0 && (
               <div className="space-y-2 mb-4">
                 {form.factsheets.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC]">
-                    <FileText className="size-4 text-primary shrink-0" />
-                    <span className="text-[12px] text-[#0B1F3A] flex-1 truncate">{f.filename}</span>
-                    <a href={f.url} target="_blank" rel="noreferrer" className="text-[#94A3B8] hover:text-primary transition-colors">
-                      <ExternalLink className="size-3.5" />
-                    </a>
-                    <button onClick={() => removeFactsheet(i)} className="text-[#94A3B8] hover:text-[#EF4444] transition-colors ml-1">
-                      <Trash2 className="size-3.5" />
-                    </button>
+                  <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3 py-2.5 rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC]">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <FileText className="size-4 text-primary shrink-0" />
+                      <span className="text-[12px] text-[#0B1F3A] truncate font-medium" title={f.filename}>{f.filename}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <select
+                        value={f.documentType}
+                        onChange={(e) => handleDocumentTypeChange(i, e.target.value)}
+                        className="text-[11.5px] font-medium text-[#0B1F3A] bg-white border border-[#E2E8F0] rounded-[6px] px-2 py-1 outline-none focus:border-primary cursor-pointer min-w-[150px] transition-colors"
+                      >
+                        <option value="">— Select Type —</option>
+                        {DOCUMENT_TYPES.map(type => {
+                          const isSelectedElsewhere = form.factsheets.some((otherF, otherIdx) => otherIdx !== i && otherF.documentType === type);
+                          if (isSelectedElsewhere) return null;
+                          return <option key={type} value={type}>{type}</option>;
+                        })}
+                      </select>
+                      <a href={f.url} target="_blank" rel="noreferrer" className="p-1 text-[#94A3B8] hover:text-primary hover:bg-white rounded-[6px] border border-transparent hover:border-[#E2E8F0] transition-all" title="View Document">
+                        <ExternalLink className="size-3.5" />
+                      </a>
+                      <button onClick={() => removeFactsheet(i)} className="p-1 text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 rounded-[6px] border border-transparent hover:border-red-100 transition-all ml-0.5" title="Remove Document">
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -958,6 +1411,30 @@ export default function FundDetailsPage() {
                           portfolioByIndustry: "Portfolio by Industry",
                           portfolioByRatingClass: "Portfolio by Rating Class",
                           topHoldings: "Top Holdings",
+                          planCodes: "Plan Codes",
+                          schemeCategory: "Scheme Category",
+                          schemeNature: "Scheme Nature",
+                          inceptionDate: "Inception Date",
+                          redemptionFrequency: "Redemption Frequency",
+                          navCutoffTime: "NAV Cut-off Time",
+                          redemptionPayoutDays: "Redemption Payout",
+                          redemptionNoticePeriod: "Redemption Notice Period",
+                          penalInterestRate: "Penal Interest Rate",
+                          panInvestmentThreshold: "PAN Investment Threshold",
+                          accreditedInvestorMinInvestment: "Accredited Investor Min. Investment",
+                          sipDetails: "SIP Details",
+                          terMax: "Maximum TER",
+                          terSlabs: "TER Slabs",
+                          taxationSummary: "Taxation Summary",
+                          assetAllocationRanges: "Asset Allocation Ranges",
+                          grossExposureLimit: "Gross Exposure Limit",
+                          derivativesRestrictions: "Derivatives Restrictions",
+                          derivativeStrategies: "Derivative Strategies",
+                          alphaGenerationApproach: "Alpha Generation Approach",
+                          sponsorName: "Sponsor",
+                          amcName: "AMC / Investment Manager",
+                          trusteeName: "Trustee",
+                          registrarName: "Registrar (RTA)",
                           suitableFor: "Suitable For",
                           notSuitableFor: "Not Suitable For",
                           bullMarket: "Bull Market Performance",

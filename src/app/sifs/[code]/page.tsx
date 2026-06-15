@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Plus, ShieldCheck, TrendingUp, MinusCircle, ExternalLink, CalendarDays, Info } from "lucide-react";
+import { Plus, ShieldCheck, TrendingUp, MinusCircle, ExternalLink, CalendarDays, Info, ArrowUp, ArrowDown } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { SourceBadge } from "@/components/ui/SourceBadge";
-import { getFundDetail, getFundDetailsForName } from "@/lib/sifData";
+import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
+import { getCategoryAverageSeries } from "@/lib/categoryAverages";
 import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
 import { SEBIRiskometer, RISK_LABELS } from "@/components/ui/RiskMeter";
 import type { Metadata } from "next";
@@ -31,9 +32,24 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const fund = await getFundDetail(code);
   if (!fund) notFound();
   const fundDetails = await getFundDetailsForName(fund.fundName).catch(() => null);
+  const allFunds = await getTopFunds();
+  const PERIOD_KEYS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
+  const categoryAvg = PERIOD_KEYS.reduce((acc, p) => {
+    acc[p] = getCategoryAverageSeries(allFunds, fund.strategy, p);
+    return acc;
+  }, {} as Record<PeriodKey, { data: number[]; dates: string[] } | null>);
 
   const siReturn = fund.returns.SI;
   const positive = siReturn !== null ? siReturn >= 0 : true;
+  const fundAgeYears = (new Date(fund.navDate).getTime() - new Date(fund.launchDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  const siLabel = fundAgeYears > 1 ? "Since Inception (CAGR)" : "Since Inception";
+
+  // 1-day NAV change
+  const navHistory = fund.navHistory;
+  const prevNav = navHistory.length >= 2 ? navHistory[navHistory.length - 2].nav : null;
+  const navChange = prevNav !== null ? fund.nav - prevNav : null;
+  const navChangePct = prevNav !== null && prevNav !== 0 ? (navChange! / prevNav) * 100 : null;
+  const navChangePositive = navChange !== null ? navChange >= 0 : true;
 
   // When ?variant=reinvest, show the reinvestment ISIN instead
   const reinvestVariant = fund.variants.find((v) => v.option === "IDCW Reinvestment" && v.schemeCode === fund.schemeCode);
@@ -50,7 +66,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
     { label: "3M", value: fmtReturn(fund.returns["3M"]) },
     { label: "6M", value: fmtReturn(fund.returns["6M"]) },
     { label: "1Y", value: fmtReturn(fund.returns["1Y"]) },
-    { label: "Since Inception", value: fmtReturn(fund.returns.SI) },
+    { label: siLabel, value: fmtReturn(fund.returns.SI) },
   ];
 
   const STRATEGY_EXPLAINERS: Record<string, { what: string; how: string; when: string; risk: string }> = {
@@ -189,6 +205,23 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   </div>
                 )}
 
+                {/* Returns grid */}
+                <div className="mt-6 grid grid-cols-3 md:grid-cols-6 gap-px bg-white/10 border border-white/10 rounded-[14px] overflow-hidden">
+                  {RETURN_ROWS.map(({ label, value }) => {
+                    const val = value ? parseFloat(value) : null;
+                    return (
+                      <div key={label} className="bg-white/5 p-4 text-center">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{label}</div>
+                        {value !== null ? (
+                          <div className={`text-[16px] font-bold tabular ${val! >= 0 ? "text-[#6EF0B6]" : "text-[#FF8080]"}`}>{value}</div>
+                        ) : (
+                          <div className="text-[12px] text-white/40">Insufficient history</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Trust strip */}
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-white/50">
                   <span className="inline-flex items-center gap-1.5">
@@ -213,20 +246,26 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   <div className="text-[42px] font-bold tracking-tight tabular text-white leading-none">
                     ₹{fund.nav.toFixed(4)}
                   </div>
+                  {navChange !== null && (
+                    <div className={`mt-2 flex items-center gap-1 text-[15px] font-bold tabular ${navChangePositive ? "text-[#6EF0B6]" : "text-[#FF8080]"}`}>
+                      {navChangePositive ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
+                      <span>{Math.abs(navChange).toFixed(4)}</span>
+                      {navChangePct !== null && (
+                        <span className="opacity-80">({navChangePositive ? "+" : "-"}{Math.abs(navChangePct).toFixed(2)}%)</span>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-1.5 flex items-center gap-2 text-[12px] text-white/50">
-                    <CalendarDays className="size-3.5" />
                     <span>As of {fund.navDate}</span>
-                    <SourceBadge variant="amfi" className="text-[9.5px]" />
                   </div>
                 </div>
 
                 {siReturn !== null && (
                   <div className="pt-3 border-t border-white/10">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-white/50 mb-1">Since Inception</div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-white/50 mb-1">{siLabel}</div>
                     <div className={`text-[22px] font-bold tabular ${positive ? "text-[#6EF0B6]" : "text-[#FF8080]"}`}>
                       {positive ? "+" : ""}{siReturn.toFixed(2)}%
                     </div>
-                    <SourceBadge variant="calculated" className="text-[9.5px] mt-1.5" />
                   </div>
                 )}
 
@@ -247,30 +286,12 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
         {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
         <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-10 space-y-12">
 
-          {/* ── RETURNS GRID ─────────────────────────────────────────────── */}
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-px bg-rule border border-rule rounded-[18px] overflow-hidden shadow-card">
-            {RETURN_ROWS.map(({ label, value }) => {
-              const val = value ? parseFloat(value) : null;
-              return (
-                <div key={label} className="bg-white p-4 text-center">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">{label}</div>
-                  {value !== null ? (
-                    <div className={`text-[16px] font-bold tabular ${val! >= 0 ? "text-gain" : "text-loss"}`}>{value}</div>
-                  ) : (
-                    <div className="text-[12px] text-muted">Insufficient history</div>
-                  )}
-                  {value !== null && (
-                    <SourceBadge variant="calculated" className="text-[8.5px] mt-2" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
           {/* ── PERFORMANCE CHART + RISK METRICS ─────────────────────────── */}
           <section>
             <FundDetailPanel
               fund={fund}
+              categoryAvg={categoryAvg}
+              categoryLabel={fund.strategy}
               header={
                 <div className="mb-4">
                   <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Performance</div>
@@ -441,7 +462,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                     { field: "Latest NAV", value: `₹${fund.nav.toFixed(4)}`, badge: "amfi" as const },
                     { field: "NAV Date", value: fund.navDate, badge: "amfi" as const },
                     { field: "SIF / Scheme Code", value: fund.schemeCode, badge: "amfi" as const },
-                    { field: "Since Inception Return", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
+                    { field: siLabel + " Return", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
                     { field: "Sharpe Ratio", value: fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : "Insufficient history", badge: "calculated" as const },
                     { field: "Volatility", value: fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
                     { field: "Expense Ratio / TER", value: "Pending", badge: "review" as const },

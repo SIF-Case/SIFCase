@@ -97,6 +97,13 @@ function pct(current: number, base: number): number {
   return +((( current - base) / base) * 100).toFixed(2);
 }
 
+// Annualised (CAGR) return for periods longer than 1 year; absolute return otherwise.
+function annualizedReturn(current: number, base: number, startDate: Date, endDate: Date): number {
+  const years = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  if (years <= 1) return pct(current, base);
+  return +((Math.pow(current / base, 1 / years) - 1) * 100).toFixed(2);
+}
+
 function fmtReturn(val: number | null): string | null {
   if (val === null) return null;
   return (val >= 0 ? "+" : "") + val.toFixed(2);
@@ -274,7 +281,7 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: s
           : null,
       returnSI:
         first.nav !== latest.nav || records.length > 1
-          ? fmtReturn(pct(latest.nav, first.nav))
+          ? fmtReturn(annualizedReturn(latest.nav, first.nav, new Date(first.navDate), latestDate))
           : null,
     });
   }
@@ -445,7 +452,12 @@ export async function getTopFunds(): Promise<FundRow[]> {
           "6M": s.return6m ? parseFloat(s.return6m) : null,
           "1Y": s.return1y ? parseFloat(s.return1y) : null,
           "SI": allHistory.length > 1
-            ? pct(allHistory[allHistory.length - 1].nav, allHistory[0].nav)
+            ? annualizedReturn(
+                allHistory[allHistory.length - 1].nav,
+                allHistory[0].nav,
+                allHistory[0].navDate,
+                allHistory[allHistory.length - 1].navDate
+              )
             : null,
         },
         sharpes,
@@ -649,7 +661,7 @@ export interface FundDetailsData {
   portfolioByIndustry: { industry: string; percentage: number }[];
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
-  factsheets: { url: string; filename: string; uploadedAt: string }[];
+  factsheets: { url: string; filename: string; documentType?: string; uploadedAt: string }[];
   suitableFor: string;
   notSuitableFor: string;
   bullMarket: string;
@@ -817,7 +829,7 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
       "3M": computeReturn(slice3m),
       "6M": computeReturn(slice6m),
       "1Y": computeReturn(slice1y),
-      SI: pct(latest.nav, first.nav),
+      SI: annualizedReturn(latest.nav, first.nav, first.navDate, latestDate),
     },
     sharpes: {
       "1M": computeSharpe(slice1m),

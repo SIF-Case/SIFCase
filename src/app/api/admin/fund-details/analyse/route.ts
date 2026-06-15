@@ -11,6 +11,8 @@ import { z } from "zod";
 const FundManagerSchema = z.object({
   name: z.string(),
   designation: z.string().default("Fund Manager"),
+  experienceYears: z.string().nullable().describe("Total years of experience, e.g. '15+ years'"),
+  managingSince: z.string().nullable().describe("Date or period this manager has been managing this fund, e.g. 'Mar 2025'"),
 });
 
 const AssetAllocationSchema = z.object({
@@ -30,6 +32,8 @@ const HoldingSchema = z.object({
   rating: z.string().nullable(),
 });
 
+// ─── Factsheet — best-source fields ────────────────────────────────────────────
+
 export const FactsheetExtractionSchema = z.object({
   riskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5: 1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High"),
   schemeType: z.string().nullable().describe("Strategy/fund type from header, e.g. 'Hybrid Long-Short Fund'"),
@@ -38,7 +42,7 @@ export const FactsheetExtractionSchema = z.object({
   aumAggregate: z.number().nullable().describe("Monthly Average AUM (AAUM) if stated separately from month-end AUM, otherwise null"),
   minInvestment: z.number().nullable().describe("Initial minimum investment in ₹ as a number"),
   additionalInvestment: z.number().nullable().describe("Additional investment per transaction in ₹, null if only Re.1"),
-  fundManagers: z.array(FundManagerSchema).describe("All fund managers with name and designation"),
+  fundManagers: z.array(FundManagerSchema).describe("All fund managers with name, designation, years of experience, and date managing this fund since"),
   benchmarkName: z.string().nullable().describe("Full benchmark index name"),
   benchmarkRiskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5, same mapping as riskBand"),
   benchmarkDetails: z.string().nullable().describe("Benchmark composition description if any"),
@@ -46,6 +50,7 @@ export const FactsheetExtractionSchema = z.object({
   portfolioByIndustry: z.array(IndustrySchema).describe("All rows from industry/sector allocation section"),
   portfolioByRatingClass: z.array(z.object({ ratingClass: z.string(), percentage: z.number() })).describe("Rating class allocation rows if present"),
   topHoldings: z.array(HoldingSchema).describe("All holdings including equity long, equity futures short (negative %), bonds, T-bills, G-Secs, cash"),
+  planCodes: z.array(z.object({ planName: z.string(), isin: z.string() })).describe("Plan/option names with their ISIN codes, e.g. 'Regular Growth' -> 'INF...'"),
   suitableFor: z.string().nullable().describe("Who this SIF is suitable for — describe target investor profile, minimum net-worth, risk appetite, investment horizon, and goals"),
   notSuitableFor: z.string().nullable().describe("Who this SIF is NOT suitable for — describe investor types that should avoid this fund"),
   bullMarket: z.string().nullable().describe("How this fund is expected to perform in bull markets and why, based on its strategy"),
@@ -57,6 +62,50 @@ export const FactsheetExtractionSchema = z.object({
 });
 
 export type FactsheetExtraction = z.infer<typeof FactsheetExtractionSchema>;
+
+// ─── KIM — best-source fields (regulatory/structural) ──────────────────────────
+
+export const KimExtractionSchema = z.object({
+  schemeCategory: z.string().nullable().describe("Full SEBI scheme category, e.g. 'Specialised Investment Fund - Category III AIF, Hybrid Long-Short Strategy'"),
+  schemeNature: z.string().nullable().describe("Scheme nature, e.g. 'Open Ended' or 'Interval'"),
+  inceptionDate: z.string().nullable().describe("Date of allotment / inception of the scheme"),
+  redemptionFrequency: z.string().nullable().describe("Redemption window frequency, e.g. 'Every Monday and Wednesday of each week'"),
+  navCutoffTime: z.string().nullable().describe("NAV cut-off time for redemption requests, e.g. '3:00 p.m.'"),
+  redemptionPayoutDays: z.string().nullable().describe("Number of business days for redemption proceeds to be dispatched/paid, e.g. '3 business days'"),
+  redemptionNoticePeriod: z.string().nullable().describe("Advance notice period required before a redemption window, e.g. '15 days'"),
+  penalInterestRate: z.string().nullable().describe("Penal interest rate payable for delayed redemption payouts, e.g. '15% p.a.'"),
+  panInvestmentThreshold: z.string().nullable().describe("Minimum investment threshold at PAN/investor level across all strategies, e.g. '₹10,00,000 across all SIF strategies of the AMC'"),
+  accreditedInvestorMinInvestment: z.number().nullable().describe("Minimum investment amount in ₹ for accredited investors, as a number"),
+  terMax: z.string().nullable().describe("Maximum Total Expense Ratio (TER), e.g. '2.25%'"),
+  terSlabs: z.array(z.object({ aumSlab: z.string(), ter: z.string() })).describe("TER slab table rows, each with an AUM slab description and the corresponding TER"),
+  taxationSummary: z.string().nullable().describe("Summary of taxation treatment applicable to investors in this fund — capital gains, holding periods, rates"),
+  assetAllocationRanges: z.array(z.object({ assetClass: z.string(), min: z.number(), max: z.number() })).describe("Permitted asset allocation ranges (min/max % of NAV) by asset class, from the Investment Pattern / Asset Allocation table"),
+  grossExposureLimit: z.string().nullable().describe("Maximum permitted gross exposure including derivatives, e.g. 'Up to 100% of NAV'"),
+  derivativesRestrictions: z.string().nullable().describe("Key restrictions on derivatives usage — e.g. CDS not permitted, unhedged exposure caps, overseas investment caps"),
+  sponsorName: z.string().nullable().describe("Name of the scheme's sponsor"),
+  amcName: z.string().nullable().describe("Name of the Asset Management Company / Investment Manager"),
+  trusteeName: z.string().nullable().describe("Name of the trustee company"),
+  registrarName: z.string().nullable().describe("Name of the registrar and transfer agent (RTA)"),
+});
+
+export type KimExtraction = z.infer<typeof KimExtractionSchema>;
+
+// ─── PPT — best-source fields (strategy narrative) ─────────────────────────────
+
+export const PptExtractionSchema = z.object({
+  derivativeStrategies: z.array(z.object({ name: z.string(), description: z.string() })).describe("Named derivative/hedging strategies the fund employs, each with a short description, e.g. 'Cash-Future Arbitrage', 'Index Hedging'"),
+  alphaGenerationApproach: z.string().nullable().describe("2–4 sentences on how the fund seeks to generate alpha beyond market beta — stock selection process, hedging philosophy, market-neutral techniques etc."),
+});
+
+export type PptExtraction = z.infer<typeof PptExtractionSchema>;
+
+// ─── Excel / XLS Summary Doc — best-source fields ──────────────────────────────
+
+export const ExcelExtractionSchema = z.object({
+  sipDetails: z.array(z.object({ frequency: z.string(), minAmount: z.number(), minInstallments: z.number() })).describe("SIP (Systematic Investment Plan) options — one row per distinct SIP option, each with its frequency, minimum amount, and minimum number of installments. The same frequency may appear in multiple rows with different minimum-installment counts. Empty array if not present in this document."),
+});
+
+export type ExcelExtraction = z.infer<typeof ExcelExtractionSchema>;
 
 // ─── Risk band normalisation ───────────────────────────────────────────────────
 
@@ -169,21 +218,7 @@ async function callOpenRouter(text: string, model: string, apiKey: string) {
 
 // ─── Gemini native PDF path (generateObject) ──────────────────────────────────
 
-async function callGeminiNative(pdfUrls: string[], model: string, apiKey: string, extraText = ""): Promise<Record<string, unknown>> {
-  const google = createGoogleGenerativeAI({ apiKey });
-
-  // Fetch all PDFs as buffers (up to 3)
-  const pdfBuffers: Uint8Array[] = [];
-  for (const url of pdfUrls.slice(0, 3)) {
-    const r = await fetch(url);
-    if (!r.ok) continue;
-    const buf = await r.arrayBuffer();
-    if (buf.byteLength) pdfBuffers.push(new Uint8Array(buf));
-  }
-
-  if (!pdfBuffers.length && !extraText) throw new Error("Could not fetch any files");
-
-  const PROMPT = `You are extracting data from an Indian SIF/AIF fund factsheet. Be exhaustive — do not skip any row or section.
+const FACTSHEET_PROMPT = `You are extracting data from an Indian SIF/AIF fund factsheet. Be exhaustive — do not skip any row or section.
 
 === SCALAR FIELDS ===
 riskBand: Read ONLY from the PDF's FUND/STRATEGY riskometer — the LEFT dial in the "RISK BAND" section. SEBI mandates levels 1–5 only (1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High). Return the integer directly — do NOT convert to English. NEVER infer from the fund name, strategy, or Excel data. Return null if unclear.
@@ -198,9 +233,14 @@ benchmarkName: Full benchmark index name.
 benchmarkDetails: Benchmark composition description if stated, else null.
 
 === FUND MANAGERS ===
-Extract ALL named portfolio/fund managers. Each gets { name, designation }.
+Extract ALL named portfolio/fund managers. Each gets { name, designation, experienceYears, managingSince }.
 If a manager covers a specific portion (e.g. "Equity Portion", "Debt Portion", "Overseas Investments"), use that as designation.
 If no designation is given, use "Fund Manager". Never return null for designation.
+experienceYears: total years of experience if stated (e.g. "15+ years"), else null.
+managingSince: date/period this manager has managed this fund if stated (e.g. "Mar 2025"), else null.
+
+=== PLAN CODES ===
+Extract plan/option names with their ISIN codes if a table of ISINs is present (e.g. "Regular Growth" -> "INF..."). Return { planName, isin }. Empty array if not present.
 
 === ASSET ALLOCATION ===
 Extract ONLY the summary/total rows from the "Portfolio Classification by Asset Class" table.
@@ -249,28 +289,117 @@ notSuitableFor: 2–3 sentences on who should NOT invest — e.g. risk-averse in
 bullMarket: 2–3 sentences on performance in rising equity markets, referencing the long book and short hedges.
 bearMarket: 2–3 sentences on performance in falling equity markets — does the short book provide downside protection?
 sidewaysMarket: 2–3 sentences on performance in flat / range-bound markets.
-howItWorks: 2–4 sentences explaining the long-short strategy mechanics, instruments used, and return drivers.
-mfEquivalent: 1 sentence naming the closest mutual fund category and why.
-portfolioFit: 2–3 sentences on where this SIF belongs in a diversified portfolio — satellite, alternative, hedge sleeve, etc.`;
+howItWorks: 2–4 sentences explaining how the fund actually works for an investor. Lead with the two building blocks — the equity allocation (long-only stock portfolio, give the approximate %) and the debt/money-market allocation (give the approximate %, used for liquidity and as collateral for derivatives). Then describe the specific derivative/hedging overlays used within the equity sleeve (e.g. cash-futures arbitrage, covered calls, protective puts — name the ones actually used by this fund). End with the intended outcome of combining these (e.g. equity-like upside with smoother/cushioned returns, or additional income generation). Avoid generic jargon — ground every sentence in the fund's actual allocation numbers and strategies from this document.
+mfEquivalent: 1 sentence naming the closest mutual fund category an investor familiar with mutual funds would recognise (e.g. "Balanced Advantage Fund / Equity Savings Fund"), based on the fund's actual equity/debt/derivative mix, and briefly why it's the closest comparison.
+portfolioFit: 2–3 sentences on where this SIF fits in a diversified portfolio — frame it as a satellite or alternative sleeve (not a core holding replacement) for investors seeking equity participation with lower volatility via the hedging/derivative strategies described above.`;
+
+const KIM_PROMPT = `You are extracting regulatory and structural data from an Indian SIF (Specialized Investment Fund) Key Information Memorandum (KIM). Be precise and quote exact terms/numbers used in the document — do not paraphrase numeric values.
+
+schemeCategory: Full SEBI scheme category/classification as stated (e.g. "Specialised Investment Fund - Category III AIF, Hybrid Long-Short Strategy").
+schemeNature: Scheme nature — "Open Ended" or "Interval", as stated.
+inceptionDate: Date of allotment / inception of the scheme.
+redemptionFrequency: Redemption window frequency — which days of the week/month redemptions are processed (e.g. "Every Monday and Wednesday of each week").
+navCutoffTime: NAV cut-off time for redemption requests (e.g. "3:00 p.m.").
+redemptionPayoutDays: Number of business days within which redemption proceeds must be paid out after the redemption window (e.g. "3 business days").
+redemptionNoticePeriod: Advance notice period required before a redemption window opens (e.g. "15 days").
+penalInterestRate: Penal interest rate payable to investors for delayed redemption payouts (e.g. "15% p.a.").
+panInvestmentThreshold: Minimum investment threshold at investor/PAN level, especially any aggregate threshold across all SIF strategies of the AMC (e.g. "₹10,00,000 across all SIF strategies of the AMC").
+accreditedInvestorMinInvestment: Minimum investment amount in ₹ specifically for accredited investors, as a plain number (e.g. 10000).
+terMax: Maximum Total Expense Ratio (TER) permitted, as stated (e.g. "2.25%").
+terSlabs: Extract every row of the TER slab table — each row as { aumSlab, ter } where aumSlab describes the AUM range and ter is the corresponding expense ratio for that slab. Empty array if no slab table.
+taxationSummary: Summarise the taxation section — capital gains tax treatment, holding periods for short/long term classification, applicable tax rates for resident and non-resident investors. 3-6 sentences.
+assetAllocationRanges: Extract the Investment Pattern / Asset Allocation table giving PERMITTED RANGES (not actuals) — each row as { assetClass, min, max } with min/max as percentages of NAV. Include every asset class row (equity, debt, money market, derivatives, etc.).
+grossExposureLimit: Maximum permitted gross exposure including derivatives, as stated (e.g. "Up to 100% of NAV").
+derivativesRestrictions: Summarise key restrictions on derivatives/hedging usage — e.g. whether Credit Default Swaps (CDS) are permitted, caps on unhedged equity exposure, caps on overseas investment exposure. 1-3 sentences.
+sponsorName: Name of the scheme's sponsor entity.
+amcName: Name of the Asset Management Company / Investment Manager.
+trusteeName: Name of the trustee company.
+registrarName: Name of the registrar and transfer agent (RTA).
+
+Return null for any field not found in the document. Return empty arrays for table fields not present.`;
+
+const PPT_PROMPT = `You are extracting strategy details from an Indian SIF (Specialized Investment Fund) investor presentation (PPT/PDF deck).
+
+derivativeStrategies: Identify every named derivative/hedging/alpha strategy the fund employs (e.g. "Cash-Future Arbitrage", "Index Hedging", "Pair Trades"). For each, return { name, description } where description is 1-2 sentences explaining how that strategy works and what it aims to achieve. Empty array if none are named.
+alphaGenerationApproach: 2-4 sentences describing how the fund seeks to generate alpha beyond market beta — its stock selection process, hedging philosophy, market-neutral techniques, or other return-enhancement approach described in the presentation.
+
+Return null for alphaGenerationApproach if not discernible, and an empty array for derivativeStrategies if none are named.`;
+
+const EXCEL_PROMPT = `You are extracting data from a "Scheme Summary Document" spreadsheet for an Indian SIF (Specialized Investment Fund). The data is a flat list of label/value rows (tab-separated), one fact per row — not a multi-page report.
+
+=== SIP DETAILS ===
+Look for a row labelled "SIP SWP & STP Details: Frequency" alongside parallel rows "...Minimum amount", "...In multiple of", and "...Minimum Instalments".
+Each of those rows contains a "SIP--" prefix followed by a "/"-separated list of values, e.g.:
+  Frequency:           SIP-- Monthly/Monthly/Quarterly/Quarterly/Weekly/Daily ; STP -- ...
+  Minimum amount:      SIP-- 1000.00/1000.00/1000.00/1000.00/1000.00/1000.00 ; STP -- ...
+  Minimum Instalments: SIP-- 12 Instalments/6 instalments/6 instalments/4 instalments/12 instalments/12 instalments ; STP -- ...
+Take ONLY the "SIP--" portion of each row (ignore the "STP--" portion entirely — that is a different facility, do not include it). Split each "SIP--" list on "/" and zip the lists together BY POSITION to form one row per SIP option: { frequency, minAmount, minInstallments }. Strip the word "Instalments"/"instalments" from minInstallments and return it as a plain integer. The number of SIP rows equals the number of "/"-separated entries — do NOT collapse them into one row per unique frequency name; e.g. "Monthly/Monthly/Quarterly/Quarterly/Weekly/Daily" with instalments "12/6/6/4/12/12" produces 6 separate rows, two of which are both "Monthly" but with different minInstallments (12 and 6).
+Return an empty array if no SIP row is present in this document.`;
+
+// ─── Single-file Gemini extraction ─────────────────────────────────────────────
+
+type ExtractionSchema = typeof FactsheetExtractionSchema | typeof KimExtractionSchema | typeof PptExtractionSchema | typeof ExcelExtractionSchema;
+
+async function callGeminiForFile(
+  buffer: Uint8Array,
+  mediaType: string,
+  schema: ExtractionSchema,
+  prompt: string,
+  model: string,
+  apiKey: string,
+  extraText = "",
+): Promise<Record<string, unknown>> {
+  const google = createGoogleGenerativeAI({ apiKey });
 
   type ContentPart =
     | { type: "text"; text: string }
     | { type: "file"; data: Uint8Array; mediaType: string };
 
   const content: ContentPart[] = [
-    ...pdfBuffers.map(buf => ({ type: "file" as const, data: buf, mediaType: "application/pdf" })),
+    { type: "file" as const, data: buffer, mediaType },
     ...(extraText ? [{ type: "text" as const, text: `=== SPREADSHEET DATA ===\n${extraText}\n\n` }] : []),
-    { type: "text" as const, text: PROMPT },
+    { type: "text" as const, text: prompt },
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { object } = await generateObject({
     model: google(model),
-    schema: FactsheetExtractionSchema,
+    schema: schema as any,
     messages: [{ role: "user", content: content as any }],
   });
 
   return object as Record<string, unknown>;
+}
+
+async function callGeminiTextOnly(
+  schema: ExtractionSchema,
+  prompt: string,
+  text: string,
+  model: string,
+  apiKey: string,
+): Promise<Record<string, unknown>> {
+  const google = createGoogleGenerativeAI({ apiKey });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { object } = await generateObject({
+    model: google(model),
+    schema: schema as any,
+    prompt: `=== SPREADSHEET DATA ===\n${text}\n\n${prompt}`,
+  });
+
+  return object as Record<string, unknown>;
+}
+
+// Merge an extraction result into the combined object without letting empty/null
+// values from one file (e.g. a misclassified or sparse document) overwrite
+// good data already extracted from another file.
+function mergeResults(target: Record<string, unknown>, source: Record<string, unknown>) {
+  for (const [key, value] of Object.entries(source)) {
+    if (value == null) continue;
+    if (typeof value === "string" && value === "" && typeof target[key] === "string" && target[key] !== "") continue;
+    if (Array.isArray(value) && value.length === 0 && Array.isArray(target[key]) && (target[key] as unknown[]).length > 0) continue;
+    target[key] = value;
+  }
 }
 
 // ─── Post-processing (shared across all providers) ────────────────────────────
@@ -403,12 +532,14 @@ export async function POST(req: NextRequest) {
     if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json() as {
-      pdfUrls: string[];
+      pdfUrls?: string[];
+      files?: { url: string; documentType?: string }[];
       provider?: "deepseek" | "gemini" | "openrouter";
       model?: string;
       apiKey?: string;
     };
-    const { pdfUrls } = body;
+    const files = body.files?.length ? body.files : (body.pdfUrls || []).map(url => ({ url, documentType: "" }));
+    const pdfUrls = files.map(f => f.url);
     let { provider, model, apiKey } = body;
 
     // Prefer the centrally-configured provider for this usage (Admin → AI Settings)
@@ -426,27 +557,47 @@ export async function POST(req: NextRequest) {
     if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
     if (!model) return NextResponse.json({ error: "Model required" }, { status: 400 });
 
-    // ── Gemini: native PDF path + Excel text ─────────────────────────────────
+    // ── Gemini: one extraction call per file, schema scoped to its document type ──
     if (provider === "gemini") {
-      const pdfUrlsForGemini: string[] = [];
-      const excelTexts: string[] = [];
+      const combined: Record<string, unknown> = {};
+      const warnings: string[] = [];
 
-      for (const url of pdfUrls.slice(0, 3)) {
+      for (const file of files.slice(0, 6)) {
         try {
-          const r = await fetch(url);
-          if (!r.ok) continue;
+          const r = await fetch(file.url);
+          if (!r.ok) { warnings.push(`${file.documentType || "file"}: fetch failed (HTTP ${r.status})`); continue; }
           const buf = Buffer.from(await r.arrayBuffer());
-          if (!buf.byteLength) continue;
-          if (isExcelBuffer(buf) || isExcelUrl(url)) {
-            excelTexts.push(await extractExcelText(buf));
+          if (!buf.byteLength) { warnings.push(`${file.documentType || "file"}: empty response`); continue; }
+
+          const isExcel = isExcelBuffer(buf) || isExcelUrl(file.url);
+
+          let result: Record<string, unknown>;
+          if (isExcel) {
+            // Excel Summary Doc: text-only extraction against its own schema (flat label/value rows)
+            const text = await extractExcelText(buf);
+            if (!text.trim()) { warnings.push(`${file.documentType || "Excel"}: no text extracted`); continue; }
+            result = await callGeminiTextOnly(ExcelExtractionSchema, EXCEL_PROMPT, text, model, apiKey);
           } else {
-            pdfUrlsForGemini.push(url);
+            const docType = file.documentType || "";
+            const { schema, prompt } = docType === "KIM"
+              ? { schema: KimExtractionSchema, prompt: KIM_PROMPT }
+              : docType === "PPT"
+              ? { schema: PptExtractionSchema, prompt: PPT_PROMPT }
+              : { schema: FactsheetExtractionSchema, prompt: FACTSHEET_PROMPT }; // Factsheet / XLS - Summary Document / unset
+            result = await callGeminiForFile(new Uint8Array(buf), "application/pdf", schema, prompt, model, apiKey);
           }
-        } catch { /* skip */ }
+
+          mergeResults(combined, result);
+        } catch (e) {
+          warnings.push(`${file.documentType || "file"}: ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
 
-      const extracted = await callGeminiNative(pdfUrlsForGemini, model, apiKey, excelTexts.join("\n\n"));
-      return NextResponse.json({ extracted: postProcess(extracted) });
+      if (!Object.keys(combined).length) {
+        return NextResponse.json({ error: "Could not extract data from any file", details: warnings }, { status: 422 });
+      }
+
+      return NextResponse.json({ extracted: postProcess(combined), warnings: warnings.length ? warnings : undefined });
     }
 
     // ── DeepSeek / OpenRouter: text extraction path ──────────────────────────

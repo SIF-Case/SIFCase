@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, ArrowUpDown, X, ChevronLeft, ChevronRight } 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
+import { getCategoryAverages } from "@/lib/categoryAverages";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
@@ -199,6 +200,8 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     return { avg, best, worst, count: filtered.length };
   }, [filtered, period]);
 
+  const categoryAverages = useMemo(() => getCategoryAverages(funds), [funds]);
+
   function SortBtn({ col, label }: { col: SortKey; label: string }) {
     const active = sortKey === col;
     return (
@@ -233,6 +236,28 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
             <p className={`text-[20px] font-bold nums mt-0.5 ${s.cls ?? "text-heading"}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Category averages */}
+      <div className="bg-white border border-rule rounded-[16px] shadow-card mb-6">
+        <div className="px-4 py-3 border-b border-rule">
+          <p className="text-[11px] font-mono uppercase tracking-widest text-primary">Category Averages</p>
+          <p className="text-[12px] text-muted mt-0.5">Average {period} return across funds in each strategy</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 divide-rule">
+          {categoryAverages.map((c, i) => {
+            const avg = c.avgReturns[period];
+            return (
+              <div key={c.category} className={`px-4 py-3 ${i > 0 ? "sm:border-l border-rule" : ""}`}>
+                <p className="text-[12px] font-semibold text-heading truncate">{c.category}</p>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-muted mt-0.5">{c.fundCount} fund{c.fundCount !== 1 ? "s" : ""}</p>
+                <p className={`text-[18px] font-bold nums mt-1 ${avg === null ? "text-muted" : avg >= 0 ? "text-gain" : "text-loss"}`}>
+                  {avg !== null ? `${avg >= 0 ? "+" : ""}${avg.toFixed(2)}%` : "—"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Controls */}

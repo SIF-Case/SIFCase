@@ -14,12 +14,12 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
+import { toCumulative, getCategoryAverageSeries } from "@/lib/categoryAverages";
 
 export const COMPARE_PALETTE = ["#1E4ED8", "#0FAF75", "#F59E0B", "#DC2626", "#6366F1"];
 
 type View = "Cumulative" | "Drawdown" | "Rolling" | "Volatility";
 
-function toCumulative(s: number[]) { const b = s[0]; return s.map((v) => ((v - b) / b) * 100); }
 function toDrawdown(s: number[]) { let p = s[0]; return s.map((v) => { p = Math.max(p, v); return ((v - p) / p) * 100; }); }
 function toRolling(s: number[]) { const w = Math.min(12, Math.max(2, Math.floor(s.length / 3))); return s.map((_, i) => i < w ? 0 : ((s[i] - s[i - w]) / s[i - w]) * 100); }
 function toVolatility(s: number[]) {
@@ -88,13 +88,14 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
   const [period, setPeriod] = useState<PeriodKey>("SI");
   const [view, setView] = useState<View>("Cumulative");
   const [addOpen, setAddOpen] = useState(false);
+  const [showCategoryAvg, setShowCategoryAvg] = useState(false);
 
   const selected = picked.map((id) => funds.find((f) => f.schemeCode === id)!).filter(Boolean);
   const addable = funds.filter((f) => !picked.includes(f.schemeCode));
 
   // Build unified chart data — right-aligned so every series ends at the rightmost point
   const series = useMemo(() => {
-    return selected.map((f, i) => {
+    const fundSeries = selected.map((f, i) => {
       const raw = f.sparklines[period];
       const dates = f.sparklineDates[period];
       if (!raw || raw.length < 2) return null;
@@ -113,7 +114,34 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
         dates: dates ?? [],
       };
     }).filter(Boolean) as { id: string; name: string; color: string; data: number[]; dates: string[] }[];
-  }, [selected, period, view]);
+
+    if (!showCategoryAvg) return fundSeries;
+
+    const strategies = Array.from(new Set(selected.map((f) => f.strategy)));
+    const avgSeries = strategies.map((strategy) => {
+      const avg = getCategoryAverageSeries(funds, strategy, period);
+      if (!avg) return null;
+      // avg.data is a % growth curve starting near 0 — shift to a 100-base index
+      // so the same Drawdown/Rolling/Volatility transforms used for NAVs apply cleanly.
+      const indexed = avg.data.map((v) => v + 100);
+      let data: number[];
+      switch (view) {
+        case "Cumulative": data = avg.data; break;
+        case "Drawdown": data = toDrawdown(indexed); break;
+        case "Rolling": data = toRolling(indexed); break;
+        case "Volatility": data = toVolatility(indexed); break;
+      }
+      return {
+        id: `avg-${strategy}`,
+        name: `${strategy} avg`,
+        color: "#94A3B8",
+        data,
+        dates: avg.dates,
+      };
+    }).filter(Boolean) as { id: string; name: string; color: string; data: number[]; dates: string[] }[];
+
+    return [...fundSeries, ...avgSeries];
+  }, [selected, funds, period, view, showCategoryAvg]);
 
   const chartData = useMemo(() => {
     if (!series.length) return [];
@@ -156,6 +184,14 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
         <div className="flex flex-wrap items-center gap-2 ml-auto">
           <Toggle active={view} options={["Cumulative", "Drawdown", "Rolling", "Volatility"] as const} onChange={setView} />
           <Toggle active={period} options={periods} onChange={setPeriod} />
+          <button
+            onClick={() => setShowCategoryAvg((v) => !v)}
+            className={`h-7 px-3 inline-flex items-center rounded-full border text-[11px] transition-colors ${
+              showCategoryAvg ? "bg-brand-navy text-white border-brand-navy" : "bg-white text-muted border-rule hover:text-body hover:border-rule-strong"
+            }`}
+          >
+            Category Avg
+          </button>
         </div>
       </div>
 
@@ -235,20 +271,24 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
                 <ReferenceLine y={0} stroke="#B8C7D6" strokeWidth={1.5} />
               )}
 
-              {series.map((s) => (
-                <Area
-                  key={s.id}
-                  type="monotone"
-                  dataKey={s.id}
-                  name={s.name}
-                  stroke={s.color}
-                  strokeWidth={2.5}
-                  fill={`url(#grad-${s.id})`}
-                  dot={false}
-                  activeDot={{ r: 5, strokeWidth: 2.5, stroke: "#fff", fill: s.color }}
-                  connectNulls={false}
-                />
-              ))}
+              {series.map((s) => {
+                const isAvg = s.id.startsWith("avg-");
+                return (
+                  <Area
+                    key={s.id}
+                    type="monotone"
+                    dataKey={s.id}
+                    name={s.name}
+                    stroke={s.color}
+                    strokeWidth={2}
+                    strokeDasharray={isAvg ? "6 4" : undefined}
+                    fill={isAvg ? "none" : `url(#grad-${s.id})`}
+                    dot={false}
+                    activeDot={{ r: 5, strokeWidth: 2.5, stroke: "#fff", fill: s.color }}
+                    connectNulls={false}
+                  />
+                );
+              })}
             </AreaChart>
           </ResponsiveContainer>
         </div>
