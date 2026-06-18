@@ -182,7 +182,7 @@ type ArticleData = {
 
 const DEFAULTS: ArticleData = {
   title: "", excerpt: "", content: "", coverDesktop: "", coverMobile: "",
-  useSeparateMobile: false, category: "General", subcategory: "", tags: "", status: "draft",
+  useSeparateMobile: false, category: "", subcategory: "", tags: "", status: "draft",
   authorName: "SIFcase Team", authorBio: "", readTime: 3,
   seoTitle: "", metaDescription: "", canonicalUrl: "", robotsIndex: true,
   ogImage: "", primaryKeyword: "", focusKeyphrase: "",
@@ -215,6 +215,7 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   const [subcategories, setSubcategories] = useState<Record<string, string[]>>(DEFAULT_SUBS);
   const [generatingMeta, setGeneratingMeta] = useState(false);
   const [metaError, setMetaError] = useState("");
+  const [fundHouseNames, setFundHouseNames] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/article-options")
@@ -222,6 +223,13 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
       .then((d) => {
         if (d.categories) setCategories(d.categories);
         if (d.subcategories) setSubcategories(d.subcategories);
+      })
+      .catch(() => {});
+
+    fetch("/api/fund-houses")
+      .then((r) => r.json())
+      .then((d: { brandName: string }[]) => {
+        if (Array.isArray(d)) setFundHouseNames(d.map((f) => f.brandName).filter(Boolean).sort());
       })
       .catch(() => {});
   }, []);
@@ -445,26 +453,40 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
               <label className="block text-[11px] font-medium text-muted mb-1">Category</label>
               <ComboSelect
                 value={form.category}
+                placeholder="— Unassigned (Draft) —"
                 options={categories}
                 onChange={handleCategoryChange}
                 onAddOption={addCategory}
                 onRenameOption={renameCategory}
                 onReorderOptions={reorderCategories}
               />
+              <p className="text-[11px] text-faint mt-1">Leave unassigned to keep this in the Draft Article tab.</p>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
-              <ComboSelect
-                value={form.subcategory}
-                placeholder="— select —"
-                options={subcategories[form.category] ?? []}
-                onChange={(v) => set("subcategory", v)}
-                onAddOption={(v) => addSubcategory(form.category, v)}
-                onRenameOption={renameSubcategory}
-                onReorderOptions={reorderSubcategories}
-              />
-            </div>
+            {form.category === "Fund Houses" ? (
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Fund House</label>
+                <ComboSelect
+                  value={form.subcategory}
+                  placeholder="— select —"
+                  options={fundHouseNames}
+                  onChange={(v) => set("subcategory", v)}
+                />
+              </div>
+            ) : form.category && (
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Sub-category</label>
+                <ComboSelect
+                  value={form.subcategory}
+                  placeholder="— select —"
+                  options={subcategories[form.category] ?? []}
+                  onChange={(v) => set("subcategory", v)}
+                  onAddOption={(v) => addSubcategory(form.category, v)}
+                  onRenameOption={renameSubcategory}
+                  onReorderOptions={reorderSubcategories}
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Tags <span className="text-faint">(comma separated)</span></label>

@@ -190,8 +190,6 @@ const PROVIDERS: Record<Provider, { label: string; models: string[] }> = {
   openrouter: { label: "OpenRouter", models: [] },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function SectionHeader({ title }: { title: string }) {
   return (
     <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.13em] text-primary mb-3 mt-6 first:mt-0">
@@ -228,8 +226,6 @@ function AiValueBadge({ value, onApply }: { value: string; onApply: () => void }
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function FundDetailsPage() {
   const [brandNames, setBrandNames] = useState<string[]>([]);
   const [selectedBrand, setSelectedBrand] = useState("");
@@ -240,7 +236,6 @@ export default function FundDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // AI state
   const [provider, setProvider] = useState<Provider>("deepseek");
   const [model, setModel] = useState(PROVIDERS.deepseek.models[0]);
   const [customModel, setCustomModel] = useState("");
@@ -251,11 +246,8 @@ export default function FundDetailsPage() {
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiError, setAiError] = useState("");
 
-  // PDF upload
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ── Init ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     fetch("/api/admin/fund-details?list=1")
@@ -629,7 +621,6 @@ export default function FundDetailsPage() {
   const addHolding = () => setForm(prev => ({ ...prev, topHoldings: [...prev.topHoldings, { name: "", percentage: "", sector: "", rating: "" }] }));
   const removeHolding = (i: number) => setForm(prev => ({ ...prev, topHoldings: prev.topHoldings.filter((_, idx) => idx !== i) }));
 
-  // ── Render ────────────────────────────────────────────────────────────────
 
   const usingSavedConfig = !!savedConfig && !overrideConfig;
   const canAnalyse = !!selectedFund && form.factsheets.length > 0 &&
@@ -644,7 +635,6 @@ export default function FundDetailsPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      {/* Top bar */}
       <div className="shrink-0 px-8 pt-7 pb-5 border-b border-[#E2E8F0] bg-white flex items-center gap-6">
         <div>
           <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.13em] text-primary mb-0.5">Admin</p>
@@ -668,7 +658,6 @@ export default function FundDetailsPage() {
             </div>
           </div>
 
-          {/* Fund selector */}
           <div className="flex items-center gap-2">
             <label className="text-[12px] font-medium text-[#64748B]">Fund</label>
             <div className="relative">
@@ -687,10 +676,8 @@ export default function FundDetailsPage() {
         </div>
       </div>
 
-      {/* Two-panel body */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── LEFT: Current Record ─────────────────────────────────────────── */}
         <div className="w-[55%] overflow-y-auto border-r border-[#E2E8F0] bg-[#F8FAFC]">
           <div className="px-7 py-6">
             {!selectedFund ? (
@@ -1299,7 +1286,7 @@ export default function FundDetailsPage() {
               )}
 
               {!usingSavedConfig && <>
-              {/* Provider tabs */}
+
               <div className="flex gap-1 mb-4 bg-[#F1F5F9] rounded-[8px] p-1">
                 {(Object.keys(PROVIDERS) as Provider[]).map(p => (
                   <button
@@ -1312,7 +1299,6 @@ export default function FundDetailsPage() {
                 ))}
               </div>
 
-              {/* Model */}
               <div className="mb-3">
                 <label className="block text-[12px] font-medium text-[#64748B] mb-1">Model</label>
                 {provider === "openrouter" ? (
@@ -1336,10 +1322,9 @@ export default function FundDetailsPage() {
                 )}
               </div>
 
-              {/* API Key */}
               <div className="mb-4">
                 <label className="block text-[12px] font-medium text-[#64748B] mb-1">
-                  API Key <span className="text-[#94A3B8] font-normal">(saved locally in browser)</span>
+                  API Key <span className="text-[#94A3B8] font-normal">API</span>
                 </label>
                 <input
                   type="password"
@@ -1352,7 +1337,7 @@ export default function FundDetailsPage() {
               </div>
               </>}
 
-              {/* Analyse button */}
+
               <button
                 onClick={handleAnalyse}
                 disabled={!canAnalyse || analysing}
@@ -1368,7 +1353,7 @@ export default function FundDetailsPage() {
                 </p>
               )}
 
-              {/* AI Error */}
+
               {aiError && (
                 <div className="mt-3 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-[8px]">
                   <AlertCircle className="size-4 text-red-500 shrink-0 mt-0.5" />
@@ -1376,7 +1361,6 @@ export default function FundDetailsPage() {
                 </div>
               )}
 
-              {/* AI Results */}
               {aiResult && (
                 <div className="mt-5">
                   <div className="flex items-center justify-between mb-3">

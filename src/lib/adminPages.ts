@@ -8,6 +8,7 @@ import {
   BookOpen,
   ScrollText,
   Newspaper,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ export const ADMIN_PAGES: AdminPageDef[] = [
   { key: "fundDetails", label: "Fund Details", href: "/admin/fund-details", icon: ClipboardList, editable: true },
   { key: "articles", label: "Articles", href: "/admin/articles", icon: BookOpen, editable: true },
   { key: "news", label: "SIF News", href: "/admin/news", icon: Newspaper, editable: true },
+  { key: "faqs", label: "FAQs", href: "/admin/faqs", icon: HelpCircle, editable: true },
   { key: "logs", label: "Cron Logs", href: "/admin/logs", icon: ScrollText, editable: false },
 ];
 

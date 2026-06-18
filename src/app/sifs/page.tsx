@@ -1,5 +1,6 @@
 export const revalidate = 3600;
 
+import { Suspense } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
@@ -20,7 +21,9 @@ export default async function SIFsPage() {
       <main className="flex flex-col min-h-screen bg-surface">
         <TickerRibbon navItems={tickerNavs} />
         <Navbar />
-        <SIFsClient funds={funds} />
+        <Suspense>
+          <SIFsClient funds={funds} />
+        </Suspense>
         <Footer />
       </main>
     </Providers>

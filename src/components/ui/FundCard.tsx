@@ -6,7 +6,6 @@ import type { FundRow } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { SEBIRiskometer } from "@/components/ui/RiskMeter";
-import { SourceBadge } from "@/components/ui/SourceBadge";
 
 export function FundCard({ f }: { f: FundRow }) {
   const siReturn = f.returns["SI"];
@@ -101,7 +100,6 @@ export function FundCard({ f }: { f: FundRow }) {
         </Link>
       </div>
 
-      <SourceBadge variant="calculated" className="text-[9.5px]" />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import ArticleOptions from "@/models/ArticleOptions";
+import Article from "@/models/Article";
 
 async function getOrCreate() {
   let doc = await ArticleOptions.findOne({}).lean();
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
     const subs = { ...(doc.subcategories as Record<string, string[]>) };
     if (subs[oldValue]) { subs[v] = subs[oldValue]; delete subs[oldValue]; }
     await ArticleOptions.updateOne({}, { $set: { categories: cats, subcategories: subs } }, { upsert: true });
+    await Article.updateMany({ category: oldValue }, { $set: { category: v } });
   }
 
   if (action === "reorder_categories" && Array.isArray(order)) {
@@ -71,6 +73,7 @@ export async function POST(req: NextRequest) {
     const subs = { ...(doc.subcategories as Record<string, string[]>) };
     subs[cat] = (subs[cat] ?? []).map((s) => (s === oldValue ? v : s));
     await ArticleOptions.updateOne({}, { $set: { [`subcategories.${cat}`]: subs[cat] } }, { upsert: true });
+    await Article.updateMany({ category: cat, subcategory: oldValue }, { $set: { subcategory: v } });
   }
 
   const updated = await getOrCreate();

@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
+import ArticleOptions from "@/models/ArticleOptions";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Clock, ArrowRight } from "lucide-react";
@@ -80,14 +81,17 @@ export function ArticleCard({ a }: { a: ArticleDoc }) {
 export default async function ReadPage() {
   await connectDB();
 
-  const articles = (await Article.find({ status: "published", category: "General" })
+  const optionsDoc = await ArticleOptions.findOne({}).lean();
+  const mainCategory = optionsDoc?.categories?.[0] ?? "General";
+
+  const articles = (await Article.find({ status: "published", category: mainCategory })
     .sort({ order: 1, publishedAt: -1 })
     .lean()) as unknown as ArticleDoc[];
 
   const order: string[] = [];
   const grouped: Record<string, ArticleDoc[]> = {};
   for (const a of articles) {
-    const sub = a.subcategory?.trim() || "General";
+    const sub = a.subcategory?.trim() || mainCategory;
     if (!grouped[sub]) { grouped[sub] = []; order.push(sub); }
     grouped[sub].push(a);
   }

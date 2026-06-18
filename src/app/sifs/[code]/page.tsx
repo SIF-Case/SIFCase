@@ -4,7 +4,6 @@ import { Plus, ShieldCheck, TrendingUp, MinusCircle, ExternalLink, CalendarDays,
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
-import { SourceBadge } from "@/components/ui/SourceBadge";
 import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
 import { getCategoryAverageSeries } from "@/lib/categoryAverages";
 import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
@@ -346,7 +345,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden mb-6">
                 <div className="px-5 py-4 border-b border-rule bg-surface flex items-center justify-between">
                   <div className="text-[11px] font-mono uppercase tracking-widest text-muted">SEBI Riskometer</div>
-                  <SourceBadge variant="review" className="text-[9.5px]" />
                 </div>
                 <div className={`px-6 py-6 grid gap-6 divide-x divide-rule ${fundDetails.benchmarkRiskBand != null ? "grid-cols-2" : "grid-cols-1 max-w-sm mx-auto"}`}>
                   <div className="px-4 first:pl-0">
@@ -372,8 +370,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               {/* Risk metrics */}
               <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
                 <div className="px-5 py-4 border-b border-rule bg-surface">
-                  <div className="text-[11px] font-mono uppercase tracking-widest text-muted">Calculated from NAV history</div>
-                  <SourceBadge variant="calculated" className="text-[9.5px] mt-1" />
+                  <div className="text-[11px] font-mono uppercase tracking-widest text-muted">Risk Metrics</div>
                 </div>
                 <div className="divide-y divide-rule">
                   {[
@@ -401,7 +398,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
                 <div className="px-5 py-4 border-b border-rule bg-surface">
                   <div className="text-[11px] font-mono uppercase tracking-widest text-muted">Scheme Information</div>
-                  <SourceBadge variant="amfi" className="text-[9.5px] mt-1" />
                 </div>
                 <div className="divide-y divide-rule">
                   {[
@@ -442,44 +438,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
             <p className="mt-3 text-[11px] text-muted">Based on fund category ({fund.category}). Consult a tax advisor for your specific situation.</p>
           </section>
 
-          {/* ── DATA CONFIDENCE ──────────────────────────────────────────── */}
-          <section>
-            <div className="mb-5">
-              <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Data Confidence</div>
-              <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">Where each data point comes from</h2>
-            </div>
-            <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr className="bg-mist border-b border-rule">
-                    <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Field</th>
-                    <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Value</th>
-                    <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Source</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rule">
-                  {[
-                    { field: "Latest NAV", value: `₹${fund.nav.toFixed(4)}`, badge: "amfi" as const },
-                    { field: "NAV Date", value: fund.navDate, badge: "amfi" as const },
-                    { field: "SIF / Scheme Code", value: fund.schemeCode, badge: "amfi" as const },
-                    { field: siLabel + " Return", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
-                    { field: "Sharpe Ratio", value: fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : "Insufficient history", badge: "calculated" as const },
-                    { field: "Volatility", value: fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : "Insufficient history", badge: "calculated" as const },
-                    { field: "Expense Ratio / TER", value: "Pending", badge: "review" as const },
-                    { field: "Benchmark", value: fundDetails?.benchmarkName || "Pending", badge: "review" as const },
-                    { field: "Exit Load", value: fundDetails?.exitLoad || "Pending", badge: "review" as const },
-                    { field: "Fund Manager", value: fundDetails?.fundManagers?.map(m => m.name).join(", ") || "Pending", badge: "review" as const },
-                  ].map(({ field, value, badge }) => (
-                    <tr key={field} className="hover:bg-surface transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-body">{field}</td>
-                      <td className="px-5 py-3.5 tabular text-muted">{value}</td>
-                      <td className="px-5 py-3.5"><SourceBadge variant={badge} className="text-[9.5px]" /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
 
           {/* ── LEGAL ────────────────────────────────────────────────────── */}
           <div className="border border-rule rounded-[18px] p-6 bg-surface text-[12px] text-muted leading-relaxed">

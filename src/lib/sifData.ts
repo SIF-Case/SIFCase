@@ -1004,3 +1004,32 @@ export async function getLatestPublishedReport(): Promise<LatestReportSummary | 
     data,
   };
 }
+
+export interface FaqGroup {
+  category: string;
+  items: { question: string; answer: string }[];
+}
+
+/** Published FAQs grouped by category, in admin-defined order, for the homepage FAQ section. */
+export async function getPublishedFaqs(): Promise<FaqGroup[]> {
+  await connectDB();
+  const [Faq, FaqCategory] = await Promise.all([
+    (await import("@/models/Faq")).default,
+    (await import("@/models/FaqCategory")).default,
+  ]);
+
+  const [faqs, catDoc] = await Promise.all([
+    Faq.find({ published: true }).sort({ category: 1, order: 1, createdAt: 1 }).lean(),
+    FaqCategory.findOne({}).lean(),
+  ]);
+
+  const categories = catDoc?.categories ?? ["General"];
+  const groups: FaqGroup[] = [];
+  for (const cat of categories) {
+    const items = faqs
+      .filter((f) => f.category === cat)
+      .map((f) => ({ question: f.question, answer: f.answer }));
+    if (items.length) groups.push({ category: cat, items });
+  }
+  return groups;
+}

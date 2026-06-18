@@ -1,4 +1,3 @@
-import { SourceBadge } from "@/components/ui/SourceBadge";
 import { cn } from "@/lib/utils";
 import type { SIFRow } from "@/lib/sifData";
 
@@ -45,7 +44,7 @@ export function SIFComparisonTable({ sifs }: { sifs: SIFRow[] }) {
           <table className="w-full min-w-[900px] border-collapse text-left">
             <thead>
               <tr className="bg-surface border-b border-rule">
-                {["SIF Name", "AMC", "Strategy", "Option", "NAV", "NAV Date", "1M", "3M", "Since Inception", "Source", ""].map((col) => (
+                {["SIF Name", "AMC", "Strategy", "Option", "NAV", "NAV Date", "1M", "3M", "Since Inception", ""].map((col) => (
                   <th
                     key={col}
                     className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap first:pl-5 last:pr-5"
@@ -90,9 +89,6 @@ export function SIFComparisonTable({ sifs }: { sifs: SIFRow[] }) {
                   </td>
                   <td className="px-4 py-4 text-right whitespace-nowrap">
                     <ReturnCell value={sif.returnSI} />
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <SourceBadge variant="amfi" className="text-[10px]" />
                   </td>
                   <td className="px-4 py-4 pr-5 whitespace-nowrap">
                     <a

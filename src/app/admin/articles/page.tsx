@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Eye, RefreshCw, ArrowUpDown, X, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, RefreshCw, ArrowUpDown, X, ChevronUp, ChevronDown, Loader2, Search } from "lucide-react";
 
 type Article = {
   _id: string;
@@ -17,16 +17,17 @@ type Article = {
   createdAt: string;
 };
 
-function ReorderModal({ articles, onClose, onSaved }: {
+function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
   articles: Article[];
+  mainCategory: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const initial = useMemo(() => {
     const order: string[] = [];
     const grouped: Record<string, Article[]> = {};
-    for (const a of articles.filter((x) => x.category === "General")) {
-      const sub = a.subcategory?.trim() || "General";
+    for (const a of articles.filter((x) => x.category === mainCategory)) {
+      const sub = a.subcategory?.trim() || mainCategory;
       if (!grouped[sub]) { grouped[sub] = []; order.push(sub); }
       grouped[sub].push(a);
     }
@@ -74,7 +75,7 @@ function ReorderModal({ articles, onClose, onSaved }: {
         fetch("/api/admin/article-options", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "reorder_subcategories", value: "", category: "General", order: sectionOrder }),
+          body: JSON.stringify({ action: "reorder_subcategories", value: "", category: mainCategory, order: sectionOrder }),
         }),
       ]);
       onSaved();
@@ -151,11 +152,24 @@ function ReorderModal({ articles, onClose, onSaved }: {
   );
 }
 
+const FIXED_TABS: { key: string; label: string; match: (category: string) => boolean }[] = [
+  { key: "all", label: "All", match: () => true },
+  { key: "draft", label: "Draft Article", match: (c) => !c },
+];
+
 export default function AdminArticles() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [reorderOpen, setReorderOpen] = useState(false);
+  const [tab, setTab] = useState("all");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
@@ -166,13 +180,54 @@ export default function AdminArticles() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  const fetchCategories = useCallback(async () => {
+    const res = await fetch("/api/admin/article-options");
+    const data = await res.json();
+    setCategories(Array.isArray(data.categories) ? data.categories : []);
+  }, []);
+
+  useEffect(() => { fetch_(); fetchCategories(); }, [fetch_, fetchCategories]);
 
   async function del(id: string, title: string) {
     if (!confirm(`Delete "${title}"?`)) return;
     await fetch(`/api/admin/articles/${id}`, { method: "DELETE" });
     fetch_();
   }
+
+  async function addCategory() {
+    const v = newCategory.trim();
+    if (!v) { setAddingCategory(false); return; }
+    const res = await fetch("/api/admin/article-options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "add_category", value: v }),
+    });
+    if (res.ok) {
+      await fetchCategories();
+      setTab(`cat:${v}`);
+    }
+    setNewCategory("");
+    setAddingCategory(false);
+  }
+
+  const TABS = [
+    ...FIXED_TABS,
+    ...categories.map((c) => ({ key: `cat:${c}`, label: c, match: (cat: string) => cat === c })),
+  ];
+
+  const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
+  const filtered = articles
+    .filter((a) => activeTab.match(a.category))
+    .filter((a) => a.title.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((a) => statusFilter === "all" || a.status === statusFilter)
+    .filter((a) => {
+      if (!dateFrom && !dateTo) return true;
+      if (!a.publishedAt) return false;
+      const d = a.publishedAt.slice(0, 10);
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    });
 
   return (
     <div className="p-8">
@@ -197,6 +252,84 @@ export default function AdminArticles() {
         </div>
       </div>
 
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-faint" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search articles by title…"
+            className="w-full pl-9 pr-3 py-2 rounded-[10px] border border-rule text-[13px] text-body placeholder:text-faint outline-none focus:border-primary"
+          />
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "draft" | "published")}
+          className="px-3 py-2 rounded-[10px] border border-rule text-[13px] text-body outline-none focus:border-primary bg-white"
+        >
+          <option value="all">All status</option>
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+        </select>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 rounded-[10px] border border-rule text-[13px] text-body outline-none focus:border-primary bg-white"
+          />
+          <span className="text-[12px] text-faint">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 rounded-[10px] border border-rule text-[13px] text-body outline-none focus:border-primary bg-white"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="text-[11px] text-muted hover:text-primary">
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        {TABS.map((t) => {
+          const count = articles.filter((a) => t.match(a.category)).length;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`px-4 py-1.5 rounded-full text-[12.5px] font-semibold border transition ${t.key === tab
+                ? "bg-primary text-white border-primary"
+                : "bg-white text-body border-rule hover:border-primary hover:text-primary"
+                }`}>
+              {t.label} <span className={t.key === tab ? "text-white/70" : "text-faint"}>({count})</span>
+            </button>
+          );
+        })}
+        {addingCategory ? (
+          <input
+            autoFocus
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addCategory();
+              if (e.key === "Escape") { setAddingCategory(false); setNewCategory(""); }
+            }}
+            onBlur={addCategory}
+            placeholder="New category…"
+            className="px-3 py-1.5 rounded-full text-[12.5px] font-semibold border border-primary text-body w-32 outline-none"
+          />
+        ) : (
+          <button onClick={() => setAddingCategory(true)}
+            className="px-3 py-1.5 rounded-full text-[12.5px] font-semibold border border-dashed border-rule text-faint hover:border-primary hover:text-primary transition">
+            + Category
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
         <div className="grid grid-cols-[minmax(0,2fr)_100px_80px_80px_120px_100px] gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
           <div>Title</div><div>Category</div><div>Read Time</div><div>Status</div><div>Published</div><div>Actions</div>
@@ -204,15 +337,19 @@ export default function AdminArticles() {
 
         {loading ? (
           <div className="py-16 text-center text-muted text-[13px]">Loading…</div>
-        ) : articles.length === 0 ? (
-          <div className="py-16 text-center text-muted text-[13px]">No articles yet. <Link href="/admin/articles/new" className="text-primary">Create one →</Link></div>
-        ) : articles.map((a) => (
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted text-[13px]">
+            {activeTab.key === "draft"
+              ? <>No draft articles. <Link href="/admin/articles/new" className="text-primary">Create one →</Link></>
+              : `No articles in ${activeTab.label} yet.`}
+          </div>
+        ) : filtered.map((a) => (
           <div key={a._id} className="grid grid-cols-[minmax(0,2fr)_100px_80px_80px_120px_100px] gap-4 px-5 py-3.5 border-b border-rule last:border-0 items-center hover:bg-surface">
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-heading truncate">{a.title}</p>
               <p className="text-[11px] font-mono text-faint">/read/{a.slug}</p>
             </div>
-            <div className="text-[11px] text-muted">{a.category}</div>
+            <div className="text-[11px] text-muted">{a.category || <span className="text-faint">Unassigned</span>}</div>
             <div className="text-[11px] text-muted">{a.readTime} min</div>
             <div>
               <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${a.status === "published" ? "text-gain bg-green-50 border-green-200" : "text-muted bg-surface border-rule"}`}>
@@ -239,7 +376,7 @@ export default function AdminArticles() {
       </div>
 
       {reorderOpen && (
-        <ReorderModal articles={articles} onClose={() => setReorderOpen(false)} onSaved={fetch_} />
+        <ReorderModal articles={articles} mainCategory={categories[0] ?? "General"} onClose={() => setReorderOpen(false)} onSaved={fetch_} />
       )}
     </div>
   );

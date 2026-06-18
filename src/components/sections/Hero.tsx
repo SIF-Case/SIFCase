@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, ArrowUpRight } from "lucide-react";
 import { HeroHeatmap } from "@/components/sections/HeroHeatmap";
 
@@ -15,6 +16,13 @@ const POPULAR_TAGS = [
 
 export function Hero() {
   const [query, setQuery] = useState("");
+  const router = useRouter();
+
+  function handleSearch() {
+    const q = query.trim();
+    if (q) router.push(`/sifs?q=${encodeURIComponent(q)}`);
+    else router.push("/sifs");
+  }
 
   return (
     <section className="bg-white pt-8 pb-12 md:pt-10 md:pb-16 border-b border-rule-soft">
@@ -47,10 +55,14 @@ export function Hero() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder='Try "Long-Short", "Market Neutral", or a strategy...'
             className="flex-1 px-3 py-3.5 text-[14px] text-body placeholder:text-faint bg-transparent outline-none"
           />
-          <button className="m-1.5 px-5 py-2.5 rounded-[8px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover flex-shrink-0">
+          <button
+            onClick={handleSearch}
+            className="m-1.5 px-5 py-2.5 rounded-[8px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover flex-shrink-0"
+          >
             Search
           </button>
         </div>
@@ -63,7 +75,7 @@ export function Hero() {
           {POPULAR_TAGS.map((tag) => (
             <a
               key={tag}
-              href={`/sifs?strategy=${encodeURIComponent(tag)}`}
+              href={`/sifs?q=${encodeURIComponent(tag)}`}
               className="px-3 py-1.5 rounded-full border border-rule text-[12.5px] text-body hover:border-primary hover:text-primary hover:bg-primary-tint"
             >
               {tag}

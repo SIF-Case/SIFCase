@@ -5,7 +5,6 @@ import { X, Plus, Search, GitCompare } from "lucide-react";
 import Link from "next/link";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { CompareLab } from "@/components/sections/CompareLab";
-import { SourceBadge } from "@/components/ui/SourceBadge";
 import { Sparkline } from "@/components/ui/Sparkline";
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
@@ -61,15 +60,6 @@ const SECTION_ROWS: {
       { label: "Scheme Info Document",  key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
       { label: "Factsheet",             key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
       { label: "Portfolio Disclosure",  key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
-    ],
-  },
-  {
-    section: "Data Confidence",
-    rows: [
-      { label: "NAV Source",      key: () => ({ text: "AMFI Verified" }) },
-      { label: "Returns Source",  key: () => ({ text: "Calculated from NAV" }) },
-      { label: "Risk Metrics",    key: () => ({ text: "Calculated from NAV" }) },
-      { label: "TER Source",      key: () => ({ text: "Pending AMC/ISID", tone: "muted" as const }) },
     ],
   },
 ];
@@ -305,18 +295,11 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
                           <div className="px-4 py-3.5 text-[11px] text-muted font-medium self-center">{label}</div>
                           {cells.map((cell, ci) => (
                             <div key={ci} className="px-4 py-3.5 border-l border-rule self-center">
-                              {section === "Data Confidence" ? (
-                                <SourceBadge
-                                  variant={cell.text === "AMFI Verified" ? "amfi" : cell.text === "Calculated from NAV" ? "calculated" : "review"}
-                                  className="text-[9.5px]"
-                                />
-                              ) : (
                                 <span className={`text-[12px] font-semibold tabular ${
                                   cell.tone === "gain" ? "text-gain" : cell.tone === "loss" ? "text-loss" : cell.tone === "muted" ? "text-muted" : "text-body"
                                 }`}>
                                   {cell.text}
                                 </span>
-                              )}
                             </div>
                           ))}
                         </div>

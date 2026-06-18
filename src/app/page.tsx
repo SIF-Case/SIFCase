@@ -20,6 +20,7 @@ import { BuildYourCompare } from "@/components/sections/BuildYourCompare";
 import { WhySIFcase } from "@/components/sections/WhySIFcase";
 import { LearnSection } from "@/components/sections/LearnSection";
 import { SIFNewsSection } from "@/components/sections/SIFNewsSection";
+import { FAQSection } from "@/components/sections/FAQSection";
 import { CTABand } from "@/components/sections/CTABand";
 import { Providers } from "@/app/providers";
 import {
@@ -29,6 +30,7 @@ import {
   getTickerNavs,
   getMonthlyHeatmapData,
   getLatestPublishedReport,
+  getPublishedFaqs,
 } from "@/lib/sifData";
 
 export default async function HomePage() {
@@ -40,13 +42,14 @@ export default async function HomePage() {
     }
   }
 
-  const [stats, sifs, topFunds, tickerNavs, heatmap, latestReport] = await Promise.all([
+  const [stats, sifs, topFunds, tickerNavs, heatmap, latestReport, faqGroups] = await Promise.all([
     getSnapshotStats(),
     getSIFsWithReturns("Regular", "Growth"),
     getTopFunds(),
     getTickerNavs(),
     getMonthlyHeatmapData(),
     getLatestPublishedReport(),
+    getPublishedFaqs(),
   ]);
 
   return (
@@ -66,6 +69,7 @@ export default async function HomePage() {
         <WhySIFcase />
         <LearnSection />
         <SIFNewsSection />
+        <FAQSection groups={faqGroups} />
         <CTABand />
         <Footer />
       </main>

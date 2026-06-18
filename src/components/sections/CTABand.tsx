@@ -22,7 +22,7 @@ export function CTABand() {
               <ArrowRight className="w-4 h-4" />
             </a>
             <a
-              href="/learn"
+              href="/read"
               className="inline-flex items-center px-7 py-3.5 rounded-[10px] bg-white/[0.08] border border-white/15 text-white text-[14.5px] font-semibold hover:bg-white/[0.14]"
             >
               Start with the basics

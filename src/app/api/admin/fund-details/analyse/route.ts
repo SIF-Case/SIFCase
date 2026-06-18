@@ -890,11 +890,10 @@ export async function POST(req: NextRequest) {
     if (provider === "deepseek") aiExtracted = await callDeepSeek(combined, model, apiKey);
     else aiExtracted = await callOpenRouter(combined, model, apiKey);
 
-    // Override with direct-parsed data (more accurate than AI for structured tables)
+
     if (pdfDirectData.portfolioByIndustry.length) aiExtracted.portfolioByIndustry = pdfDirectData.portfolioByIndustry;
     if (pdfDirectData.portfolioByRatingClass.length) aiExtracted.portfolioByRatingClass = pdfDirectData.portfolioByRatingClass;
 
-    // Apply sector/bond overrides for text-extraction path
     if (Array.isArray(aiExtracted.topHoldings)) {
       const CREDIT_RATING_RE = /^(AAA[\+\-]?|AA[\+\-]?|A[\+\-]?|BBB[\+\-]?|SOV|AAA equivalent|AAA\s*Equivalent)$/i;
       const holdings = aiExtracted.topHoldings as Record<string, unknown>[];

@@ -38,7 +38,7 @@ const ArticleSchema = new Schema<IArticle>(
     coverDesktop: { type: String, default: "" },
     coverMobile: { type: String, default: "" },
     useSeparateMobile: { type: Boolean, default: false },
-    category: { type: String, default: "General" },
+    category: { type: String, default: "" },
     subcategory: { type: String, default: "" },
     order: { type: Number, default: 0 },
     tags: [String],

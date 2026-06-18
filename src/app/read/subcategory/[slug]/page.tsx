@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
+import ArticleOptions from "@/models/ArticleOptions";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -18,15 +19,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   await connectDB();
   
-  const articles = await Article.find({ status: "published", category: "General" }).lean();
+  const optionsDoc = await ArticleOptions.findOne({}).lean();
+  const mainCategory = optionsDoc?.categories?.[0] ?? "General";
+
+  const articles = await Article.find({ status: "published", category: mainCategory }).lean();
   const matched = articles.find(a => {
-    const sub = a.subcategory?.trim() || "General";
+    const sub = a.subcategory?.trim() || mainCategory;
     return slugify(sub, { lower: true, strict: true }) === slug;
   });
-  
+
   if (!matched) return { title: "Subcategory Not Found" };
-  
-  const subName = matched.subcategory?.trim() || "General";
+
+  const subName = matched.subcategory?.trim() || mainCategory;
   return {
     title: `${subName} — SIFcase`,
     description: `Articles and insights about ${subName} on SIFcase.`,
@@ -37,20 +41,23 @@ export default async function SubcategoryPage({ params }: Props) {
   const { slug } = await params;
   await connectDB();
   
-  const articles = (await Article.find({ status: "published", category: "General" })
+  const optionsDoc = await ArticleOptions.findOne({}).lean();
+  const mainCategory = optionsDoc?.categories?.[0] ?? "General";
+
+  const articles = (await Article.find({ status: "published", category: mainCategory })
     .sort({ order: 1, publishedAt: -1 })
     .lean()) as unknown as ArticleDoc[];
-    
+
   const filteredArticles = articles.filter(a => {
-    const sub = a.subcategory?.trim() || "General";
+    const sub = a.subcategory?.trim() || mainCategory;
     return slugify(sub, { lower: true, strict: true }) === slug;
   });
-  
+
   if (filteredArticles.length === 0) {
     notFound();
   }
-  
-  const subName = filteredArticles[0].subcategory?.trim() || "General";
+
+  const subName = filteredArticles[0].subcategory?.trim() || mainCategory;
   
   return (
     <main className="flex flex-col min-h-screen bg-[#F4F6FA]">

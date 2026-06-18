@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, SlidersHorizontal, ArrowUpDown, X, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { getCategoryAverages } from "@/lib/categoryAverages";
 import { Sparkline } from "@/components/ui/Sparkline";
@@ -135,7 +135,8 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 30, 50];
 
 export function SIFsClient({ funds }: { funds: FundRow[] }) {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [period, setPeriod] = useState<PeriodKey>("SI");
   const [category, setCategory] = useState<typeof CATEGORIES[number]>("All");
   const [sortKey, setSortKey] = useState<SortKey>("return");

@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const article = await Article.create({
     title, slug, content, excerpt, coverDesktop, coverMobile,
     useSeparateMobile: !!useSeparateMobile,
-    category: category || "General",
+    category: category || "",
     subcategory: subcategory || "",
     tags: tags || [],
     status: status || "draft",

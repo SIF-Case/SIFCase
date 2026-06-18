@@ -113,27 +113,37 @@ export function Navbar() {
           <nav className="hidden md:flex items-center gap-1.5">
             {NAV_LINKS.map((link) =>
               link.label === "Fund Houses" ? (
-                <div key={link.href} ref={fundHousesRef} className="relative flex items-center">
-                  <button
-                    onMouseEnter={() => {
-                      setFundHousesOpen(true);
-                      loadBrandNames();
-                    }}
-                    onClick={() => {
+                <div
+                  key={link.href}
+                  ref={fundHousesRef}
+                  className="relative px-3 py-1.5 rounded-[8px] hover:bg-surface text-body hover:text-heading transition-colors cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onMouseEnter={() => {
+                    setFundHousesOpen(true);
+                    loadBrandNames();
+                  }}
+                  onClick={() => {
+                    setFundHousesOpen((v) => !v);
+                    loadBrandNames();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
                       setFundHousesOpen((v) => !v);
                       loadBrandNames();
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-[8px] hover:bg-surface text-body hover:text-heading transition-colors"
-                  >
+                    }
+                  }}
+                >
+                  <span className="flex items-center gap-1 h-5">
                     <AnimatedNavLink href="#" onClick={(e) => e.preventDefault()}>
                       {link.label}
                     </AnimatedNavLink>
                     <ChevronDown
-                      className={`size-3.5 text-faint transition-transform duration-300 ${
+                      className={`size-3.5 shrink-0 text-faint transition-transform duration-300 ${
                         fundHousesOpen ? "rotate-180 text-primary" : ""
                       }`}
                     />
-                  </button>
+                  </span>
                   {fundHousesOpen && (
                     <div
                       className="absolute left-0 top-full mt-2.5 z-30 bg-white border border-rule rounded-[14px] shadow-premium py-1.5 w-[480px] max-h-80 overflow-y-auto"

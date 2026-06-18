@@ -304,7 +304,7 @@ export default function AdminNews() {
       const saveRes = await fetch("/api/admin/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: draft.title, content: draft.body, status: "draft", category: "General" }),
+        body: JSON.stringify({ title: draft.title, content: draft.body, status: "draft", category: "" }),
       });
       if (saveRes.ok) saved++;
     }

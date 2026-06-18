@@ -1,14 +1,13 @@
-import { SourceBadge } from "@/components/ui/SourceBadge";
 import type { SnapshotStats } from "@/lib/sifData";
 
 export function MarketSnapshot({ stats }: { stats: SnapshotStats }) {
   const cards = [
-    { label: "Total SIFs", value: String(stats.totalSchemes), sub: "schemes in database", badge: "amfi" as const },
-    { label: "AMCs with SIFs", value: String(stats.uniqueAMCs), sub: "active asset managers", badge: "amfi" as const },
-    { label: "Regular Plan SIFs", value: String(stats.totalRegular), sub: "advisor-eligible plans", badge: "amfi" as const },
-    { label: "Latest NAV Date", value: stats.latestNavDate.slice(5).replace("-", " "), sub: stats.latestNavDate.slice(0, 4) + " · Regular Plans", badge: "amfi" as const },
-    { label: "NAV Records", value: stats.totalNavRecords.toLocaleString("en-IN"), sub: "stored in database", badge: "calculated" as const },
-    { label: "Direct Plan SIFs", value: String(stats.totalSchemes - stats.totalRegular), sub: "direct investor plans", badge: "amfi" as const },
+    { label: "Total SIFs", value: String(stats.totalSchemes), sub: "schemes in database" },
+    { label: "AMCs with SIFs", value: String(stats.uniqueAMCs), sub: "active asset managers" },
+    { label: "Regular Plan SIFs", value: String(stats.totalRegular), sub: "advisor-eligible plans" },
+    { label: "Latest NAV Date", value: stats.latestNavDate.slice(5).replace("-", " "), sub: stats.latestNavDate.slice(0, 4) + " · Regular Plans" },
+    { label: "NAV Records", value: stats.totalNavRecords.toLocaleString("en-IN"), sub: "stored in database" },
+    { label: "Direct Plan SIFs", value: String(stats.totalSchemes - stats.totalRegular), sub: "direct investor plans" },
   ];
 
   return (
@@ -37,8 +36,7 @@ export function MarketSnapshot({ stats }: { stats: SnapshotStats }) {
             >
               <p className="text-[12px] font-medium text-muted mb-3">{stat.label}</p>
               <p className="text-[26px] font-bold text-heading nums leading-none mb-2">{stat.value}</p>
-              <p className="text-[11px] text-faint mb-3">{stat.sub}</p>
-              <SourceBadge variant={stat.badge} className="text-[9.5px]" />
+              <p className="text-[11px] text-faint">{stat.sub}</p>
             </div>
           ))}
         </div>

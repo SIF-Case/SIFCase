@@ -259,27 +259,18 @@ export function Footer() {
                 <Shield className="w-4 h-4 text-brand-navy flex-shrink-0" strokeWidth={1.75} />
                 <SectionHeading>Disclaimer</SectionHeading>
               </div>
-              <div className="space-y-2 text-[12px] text-body leading-relaxed">
-                <p>
-                  Unless otherwise stated, all content on this website is issued by Aureva Capital
-                  Private Limited (&ldquo;Aureva&rdquo;) and is meant for general information and
-                  educational purposes only. It may be updated or changed without notice.
-                </p>
-                <p>
-                  Nothing here should be considered an offer, solicitation, or recommendation to
-                  buy or sell any financial product or service, or to provide investment or
-                  portfolio advice. The information should not be relied upon for making financial
-                  or investment decisions.
-                </p>
-                <p>
-                  This content does not constitute financial, tax, legal, or accounting advice,
-                  and visitors are advised to seek independent professional guidance before acting
-                  on any information.
-                </p>
-                <p>
-                  Investments in Specialized Investment Fund involves relatively higher risk including potential loss of capital, liquidity risk and market volatility.  Please read all investment strategy related documents carefully before making the investment decision.
-                </p>
-              </div>
+              <p className="text-[12px] text-body leading-relaxed mb-3">
+                Content on this website is issued by Aureva Capital Private Limited for general
+                information and educational purposes only. It does not constitute financial, tax,
+                legal, or investment advice. Investments in SIFs involve capital risk.
+              </p>
+              <a
+                href="/disclaimer"
+                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline"
+              >
+                Read full disclaimer
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </a>
             </div>
           </div>
         </div>
