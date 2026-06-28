@@ -11,7 +11,7 @@ type Client = {
   phone?: string;
   company?: string;
   stage: string;
-  assignedTo?: { _id: string; name?: string; emai?: string } | null;
+  assignedTo?: { _id: string; name?: string; email?: string } | null;
   lastContactedAt?: string | null;
   nextFollowUpAt?: string | null;
   createdAt: string;
@@ -676,8 +676,8 @@ export default function AdminClients() {
               {/* Draggable visual indicator line */}
               <div
                 className={`w-[2.5px] rounded-full transition-all duration-150 ${isDragging
-                    ? "bg-primary h-24 w-[3.5px]"
-                    : "bg-slate-200 group-hover:bg-primary/70 group-hover:h-16 h-10"
+                  ? "bg-primary h-24 w-[3.5px]"
+                  : "bg-slate-200 group-hover:bg-primary/70 group-hover:h-16 h-10"
                   }`}
               />
             </div>
