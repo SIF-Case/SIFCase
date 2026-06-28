@@ -8,7 +8,7 @@ type Client = {
   _id: string;
   name: string;
   email?: string;
-  phone?: string;l
+  phone?: string;
   company?: string;
   stage: string;
   assignedTo?: { _id: string; name?: string; emai?: string } | null;
@@ -274,34 +274,34 @@ export default function AdminClients() {
   const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
     mouseDownEvent.preventDefault();
     setIsDragging(true);
-    
+
     const startWidth = sidebarWidth;
     const startX = mouseDownEvent.clientX;
-    
+
     const doDrag = (mouseMoveEvent: MouseEvent) => {
       const deltaX = mouseMoveEvent.clientX - startX;
       const maxW = typeof window !== 'undefined' ? window.innerWidth - 80 : 800;
       const newWidth = Math.max(360, Math.min(maxW, startWidth - deltaX));
       setSidebarWidth(newWidth);
     };
-    
+
     const stopDrag = (mouseUpEvent: MouseEvent) => {
       setIsDragging(false);
       window.removeEventListener("mousemove", doDrag);
       window.removeEventListener("mouseup", stopDrag);
-      
+
       const deltaX = mouseUpEvent.clientX - startX;
       const maxW = typeof window !== 'undefined' ? window.innerWidth - 80 : 800;
       const finalWidth = Math.max(360, Math.min(maxW, startWidth - deltaX));
       localStorage.setItem("client-sidebar-width", String(finalWidth));
-      
+
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
     };
-    
+
     document.body.style.userSelect = "none";
     document.body.style.cursor = "ew-resize";
-    
+
     window.addEventListener("mousemove", doDrag);
     window.addEventListener("mouseup", stopDrag);
   }, [sidebarWidth]);
@@ -518,8 +518,8 @@ export default function AdminClients() {
             <div className="text-[12px]">
               {c.nextFollowUpAt
                 ? <span className={isOverdue(c.nextFollowUpAt) ? "text-loss font-semibold" : "text-body"}>
-                    {new Date(c.nextFollowUpAt).toLocaleDateString("en-IN")}
-                  </span>
+                  {new Date(c.nextFollowUpAt).toLocaleDateString("en-IN")}
+                </span>
                 : <span className="text-faint">—</span>}
             </div>
           </div>
@@ -656,16 +656,15 @@ export default function AdminClients() {
       {selectedClientId && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/35 backdrop-blur-[1.5px] transition-opacity" 
-            onClick={() => setSelectedClientId(null)} 
+          <div
+            className="absolute inset-0 bg-black/35 backdrop-blur-[1.5px] transition-opacity"
+            onClick={() => setSelectedClientId(null)}
           />
-          
+
           {/* Panel */}
-          <div 
-            className={`relative w-full md:w-[var(--sidebar-width)] h-full bg-white shadow-premium border-l border-rule flex flex-col z-10 ${
-              isDragging ? "" : "transition-[width] duration-300"
-            }`}
+          <div
+            className={`relative w-full md:w-[var(--sidebar-width)] h-full bg-white shadow-premium border-l border-rule flex flex-col z-10 ${isDragging ? "" : "transition-[width] duration-300"
+              }`}
             style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
           >
             {/* Drag Resize Handle */}
@@ -675,12 +674,11 @@ export default function AdminClients() {
               title="Drag to resize panel"
             >
               {/* Draggable visual indicator line */}
-              <div 
-                className={`w-[2.5px] rounded-full transition-all duration-150 ${
-                  isDragging 
-                    ? "bg-primary h-24 w-[3.5px]" 
+              <div
+                className={`w-[2.5px] rounded-full transition-all duration-150 ${isDragging
+                    ? "bg-primary h-24 w-[3.5px]"
                     : "bg-slate-200 group-hover:bg-primary/70 group-hover:h-16 h-10"
-                }`}
+                  }`}
               />
             </div>
             {sidebarLoading ? (
@@ -710,14 +708,14 @@ export default function AdminClients() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button 
+                    <button
                       onClick={() => setIsEditing(!isEditing)}
                       className="px-2.5 py-1 rounded-[6px] border border-rule text-[11px] font-medium text-muted hover:text-body"
                     >
                       {isEditing ? "Cancel" : "Edit"}
                     </button>
                     {canEdit && (
-                      <button 
+                      <button
                         onClick={deleteSidebarClient}
                         className="p-1 rounded-[6px] border border-rule text-muted hover:text-loss hover:border-red-200"
                         title="Delete client"
@@ -725,8 +723,8 @@ export default function AdminClients() {
                         <Trash2 className="size-3.5" />
                       </button>
                     )}
-                    <button 
-                      onClick={() => setSelectedClientId(null)} 
+                    <button
+                      onClick={() => setSelectedClientId(null)}
                       className="p-1 rounded-[6px] border border-rule text-muted hover:text-body"
                     >
                       <X className="size-3.5" />
@@ -743,57 +741,57 @@ export default function AdminClients() {
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Name</label>
-                          <input 
-                            value={editForm.name} 
+                          <input
+                            value={editForm.name}
                             onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Email</label>
-                          <input 
-                            value={editForm.email} 
+                          <input
+                            value={editForm.email}
                             onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Phone</label>
-                          <input 
-                            value={editForm.phone} 
+                          <input
+                            value={editForm.phone}
                             onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Company</label>
-                          <input 
-                            value={editForm.company} 
+                          <input
+                            value={editForm.company}
                             onChange={e => setEditForm(p => ({ ...p, company: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Source</label>
-                          <input 
-                            value={editForm.source} 
+                          <input
+                            value={editForm.source}
                             onChange={e => setEditForm(p => ({ ...p, source: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Estimated AUM (Lakhs)</label>
-                          <input 
+                          <input
                             type="number"
-                            value={editForm.estimatedAumLakhs} 
+                            value={editForm.estimatedAumLakhs}
                             onChange={e => setEditForm(p => ({ ...p, estimatedAumLakhs: e.target.value }))}
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Risk Profile</label>
-                          <select 
-                            value={editForm.riskProfile} 
+                          <select
+                            value={editForm.riskProfile}
                             onChange={e => setEditForm(p => ({ ...p, riskProfile: e.target.value }))}
                             className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] outline-none focus:border-primary"
                           >
@@ -805,23 +803,23 @@ export default function AdminClients() {
                         </div>
                         <div>
                           <label className="block text-[10px] font-mono uppercase tracking-widest text-muted mb-1">Tags (comma separated)</label>
-                          <input 
-                            value={editForm.tags} 
+                          <input
+                            value={editForm.tags}
                             onChange={e => setEditForm(p => ({ ...p, tags: e.target.value }))}
                             placeholder="e.g. active, high-priority"
-                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary" 
+                            className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] outline-none focus:border-primary"
                           />
                         </div>
                       </div>
                       <div className="pt-2 flex justify-end gap-2">
-                        <button 
-                          onClick={() => setIsEditing(false)} 
+                        <button
+                          onClick={() => setIsEditing(false)}
                           className="px-3.5 py-1.5 rounded-[8px] border border-rule text-[12px] text-muted hover:text-body"
                         >
                           Cancel
                         </button>
-                        <button 
-                          onClick={saveClientDetails} 
+                        <button
+                          onClick={saveClientDetails}
                           disabled={sidebarBusy || !editForm.name.trim()}
                           className="px-3.5 py-1.5 rounded-[8px] bg-brand-navy text-white text-[12px] font-medium hover:bg-brand-navy/90 disabled:opacity-50"
                         >
@@ -847,8 +845,8 @@ export default function AdminClients() {
                         </div>
                         <div className="bg-mist/30 border border-rule/50 rounded-[10px] p-3">
                           <label className="block text-[9px] font-mono uppercase tracking-widest text-muted mb-1">Assigned To</label>
-                          <select 
-                            value={selectedClient.assignedTo?._id ?? ""} 
+                          <select
+                            value={selectedClient.assignedTo?._id ?? ""}
                             disabled={!canEdit || sidebarBusy}
                             onChange={e => patchSidebar({ action: "assign", assignedTo: e.target.value || null })}
                             className="w-full h-8 px-2 rounded-[6px] border border-rule bg-white text-[12px] text-body outline-none"
