@@ -8,10 +8,10 @@ type Client = {
   _id: string;
   name: string;
   email?: string;
-  phone?: string;
+  phone?: string;l
   company?: string;
   stage: string;
-  assignedTo?: { _id: string; name?: string; email?: string } | null;
+  assignedTo?: { _id: string; name?: string; emai?: string } | null;
   lastContactedAt?: string | null;
   nextFollowUpAt?: string | null;
   createdAt: string;

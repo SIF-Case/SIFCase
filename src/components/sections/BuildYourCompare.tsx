@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from "react";
-import { Plus, X, Sparkles, Shield, Layers, Activity, Zap, Target } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,15 +17,14 @@ import { useCompareTray } from "@/components/ui/CompareTray";
 
 type View = "Cumulative" | "Drawdown" | "Rolling" | "Volatility";
 
-const PALETTE = ["#1E4ED8", "#0FAF75", "#F59E0B", "#DC2626", "#6366F1"];
+const PALETTE = ["#3B8BB1", "#22c55e", "#f59e0b", "#ef4444", "#a855f7"];
 
-const PRESETS: { id: string; label: string; icon: typeof Sparkles }[] = [
-  { id: "top",      label: "Top SI Return",      icon: Sparkles },
-  { id: "low-risk", label: "Lowest Drawdown",     icon: Shield },
-  { id: "equity",   label: "Equity Funds",        icon: Activity },
-  { id: "hybrid",   label: "Hybrid Funds",        icon: Layers },
-  { id: "sharpe",   label: "Best Sharpe",         icon: Zap },
-  { id: "newest",   label: "Most Recent",         icon: Target },
+const PRESETS: { id: string; label: string; icon: string }[] = [
+  { id: "top",      label: "Top SI Return",      icon: "↑" },
+  { id: "low-risk", label: "Lowest Drawdown",     icon: "↓" },
+  { id: "equity",   label: "Equity Funds",        icon: "◆" },
+  { id: "hybrid",   label: "Hybrid Funds",        icon: "◆" },
+  { id: "sharpe",   label: "Best Sharpe",         icon: "★" },
 ];
 
 function shortName(name: string) {
@@ -45,7 +44,7 @@ function ChartTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const date: string = payload[0]?.payload?.date ?? "";
   return (
-    <div className="bg-brand-navy rounded-[14px] shadow-premium px-4 py-3 min-w-[200px] border border-white/10">
+    <div className="bg-[#0B1F3A] rounded-[14px] shadow-premium px-4 py-3 min-w-[200px] border border-white/10">
       {date && (
         <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{date}</p>
       )}
@@ -69,7 +68,7 @@ function ChartTooltip({ active, payload }: any) {
 function YTick({ x, y, payload }: any) {
   return (
     <text x={x - 6} y={y} dy={4} textAnchor="end"
-      style={{ fontSize: 11, fontFamily: "var(--font-sans)", fill: "#94A3B8", fontVariantNumeric: "tabular-nums" }}>
+      style={{ fontSize: 11, fontFamily: "var(--font-sans)", fill: "#555", fontVariantNumeric: "tabular-nums" }}>
       {payload.value >= 0 ? "+" : ""}{payload.value.toFixed(1)}%
     </text>
   );
@@ -128,8 +127,7 @@ export function BuildYourCompare({ funds }: Props) {
     else if (id === "low-risk") next = [...withSI].sort((a, b) => (a.drawdowns["SI"] ?? 0) - (b.drawdowns["SI"] ?? 0)).slice(0, 3).map((f) => f.schemeCode);
     else if (id === "equity")   next = funds.filter((f) => f.category === "Equity").slice(0, 3).map((f) => f.schemeCode);
     else if (id === "hybrid")   next = funds.filter((f) => f.category === "Hybrid").slice(0, 3).map((f) => f.schemeCode);
-    else if (id === "sharpe")   next = [...withSI].sort((a, b) => (b.sharpes["SI"] ?? 0) - (a.sharpes["SI"] ?? 0)).slice(0, 3).map((f) => f.schemeCode);
-    else if (id === "newest")   next = [...funds].reverse().slice(0, 3).map((f) => f.schemeCode);
+    else if (id === "sharpe")   next = [...withSI].sort((a, b) => (b.returns["SI"] ?? 0) - (a.returns["SI"] ?? 0) && b.sharpes["SI"] !== null ? (b.sharpes["SI"] ?? 0) - (a.sharpes["SI"] ?? 0) : 0).slice(0, 3).map((f) => f.schemeCode);
     if (next.length) setPicked(next);
   }
 
@@ -139,59 +137,105 @@ export function BuildYourCompare({ funds }: Props) {
   if (funds.length === 0) return null;
 
   return (
-    <section className="border-b border-rule bg-surface">
-      <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-section">
-        <div className="mb-8">
-          <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Build Your Comparison</p>
-          <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-1">Multi-fund performance lab</h2>
-          <p className="text-[15px] text-muted">Select up to 5 SIFs and compare NAV performance across periods.</p>
+    <section className="bg-[#f8f9fb] py-[84px] px-6 lg:px-[82px] flex flex-col items-start gap-[46px] w-full border-b border-rule">
+      {/* Section Header */}
+      <div className="flex flex-col gap-3 pl-0 lg:pl-[30px] self-stretch w-full max-w-[1320px] mx-auto">
+        <p className="text-[15px] font-normal uppercase text-black tracking-[0.2px]">
+          Build Your Comparison
+        </p>
+        <h2 className="text-[24px] font-bold text-black leading-none font-sans">
+          Multi-fund performance lab
+        </h2>
+        <p className="text-[15px] font-normal text-[#555] leading-normal font-sans">
+          Select up to 5 SIFs and compare NAV performance across periods.
+        </p>
+      </div>
+
+      {/* Lab Card */}
+      <div className="max-w-[1320px] mx-auto w-full rounded-[17.44px] bg-white shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+        {/* Nav bar */}
+        <div className="flex items-center gap-[40px] p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white flex-wrap md:flex-nowrap">
+          <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full max-w-[348px] h-[40px] box-border">
+            {(["Cumulative", "Drawdown", "Rolling", "Volatility"] as const).map((type) => (
+              <button
+                key={type}
+                className={`flex-1 flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer whitespace-nowrap transition-all duration-150 ${
+                  type === view
+                    ? "bg-[#3b8bb1] text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                    : "bg-transparent text-[#6b7280] hover:text-[#3b8bb1]"
+                }`}
+                onClick={() => setView(type)}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-[4.36px] p-[4px] rounded-[24px] bg-white w-full max-w-[237px] box-border">
+            {periods.map((p) => (
+              <button
+                key={p}
+                className={`flex-1 flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150 ${
+                  p === period
+                    ? "bg-[#3b8bb1] text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                    : "bg-transparent text-[#6b7280] hover:text-[#3b8bb1]"
+                }`}
+                onClick={() => setPeriod(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="bg-white border border-rule rounded-[18px] overflow-hidden shadow-card flex flex-col">
-
-          {/* Controls */}
-          <div className="px-6 py-4 border-b border-rule flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Toggle active={view} options={["Cumulative", "Drawdown", "Rolling", "Volatility"] as const} onChange={setView} />
-              <Toggle active={period} options={periods} onChange={setPeriod} />
+        {/* Fund tags */}
+        <div className="flex items-center gap-2 p-[14px_22px_10px] flex-wrap border-b border-[#f1f2f4]">
+          {selected.map((f, i) => (
+            <div key={f.schemeCode} className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151]">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+              <span className="text-[12px] font-medium text-[#374151] whitespace-nowrap">{shortName(f.name)}</span>
+              <button
+                onClick={() => setPicked(picked.filter((id) => id !== f.schemeCode))}
+                className="flex items-center justify-center bg-transparent border-none cursor-pointer text-[#9ca3af] hover:text-[#374151] p-0 transition-colors"
+                aria-label={`Remove ${f.name}`}
+              >
+                <X className="size-2.5" />
+              </button>
             </div>
-          </div>
+          ))}
+          {picked.length < 5 && (
+            <div className="relative">
+              <button
+                onClick={() => setAddOpen((o) => !o)}
+                className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all"
+              >
+                <Plus className="size-3" />
+                Add fund
+              </button>
+              {addOpen && (
+                <div className="absolute z-30 top-full mt-2 left-0 w-72 bg-white border border-rule rounded-[14px] shadow-premium p-2 max-h-[280px] overflow-auto">
+                  {addable.length === 0 && <div className="px-3 py-2 text-[11px] text-muted">All funds added</div>}
+                  {addable.map((f) => (
+                    <button
+                      key={f.schemeCode}
+                      onClick={() => { setPicked([...picked, f.schemeCode]); setAddOpen(false); }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface text-[12px] truncate text-[#374151] font-medium transition-colors"
+                    >
+                      {shortName(f.name)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
-          {/* Chips */}
-          <div className="px-6 py-3 border-b border-rule flex flex-wrap items-center gap-2">
-            {selected.map((f, i) => (
-              <span key={f.schemeCode} className="inline-flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-full bg-surface border border-rule text-[11px]">
-                <span className="size-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-                <span className="max-w-[160px] truncate text-body">{shortName(f.name)}</span>
-                <button onClick={() => setPicked(picked.filter((id) => id !== f.schemeCode))} className="p-0.5 rounded-full hover:bg-rule transition-colors">
-                  <X className="size-3 text-muted" />
-                </button>
-              </span>
-            ))}
-            {picked.length < 5 && (
-              <div className="relative">
-                <button onClick={() => setAddOpen((o) => !o)} className="h-7 px-3 inline-flex items-center gap-1 rounded-full border border-dashed border-rule bg-white text-[11px] text-muted hover:text-body hover:border-rule-strong transition-colors">
-                  <Plus className="size-3" /> Add fund
-                </button>
-                {addOpen && (
-                  <div className="absolute z-30 top-full mt-2 left-0 w-72 bg-white border border-rule rounded-[14px] shadow-premium p-2 max-h-[280px] overflow-auto">
-                    {addable.length === 0 && <div className="px-3 py-2 text-[11px] text-muted">All funds added</div>}
-                    {addable.map((f) => (
-                      <button key={f.schemeCode} onClick={() => { setPicked([...picked, f.schemeCode]); setAddOpen(false); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface text-[12px] truncate text-body">
-                        {shortName(f.name)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Chart */}
-          {series.length > 0 && chartData.length > 1 ? (
-            <div className="px-2 pt-6 pb-2" style={{ height: 380 }}>
-              <ResponsiveContainer width="100%" height={380}>
-                <AreaChart data={chartData} margin={{ top: 8, right: 32, bottom: 8, left: 8 }}>
+        {/* Chart area */}
+        {series.length > 0 && chartData.length > 1 ? (
+          <div className="flex items-stretch p-[16px_22px_0] gap-0 flex-1 min-h-[350px]">
+            <div className="flex-1 w-full h-[320px]">
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                   <defs>
                     {series.map((s) => (
                       <linearGradient key={s.id} id={`bkgrd-${s.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -200,90 +244,78 @@ export function BuildYourCompare({ funds }: Props) {
                       </linearGradient>
                     ))}
                   </defs>
-                  <CartesianGrid strokeDasharray="4 6" stroke="#E5EDF5" vertical={false} />
+                  <CartesianGrid strokeDasharray="0" stroke="#F1F2F4" vertical={false} />
                   <XAxis dataKey="idx" tick={false} axisLine={false} tickLine={false} />
-                  <YAxis tick={<YTick />} axisLine={false} tickLine={false} width={52} tickCount={6} />
+                  <YAxis tick={<YTick />} axisLine={false} tickLine={false} width={48} tickCount={6} />
                   <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#0B1F3A", strokeWidth: 1, strokeDasharray: "4 4" }} />
-                  {view !== "Volatility" && <ReferenceLine y={0} stroke="#B8C7D6" strokeWidth={1.5} />}
+                  {view !== "Volatility" && <ReferenceLine y={0} stroke="#B8C7D6" strokeWidth={1} />}
                   {series.map((s) => (
                     <Area key={s.id} type="monotone" dataKey={s.id} name={s.name}
-                      stroke={s.color} strokeWidth={2.5}
+                      stroke={s.color} strokeWidth={2}
                       fill={`url(#bkgrd-${s.id})`}
                       dot={false}
-                      activeDot={{ r: 5, strokeWidth: 2.5, stroke: "#fff", fill: s.color }}
+                      activeDot={{ r: 5, strokeWidth: 2, stroke: "#fff", fill: s.color }}
                       connectNulls={false}
                     />
                   ))}
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          ) : (
-            <div className="flex items-center justify-center py-16 text-[13px] text-muted">
-              Insufficient history for the selected funds and period.
-            </div>
-          )}
-
-          {/* Legend + source */}
-          {series.length > 0 && (
-            <div className="px-6 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-4">
-                {series.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <span className="inline-block w-6 h-[2.5px] rounded-full" style={{ background: s.color }} />
-                    <span className="text-[12px] text-body">{s.name}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">{viewLabel} · AMFI NAV data</p>
-            </div>
-          )}
-
-          {/* Presets + compare tray */}
-          <div className="px-6 py-4 border-t border-rule bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap gap-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-muted self-center mr-1">Presets</span>
-              {PRESETS.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <button key={p.id} onClick={() => applyPreset(p.id)}
-                    className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full border border-rule bg-white text-[11px] font-medium text-body hover:border-rule-strong hover:bg-white transition">
-                    <Icon className="size-3 text-primary" /> {p.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {selected.slice(0, 4).map((f, i) => {
-                const inTray = has(f.schemeCode);
-                return (
-                  <button key={f.schemeCode} onClick={() => toggle(f.schemeCode)}
-                    className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full border text-[11px] font-medium transition ${
-                      inTray ? "border-primary bg-primary/10 text-primary" : "border-rule bg-white text-muted hover:text-body hover:border-rule-strong"
-                    }`}>
-                    <span className="size-2 rounded-full" style={{ background: PALETTE[i] }} />
-                    {inTray ? "✓ Added" : "+ Compare"}
-                  </button>
-                );
-              })}
-            </div>
           </div>
+        ) : (
+          <div className="flex items-center justify-center py-16 text-[13px] text-muted">
+            Insufficient history for the selected funds and period.
+          </div>
+        )}
+
+        {/* Legend + source */}
+        <div className="flex items-center justify-end gap-2 p-[12px_22px_18px] border-t border-[#f1f2f4] mt-2">
+          <span className="text-[#6b7280] text-[11px] font-medium tracking-[0.3px] uppercase">{viewLabel}</span>
+          <span className="text-[#d1d5db] text-[11px]">|</span>
+          <span className="text-[#6b7280] text-[11px] font-medium tracking-[0.3px] uppercase">AMFI</span>
+          <span className="text-[#d1d5db] text-[11px]">|</span>
+          <span className="text-[#6b7280] text-[11px] font-medium tracking-[0.3px] uppercase">NAV DATA</span>
+        </div>
+      </div>
+
+      {/* Presets + compare tray */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full max-w-[1320px] mx-auto pl-0 lg:pl-[30px]">
+        {/* Presets bar */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="text-[11px] font-semibold tracking-[0.5px] text-[#9ca3af] uppercase mr-1">PRESETS</span>
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => applyPreset(p.id)}
+              className="flex items-center gap-[5px] py-[8px] px-[16px] rounded-[24px] border border-[#e5e7eb] bg-white text-[13px] font-medium text-[#374151] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all duration-150"
+            >
+              <span className="text-[11px] line-height-1">{p.icon}</span>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Compare Tray buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {selected.slice(0, 4).map((f, i) => {
+            const inTray = has(f.schemeCode);
+            return (
+              <button
+                key={f.schemeCode}
+                onClick={() => toggle(f.schemeCode)}
+                className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-[24px] border text-[12px] font-semibold transition-all duration-150 shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer ${
+                  inTray
+                    ? "border-[#3b8bb1] bg-[#ecf4f1] text-[#3b8bb1]"
+                    : "border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#3b8bb1] hover:text-[#3b8bb1]"
+                }`}
+              >
+                <span className="size-1.5 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />
+                {inTray ? "✓ Added" : "+ Compare"}
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>
-  );
-}
-
-function Toggle<T extends string>({ active, options, onChange }: { active: T; options: readonly T[]; onChange: (v: T) => void }) {
-  return (
-    <div className="inline-flex items-center bg-surface border border-rule rounded-full p-0.5">
-      {options.map((o) => (
-        <button key={o} onClick={() => onChange(o)}
-          className={`h-7 px-3 text-[11px] font-semibold rounded-full transition-all whitespace-nowrap ${
-            active === o ? "bg-primary text-white shadow-btn" : "text-muted hover:text-body"
-          }`}>
-          {o}
-        </button>
-      ))}
-    </div>
   );
 }

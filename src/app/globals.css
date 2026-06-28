@@ -1,12 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Satoshi+Variable:wght@300..900&display=swap');
 @import "tailwindcss";
 
 @theme {
   /* ── Brand colors ───────────────────────────────── */
   --color-brand-navy:   #0B1F3A;   /* trust / authority surfaces */
   --color-ink:          #071426;   /* deepest text */
-  --color-primary:      #1E4ED8;   /* actions only */
-  --color-primary-hover:#1B43B8;   /* button hover */
-  --color-primary-tint: #E8EEFF;   /* selected states */
+  --color-primary:      #14b7a3;   /* actions — updated to teal */
+  --color-primary-hover:#10a090;   /* button hover */
+  --color-primary-tint: #E8FBF3;   /* selected states */
   --color-verified:     #0FAF75;   /* AMFI Verified / positive returns */
   --color-verified-tint:#E8FBF3;   /* verified badge background */
 
@@ -34,7 +35,7 @@
   --color-caution:      #F59E0B;
 
   /* ── Typography ─────────────────────────────────── */
-  --font-sans: var(--font-inter), 'Inter', 'Manrope', system-ui,
+  --font-sans: 'Satoshi Variable', var(--font-inter), 'Inter', system-ui,
     -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* ── Spacing ────────────────────────────────────── */
@@ -44,9 +45,9 @@
   /* ── Shadows ────────────────────────────────────── */
   --shadow-card:    0 14px 40px rgba(11,31,58,0.06);
   --shadow-premium: 0 24px 70px rgba(11,31,58,0.10);
-  --shadow-btn:     0 12px 28px rgba(30,78,216,0.22);
+  --shadow-btn:     0 12px 28px rgba(20,183,163,0.22);
 
-  /* ── Component aliases (Lovable-compatible names) ── */
+  /* ── Component aliases ── */
   --color-positive:        #0FAF75;
   --color-negative:        #DC2626;
   --color-gold:            #F59E0B;
@@ -55,6 +56,27 @@
   --color-muted-foreground:#64748B;
   --color-foreground:      #334155;
   --color-surface-2:       #F7FAFC;
+}
+
+/* ── New design CSS variables (matching frontend/ prototype) ── */
+:root {
+  --teal:           #14b7a3;
+  --blue:           #3b8bb1;
+  --hero-bg:        #004c61;
+  --white:          #ffffff;
+  --white-10:       rgba(255, 255, 255, 0.1);
+  --white-20:       rgba(255, 255, 255, 0.2);
+  --white-50-border:rgba(255, 255, 255, 0.5);
+  --white-70:       rgba(255, 255, 255, 0.7);
+  --green:          #00e275;
+  --orange:         #fb600d;
+  --positive:       #05df72;
+
+  /* Trust bar colors */
+  --trust-bar-bg:   #ecf4f1;
+  --trust-pill-bg:  #eef5ee;
+  --trust-pill-border: #c8e6c9;
+  --trust-pill-text:#0f2918;
 }
 
 /* ── Base ─────────────────────────────────────────── */
@@ -70,6 +92,7 @@ html { scroll-behavior: smooth; }
 body {
   background-color: #FFFFFF;
   color: #334155;
+  font-family: 'Satoshi Variable', var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -104,6 +127,393 @@ button, a, [role="button"], input, select {
 }
 .ticker-track:hover {
   animation-play-state: paused;
+}
+
+/* ── Trust bar pill animation ── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.trust-pill {
+  animation: fade-in-up 0.4s ease forwards;
+}
+
+/* ── Hero floating cards ──────────────────────── */
+@keyframes hero-card-enter {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.93); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Each card gets a distinct float pattern for an organic, premium feel */
+@keyframes hero-float-1 {
+  0%, 100% { transform: translateY(0); }
+  35%, 65% { transform: translateY(-10px); }
+}
+
+@keyframes hero-float-2 {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+
+@keyframes hero-float-3 {
+  0%, 100% { transform: translateY(0); }
+  42%      { transform: translateY(-9px); }
+  72%      { transform: translateY(-4px); }
+}
+
+.hero-card {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Cards enter one after another, then each floats independently.
+   Background uses layered gradient so the white tint sits on a solid
+   hero-colour base — visually identical to rgba(255,255,255,0.20) but
+   fully opaque, so front cards properly occlude cards behind them. */
+.hero-card-1 {
+  z-index: 1;
+  opacity: 0;
+  background: linear-gradient(rgba(255,255,255,0.20), rgba(255,255,255,0.20)), #004c61;
+  animation:
+    hero-card-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0s both,
+    hero-float-1 5s ease-in-out 0.7s infinite;
+}
+
+.hero-card-2 {
+  z-index: 2;
+  opacity: 0;
+  background: linear-gradient(rgba(255,255,255,0.20), rgba(255,255,255,0.20)), #004c61;
+  animation:
+    hero-card-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both,
+    hero-float-2 4.5s ease-in-out 1.2s infinite;
+}
+
+.hero-card-3 {
+  z-index: 3;
+  opacity: 0;
+  background: linear-gradient(rgba(255,255,255,0.20), rgba(255,255,255,0.20)), #004c61;
+  animation:
+    hero-card-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 1.0s both,
+    hero-float-3 5.5s ease-in-out 1.7s infinite;
+}
+
+/* ── Performance Report Banner ──────────────────── */
+@keyframes chart-line-draw {
+  from { stroke-dashoffset: var(--path-length, 1400); }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes report-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dot-fade-in {
+  from { opacity: 0; transform: scale(0.2); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Section wrapper */
+.report-banner-section {
+  background: #ecf4f1;
+  padding: 56px 112px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.report-banner-section.report-banner-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Inner layout */
+.report-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 80px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Left column */
+.report-banner-left {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 0 0 444px;
+  max-width: 444px;
+}
+
+.report-banner-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-banner-label {
+  color: #000;
+  font-family: 'Satoshi Variable', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 15px;
+  margin: 0;
+}
+
+.report-banner-title {
+  color: #000;
+  font-family: 'Satoshi Variable', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 24px;
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.report-banner-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-banner-buttons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Outline button */
+.report-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 100px;
+  border: 1px solid rgba(45, 60, 71, 0.70);
+  color: #2D3C47;
+  font-family: 'Satoshi Variable', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.report-btn-outline:hover {
+  background: rgba(45, 60, 71, 0.06);
+}
+
+/* Solid dark button */
+.report-btn-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 100px;
+  background: #2D3C47;
+  border: none;
+  color: #CAE973;
+  font-family: 'Satoshi Variable', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+.report-btn-solid:hover {
+  opacity: 0.88;
+}
+.report-download-icon {
+  color: #CAE973;
+}
+
+.report-banner-unlock {
+  margin: 0;
+  font-family: 'Satoshi Variable', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #000;
+}
+.report-banner-signin {
+  color: #3b8bb1;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Right column */
+.report-banner-right {
+  flex: 1;
+  position: relative;
+  min-height: 200px;
+}
+
+/* Chart container */
+.report-chart-container {
+  position: relative;
+  width: 100%;
+}
+
+.report-chart-svg {
+  width: 100%;
+  height: 130px;
+  display: block;
+  overflow: visible;
+}
+
+
+/* ── Chart animation: 5 s repeating cycle ───────────────────────────────────
+   0 – 55 %  line draws left→right, dot travels to Jun
+   55 – 72 % hold; pulse ring bursts twice
+   72 – 84 % fade everything out
+   84 – 100% invisible reset, ready for next loop
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Main line: stroke-dasharray loop */
+.report-chart-line {
+  stroke-dasharray: 1500;
+  animation: chart-line-loop 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes chart-line-loop {
+  0%    { stroke-dashoffset: 1500; opacity: 1; }
+  55%   { stroke-dashoffset: 0;    opacity: 1; }
+  72%   { stroke-dashoffset: 0;    opacity: 1; }
+  83%   { stroke-dashoffset: 0;    opacity: 0; }
+  84%   { stroke-dashoffset: 1500; opacity: 0; }
+  100%  { stroke-dashoffset: 1500; opacity: 0; }
+}
+
+/* Area fill fades in as line completes */
+.report-chart-area {
+  animation: area-cycle 5s ease infinite;
+}
+@keyframes area-cycle {
+  0%, 40% { opacity: 0; }
+  55%     { opacity: 0.1; }
+  72%     { opacity: 0.1; }
+  83%     { opacity: 0; }
+  100%    { opacity: 0; }
+}
+
+/* Vertical dashed line appears when dot arrives */
+.report-chart-vline {
+  animation: vline-cycle 5s ease infinite;
+}
+@keyframes vline-cycle {
+  0%, 52% { opacity: 0; }
+  58%     { opacity: 1; }
+  83%     { opacity: 0; }
+  100%    { opacity: 0; }
+}
+
+/* Tooltip */
+.report-chart-tooltip {
+  position: absolute;
+  top: -4px;
+  width: 50px;
+  pointer-events: none;
+  z-index: 2;
+  animation: tooltip-cycle 5s ease infinite;
+}
+@keyframes tooltip-cycle {
+  0%, 50%  { opacity: 0; transform: translateY(-5px); }
+  58%      { opacity: 1; transform: translateY(0); }
+  67%      { opacity: 1; transform: translateY(-3px); }
+  76%      { opacity: 1; transform: translateY(0); }
+  83%      { opacity: 0; transform: translateY(-4px); }
+  100%     { opacity: 0; transform: translateY(-5px); }
+}
+.report-chart-tooltip-body {
+  width: 50px;
+  height: 21px;
+  border-radius: 8px;
+  background: #DADADA;
+  box-shadow: 0 1.7px 3.9px rgba(0,0,0,0.15);
+}
+.report-chart-tooltip-caret {
+  display: block;
+  margin: 0 auto;
+  margin-top: 2px;
+}
+
+/* Dot: opacity controlled by CSS, position by SVG animateMotion */
+.report-chart-dot {
+  animation: dot-visibility 5s ease infinite;
+}
+@keyframes dot-visibility {
+  0%, 4% { opacity: 0; }
+  8%     { opacity: 1; }
+  72%    { opacity: 1; }
+  83%    { opacity: 0; }
+  100%   { opacity: 0; }
+}
+
+/* Pulse ring: travels with dot then bursts twice at Jun */
+.report-chart-dot-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-cycle 5s ease infinite;
+}
+@keyframes ring-cycle {
+  0%, 52%  { opacity: 0;   transform: scale(1); }
+  56%      { opacity: 0.8; transform: scale(1); }
+  63%      { opacity: 0;   transform: scale(3.8); }
+  64%      { opacity: 0.5; transform: scale(1); }
+  71%      { opacity: 0;   transform: scale(3.8); }
+  84%      { opacity: 0;   transform: scale(1); }
+  100%     { opacity: 0;   transform: scale(1); }
+}
+
+/* Nav arrow button */
+.report-banner-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 31px;
+  height: 37px;
+  border-radius: 50%;
+  border: 0.56px solid rgba(155, 155, 155, 0.60);
+  background: #fff;
+  text-decoration: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transition: background 0.18s ease;
+}
+.report-banner-nav-btn:hover {
+  background: #f5f5f5;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .report-banner-section {
+    padding: 40px 40px;
+  }
+  .report-banner-inner {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .report-banner-left {
+    flex: none;
+    max-width: 100%;
+  }
+  .report-banner-right {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .report-banner-section {
+    padding: 32px 20px;
+  }
+  .report-banner-title {
+    font-size: 20px;
+  }
 }
 
 /* ── Article prose table styles ─────────────────── */

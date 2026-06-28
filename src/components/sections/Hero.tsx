@@ -1,115 +1,107 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Search, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { HeroHeatmap } from "@/components/sections/HeroHeatmap";
+import type { FundRow, SnapshotStats } from "@/lib/sifData";
 
-const POPULAR_TAGS = [
-  "Long-Short",
-  "Equity Ex-Top 100",
-  "Hybrid L/S",
-  "New Launches",
-  "Top by NAV",
-];
-
-
-export function Hero() {
-  const [query, setQuery] = useState("");
-  const router = useRouter();
-
-  function handleSearch() {
-    const q = query.trim();
-    if (q) router.push(`/sifs?q=${encodeURIComponent(q)}`);
-    else router.push("/sifs");
-  }
-
+export function Hero({ stats, topFund }: { stats?: SnapshotStats; topFund?: FundRow }) {
   return (
-    <section className="bg-white pt-8 pb-12 md:pt-10 md:pb-16 border-b border-rule-soft">
-      <div className="max-w-[760px] mx-auto px-6 lg:px-8 text-center">
-
-        {/* Headline */}
-        <h1 className="text-[38px] sm:text-[48px] lg:text-[56px] font-bold leading-[1.06] tracking-[-1.4px] text-ink mb-4">
-          India&apos;s verified{" "}
-          <span className="text-primary">Specialized</span>
-          <br />
-          <span className="text-primary">Investment Fund</span>
-          <br />
-          research platform.
-        </h1>
-
-        {/* Subtext */}
-        <p className="text-[15px] text-body leading-[1.65] mb-7 max-w-[600px] mx-auto">
-          Research, compare and understand SIFs before you invest.
-          Source-verified NAV, official document and responsible
-          comparisons for serious investors.
-        </p>
-
-        {/* Search bar */}
-        <div className="flex items-center gap-0 rounded-[12px] border border-rule bg-white shadow-card mb-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 overflow-hidden max-w-[560px] mx-auto">
-          <Search
-            className="ml-4 w-4 h-4 text-faint flex-shrink-0"
-            strokeWidth={2}
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder='Try "Long-Short", "Market Neutral", or a strategy...'
-            className="flex-1 px-3 py-3.5 text-[14px] text-body placeholder:text-faint bg-transparent outline-none"
-          />
-          <button
-            onClick={handleSearch}
-            className="m-1.5 px-5 py-2.5 rounded-[8px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover flex-shrink-0"
-          >
-            Search
-          </button>
-        </div>
-
-        {/* Popular tags */}
-        <div className="flex flex-wrap justify-center items-center gap-2 mb-9">
-          <span className="text-[11.5px] font-semibold text-faint uppercase tracking-wide">
-            Popular
-          </span>
-          {POPULAR_TAGS.map((tag) => (
-            <a
-              key={tag}
-              href={`/sifs?q=${encodeURIComponent(tag)}`}
-              className="px-3 py-1.5 rounded-full border border-rule text-[12.5px] text-body hover:border-primary hover:text-primary hover:bg-primary-tint"
+    <section
+      className="overflow-hidden"
+      style={{
+        background: "linear-gradient(0deg, #004c61 0%, #004c61 100%)",
+        padding: "84px 53px 84px 113px",
+        minHeight: 569,
+      }}
+    >
+      <div className="max-w-[1280px] mx-auto" style={{ padding: "0" }}>
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_378px]">
+          {/* Left content */}
+          <div className="flex flex-col items-start gap-8">
+            {/* SEBI badge */}
+            <div
+              className="inline-flex items-center gap-2 rounded-full border px-3 py-1"
+              style={{ borderColor: "#14b7a3", background: "rgba(255,255,255,0.1)" }}
             >
-              {tag}
-            </a>
-          ))}
-        </div>
+              <span
+                className="text-[16px] font-medium leading-[30px] uppercase sm:text-[16px]"
+                style={{ color: "#14b7a3" }}
+              >
+                SEBI-Regulated · India&apos;s SIF Research Platform
+              </span>
+            </div>
 
-        {/* CTAs */}
-        <div className="flex flex-wrap justify-center items-center gap-3">
-          <a
-            href="/sifs"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-brand-navy text-white text-[13.5px] font-semibold hover:bg-ink"
-          >
-            Explore SIFs
-            <ArrowUpRight className="w-4 h-4" />
-          </a>
-          <a
-            href="/compare"
-            className="inline-flex items-center px-5 py-2.5 rounded-[10px] border border-rule text-[13.5px] font-semibold text-heading hover:border-brand-navy hover:bg-surface"
-          >
-            Compare SIFs
-          </a>
-          <a
-            href="/learn"
-            className="inline-flex items-center px-5 py-2.5 rounded-[10px] border border-rule text-[13.5px] font-semibold text-heading hover:border-brand-navy hover:bg-surface"
-          >
-            Learn SIFs
-          </a>
-          <a
-            href="/contact"
-            className="inline-flex items-center gap-1 text-[13.5px] font-semibold text-muted hover:text-primary"
-          >
-            Book Consultation →
-          </a>
+            {/* Heading */}
+            <div className="flex flex-col gap-4">
+              <h1
+                className="text-white max-w-[515px]"
+                style={{
+                  fontFamily: "Nohemi, 'Satoshi Variable', sans-serif",
+                  fontSize: 40,
+                  fontWeight: 400,
+                  lineHeight: "58px",
+                }}
+              >
+                Research, Compare &amp; Invest in{" "}
+                <span style={{ color: "#14b7a3" }}>Specialised</span> Investment Funds
+              </h1>
+              <p
+                className="max-w-[522px]"
+                style={{
+                  color: "#FFF",
+                  fontFamily: "'Satoshi Variable', sans-serif",
+                  fontSize: 20,
+                  fontStyle: "normal",
+                  fontWeight: 400,
+                  lineHeight: "30px",
+                }}
+              >
+                Every SEBI-registered SIF — tracked, rated and explained. From first read to final
+                investment, SIFcase is your complete guide to India&apos;s newest investment
+                category.
+              </p>
+            </div>
+
+            {/* CTA buttons */}
+            <div className="flex flex-wrap items-center gap-6">
+              <Link
+                href="/sifs"
+                className="inline-flex items-center justify-center gap-2 text-white text-[15px] font-medium transition-opacity hover:opacity-90"
+                style={{
+                  height: 48,
+                  width: 170,
+                  borderRadius: 100,
+                  background: "#14b7a3",
+                  padding: "10px 16px",
+                  textDecoration: "none",
+                }}
+              >
+                Explore Funds
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/compare"
+                className="inline-flex items-center justify-center gap-2 text-white text-[15px] font-medium transition-opacity hover:opacity-90"
+                style={{
+                  height: 48,
+                  width: 208,
+                  borderRadius: 100,
+                  background: "#3b8bb1",
+                  padding: "10px 16px",
+                  textDecoration: "none",
+                }}
+              >
+                <Sparkles className="w-5 h-5" />
+                Find my Ideal SIF
+              </Link>
+            </div>
+          </div>
+
+          {/* Right: heatmap panel */}
+          <div className="mx-auto lg:mx-0">
+            <HeroHeatmap stats={stats} topFund={topFund} />
+          </div>
         </div>
       </div>
     </section>

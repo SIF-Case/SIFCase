@@ -1,63 +1,131 @@
-import { ShieldCheck, BarChart3, FileText, Scale } from "lucide-react";
+import { Landmark, Search, ShieldCheck, TrendingDown } from "lucide-react";
 
-const DIFFERENTIATORS = [
+const TRUST_PILLS = [
+  "Track Every SIF In India",
+  "Independent Research",
+  "Monthly Rankings",
+  "SEBI-Compliant Framework",
+  "Expert Team",
+];
+
+const FEATURE_CARDS = [
+  {
+    Icon: Landmark,
+    title: "SEBI-Regulated",
+    description:
+      "Every SIF operates under SEBI's framework, with defined rules on strategy, disclosure and risk.",
+  },
+  {
+    Icon: Search,
+    title: "Transparent",
+    description:
+      "Each fund shows its SEBI Risk Band, mandate and NAV history up front, so you know what you own.",
+  },
+  {
+    Icon: TrendingDown,
+    title: "Lower Entry",
+    description:
+      "PMS- and AIF-style strategies from Rs. 10 lakh minimum, under regulated AMC oversight.",
+  },
   {
     Icon: ShieldCheck,
-    title: "Source-verified data",
-    body: "Every NAV comes from AMFI. Every benchmark is sourced from the official ISID document. Nothing is inferred or assumed.",
-  },
-  {
-    Icon: BarChart3,
-    title: "Calculated, not guessed",
-    body: "Returns are computed from stored NAV history, not copied from marketing factsheets that may lag or round figures.",
-  },
-  {
-    Icon: FileText,
-    title: "Document-backed explanations",
-    body: "Strategy summaries link to the official Investment Strategy Information Document. Read what the fund actually commits to.",
-  },
-  {
-    Icon: Scale,
-    title: "No recommendation language",
-    body: "We show you data. We don't tell you what's best, safe, or recommended. You research, you decide.",
+    title: "Safeguarded",
+    description:
+      "Assets sit with regulated AMCs and independent custodians, with audited, NAV-based reporting.",
   },
 ];
 
 export function WhySIFcase() {
   return (
-    <section className="bg-white py-section border-y border-rule-soft">
-      <div className="max-w-[1320px] mx-auto px-6 lg:px-8">
-        {/* Header */}
-        <div className="max-w-xl mb-12">
-          <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Our Approach</p>
-          <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-3">
-            Why SIFcase is different
-          </h2>
-          <p className="text-[16px] text-muted leading-relaxed">
-            Most SIF data sites surface numbers without context. SIFcase shows
-            you where every number came from and what it means.
-          </p>
-        </div>
-
-        {/* Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DIFFERENTIATORS.map(({ Icon, title, body }, i) => (
-            <div key={i} className="flex flex-col gap-4">
-              {/* Icon container */}
-              <div className="w-11 h-11 rounded-[12px] bg-primary-tint flex items-center justify-center flex-shrink-0">
-                <Icon className="w-5 h-5 text-primary" strokeWidth={2} />
-              </div>
-
-              <div>
-                <h3 className="text-[15.5px] font-bold text-heading mb-2">
-                  {title}
-                </h3>
-                <p className="text-[14px] text-body leading-relaxed">{body}</p>
-              </div>
-            </div>
+    <>
+      {/* Green trust pill bar */}
+      <section style={{ background: "#ecf4f1", padding: "2px 0" }}>
+        <div
+          className="flex flex-wrap items-center justify-center gap-5 mx-auto"
+          style={{ height: 46, maxWidth: 1280, padding: "0 40px" }}
+        >
+          {TRUST_PILLS.map((label, i) => (
+            <span
+              key={label}
+              className="trust-pill inline-flex items-center whitespace-nowrap text-[14px] font-[500] leading-5"
+              style={{
+                padding: "12px 16px",
+                borderRadius: 16,
+                border: "1px solid #c8e6c9",
+                background: "#eef5ee",
+                color: "#0f2918",
+                opacity: 0.8,
+                animationDelay: `${i * 60}ms`,
+              }}
+            >
+              {label}
+            </span>
           ))}
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* Why Investors section */}
+      <section
+        className="flex flex-col items-center gap-6"
+        style={{ background: "#fdfefe", padding: "56px 0" }}
+      >
+        <div className="mx-auto w-full max-w-[1280px] px-6 lg:px-10">
+          <h2
+            className="text-center uppercase"
+            style={{
+              color: "#14b7a3",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: "30px",
+              marginBottom: 24,
+            }}
+          >
+            Why Investors Are Looking At SIFs
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {FEATURE_CARDS.map(({ Icon, title, description }) => (
+              <article
+                key={title}
+                className="flex flex-col gap-2"
+                style={{
+                  padding: 12,
+                  borderRadius: 24,
+                  border: "1px solid rgba(232,232,233,0.6)",
+                  background: "#fff",
+                  minHeight: 157,
+                  boxShadow: "0 1px 4px 0 rgba(0,0,0,0.04)",
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Icon className="size-6 text-black" strokeWidth={1.5} />
+                  <h3
+                    style={{
+                      color: "#000",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      lineHeight: "30px",
+                    }}
+                  >
+                    {title}
+                  </h3>
+                </div>
+                <p
+                  className="text-center"
+                  style={{
+                    color: "rgba(15,41,24,0.7)",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    lineHeight: "normal",
+                  }}
+                >
+                  {description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

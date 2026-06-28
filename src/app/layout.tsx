@@ -34,6 +34,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <head>
+        {/* Nohemi font - geometric display font used in hero heading */}
+        <link rel="preconnect" href="https://fonts.cdnfonts.com" />
+        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/nohemi" />
+      </head>
+      {/* Satoshi Variable font loaded via CSS @import in globals.css */}
       <body className="min-h-full flex flex-col">
         <SessionProvider>
           <UserTracker />

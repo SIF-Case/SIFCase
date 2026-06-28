@@ -37,7 +37,7 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   const max = Math.max(...data);
   const range = max - min || 0.01;
   const trending = data[data.length - 1] >= data[0];
-  const color = trending ? "#16A34A" : "#DC2626";
+  const color = trending ? "#00b370" : "#f00013";
   const pts = data.map((v, i) => ({
     x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
     y: H - PAD - ((v - min) / range) * (H - PAD * 2),
@@ -57,11 +57,10 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   const tip = tooltip !== null ? tooltip : null;
   const tipDate = tip ? (dates[tip.idx] ?? "") : "";
   const tipNav = tip ? data[tip.idx] : 0;
-  // Flip tooltip to left side if near right edge
   const tipAnchorRight = tip && tip.x > W * 0.6;
 
   return (
-    <div className="relative">
+    <div className="relative" style={{ borderRadius: 8, background: "#f0f0f0", overflow: "hidden" }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -91,8 +90,9 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
 
       {tip && (
         <div
-          className="pointer-events-none absolute z-10 bg-heading text-white text-[10px] font-semibold rounded-md px-2 py-1 leading-snug shadow-lg whitespace-nowrap"
+          className="pointer-events-none absolute z-10 text-white text-[10px] font-semibold rounded-md px-2 py-1 leading-snug shadow-lg whitespace-nowrap"
           style={{
+            background: "#0d2b3e",
             bottom: `${H - tip.y + 10}px`,
             ...(tipAnchorRight
               ? { right: `${(1 - tip.x / W) * 100}%` }
@@ -134,65 +134,102 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
 
   const fmtRet = (v: number | null | undefined) =>
     v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}%` : "—";
-  const retCls = (v: number | null | undefined) =>
-    v != null ? (v >= 0 ? "text-gain font-semibold" : "text-loss font-semibold") : "text-muted";
+  const retColor = (v: number | null | undefined) =>
+    v != null ? (v >= 0 ? "#00b370" : "#f00013") : "#90a5ba";
 
   return (
-    <div className="bg-white rounded-[16px] border border-rule shadow-card p-5 flex flex-col gap-4 hover:shadow-premium transition-shadow">
+    <div
+      className="flex flex-col gap-3"
+      style={{
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: "#fff",
+        boxShadow: "0 1px 16px 0 rgba(0,0,0,0.12)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header: fund name + NAV/AUM */}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[14.5px] font-bold text-heading leading-tight">{fund.fundName || fund.name}</p>
-          <p className="text-[12px] font-medium text-body mt-0.5">{fund.companyName}</p>
+        <div className="flex flex-col gap-2 flex-1">
+          <div>
+            <p
+              style={{
+                color: "#000",
+                fontSize: 13,
+                fontWeight: 700,
+                lineHeight: "normal",
+                letterSpacing: "0.3px",
+              }}
+            >
+              {fund.fundName || fund.name}
+            </p>
+            <p style={{ color: "#000", fontSize: 10, fontWeight: 500, lineHeight: "12px", letterSpacing: "0.3px", marginTop: 4 }}>
+              {fund.companyName}
+            </p>
+          </div>
+          {/* Stats row */}
+          <div className="flex items-center gap-3">
+            {[
+              { label: `${period} RETURN`, value: fmtRet(periodRet), color: retColor(periodRet) },
+              {
+                label: "SHARPE",
+                value: fund.sharpes?.[period] != null ? fund.sharpes[period]!.toFixed(2) : "—",
+                color: (fund.sharpes?.[period] ?? 0) >= 1 ? "#00b370" : (fund.sharpes?.[period] ?? 0) >= 0 ? "#f59e0b" : "#f00013",
+              },
+              {
+                label: "DRAWDOWN",
+                value: fund.drawdowns?.[period] != null ? `${fund.drawdowns[period]!.toFixed(2)}%` : "—",
+                color: "#f00013",
+              },
+            ].map((s) => (
+              <div key={s.label} className="flex flex-col gap-1">
+                <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                  {s.label}
+                </span>
+                <span
+                  className="nums"
+                  style={{ color: s.color, fontSize: 12, fontWeight: 500, letterSpacing: "0.3px" }}
+                >
+                  {s.value}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-[9.5px] font-semibold uppercase tracking-widest text-faint">NAV</p>
-          <p className="text-[18px] font-bold text-heading nums leading-tight">₹{fund.nav.toFixed(4)}</p>
-          <p className="text-[9.5px] font-semibold uppercase tracking-widest text-faint mt-1.5">AUM</p>
-          <p className="text-[12px] font-semibold text-muted nums">
-            {fund.aum != null ? `₹${fund.aum.toFixed(0)} Cr` : "—"}
-          </p>
+
+        {/* NAV / AUM */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0" style={{ minWidth: 78 }}>
+          <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px" }}>NAV</span>
+          <span className="nums" style={{ color: "#000", fontSize: 11, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+            ₹ {fund.nav.toFixed(4)}
+          </span>
+          <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px" }}>AUM</span>
+          <span className="nums" style={{ color: "#000", fontSize: 11, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+            {fund.aum != null ? `₹ ${fund.aum.toFixed(0)} Cr` : "—"}
+          </span>
         </div>
       </div>
 
-      <div className="flex gap-4 -mt-7">
-        <div>
-          <p className="text-[8.5px] font-semibold uppercase tracking-[0.1em] text-faint mb-1">{period} RETURN</p>
-          <p className={`text-[14px] nums ${retCls(periodRet)}`}>{fmtRet(periodRet)}</p>
-        </div>
-        <div>
-          <p className="text-[8.5px] font-semibold uppercase tracking-[0.1em] text-faint mb-1">SHARPE</p>
-          {(() => {
-            const s = fund.sharpes?.[period] ?? null;
-            return (
-              <p className={`text-[14px] nums font-semibold ${s !== null ? (s >= 1 ? "text-gain" : s >= 0 ? "text-amber-500" : "text-loss") : "text-muted"}`}>
-                {s !== null ? s.toFixed(2) : "—"}
-              </p>
-            );
-          })()}
-        </div>
-        <div>
-          <p className="text-[8.5px] font-semibold uppercase tracking-[0.1em] text-faint mb-1">DRAWDOWN</p>
-          {(() => {
-            const dd = fund.drawdowns?.[period] ?? null;
-            return (
-              <p className={`text-[14px] nums font-semibold ${dd === null ? "text-muted" : dd === 0 ? "text-body" : "text-loss"}`}>
-                {dd !== null ? `${dd.toFixed(2)}%` : "—"}
-              </p>
-            );
-          })()}
-        </div>
-      </div>
-
+      {/* Sparkline chart */}
       <div className="min-w-0">
         <Sparkline data={fund.sparklines?.[period] ?? []} dates={fund.sparklineDates?.[period] ?? []} id={`${fund.schemeCode}-${period}`} />
       </div>
 
+      {/* Risk meter */}
       {fund.riskBand != null && <SEBIRiskometer level={fund.riskBand} size="sm" />}
 
-      <div className="flex items-center gap-2.5 pt-1">
+      {/* Actions */}
+      <div className="flex items-center gap-[7px] pt-1">
         <a
           href={`/sifs/${fund.schemeCode.toLowerCase()}`}
-          className="flex-1 py-2 rounded-full border border-rule text-[13px] font-semibold text-heading text-center hover:border-brand-navy hover:bg-surface"
+          className="flex-1 text-center text-[14px] font-[500] transition-opacity hover:opacity-80"
+          style={{
+            padding: "8px 12px",
+            borderRadius: 24,
+            border: "1px solid #ececec",
+            color: "#004c61",
+            textDecoration: "none",
+          }}
         >
           Details
         </a>
@@ -202,18 +239,33 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
           disabled={loading}
           aria-label={watching ? "Remove from watchlist" : "Add to watchlist"}
           aria-pressed={watching}
-          className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full border transition-colors disabled:opacity-50 ${
-            watching
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-rule text-muted hover:border-brand-navy hover:text-heading"
-          }`}
+          className="flex-shrink-0 flex items-center justify-center disabled:opacity-50"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: "50%",
+            border: watching ? "1px solid #14b7a3" : "1px solid #ececec",
+            background: watching ? "rgba(20,183,163,0.08)" : "transparent",
+          }}
         >
-          <Bookmark className="w-4 h-4" strokeWidth={2} fill={watching ? "currentColor" : "none"} />
+          <Bookmark
+            className="w-4 h-4"
+            strokeWidth={2}
+            fill={watching ? "#14b7a3" : "none"}
+            color={watching ? "#14b7a3" : "#000"}
+          />
         </button>
         <a
           href="#"
           onClick={handleInvestClick}
-          className="flex-1 py-2 rounded-full bg-primary text-white text-[13px] font-semibold text-center hover:bg-primary-hover shadow-btn"
+          className="flex-1 text-center text-white text-[14px] font-[500] transition-opacity hover:opacity-90"
+          style={{
+            padding: "8px 20px",
+            borderRadius: 24,
+            background: "#3b8bb1",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+          }}
         >
           Invest Now
         </a>
@@ -245,7 +297,6 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
     return () => document.removeEventListener("click", close);
   }, [amcOpen]);
 
-  // Reset visible count when filters change
   useEffect(() => { setVisibleCount(6); }, [filter, amc, period]);
 
   const filtered = funds
@@ -262,47 +313,107 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
   const visible = filtered.slice(0, visibleCount);
 
   return (
-    <section className="bg-surface border-b border-rule">
-      <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-12 lg:py-16">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+    <section style={{ background: "#fff", borderBottom: "1px solid #e5e7eb" }}>
+      <div className="mx-auto w-full max-w-[1280px] px-6 lg:px-10 py-[84px]">
+        {/* Section header */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-7">
           <div>
-            <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Top Funds</p>
-            <h2 className="text-[28px] font-bold text-heading tracking-[-0.3px] mb-1">
-              Best performing SIFs
-            </h2>
-            <p className="text-[15px] text-muted">
-              Regular plan funds ranked by {period === "SI" ? "return since inception" : `${period} return`}
+            <p style={{ color: "#000", fontSize: 15, fontWeight: 400, lineHeight: "15px", marginBottom: 12 }}>
+              LEADERBOARD
             </p>
+            <h2
+              style={{
+                color: "#000",
+                fontSize: 24,
+                fontWeight: 700,
+                lineHeight: "24px",
+                textTransform: "capitalize",
+                fontFamily: "'Satoshi Variable', sans-serif",
+              }}
+            >
+              Best Performing SIFs
+            </h2>
           </div>
 
+          {/* Filters */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Period selector */}
-            <div className="flex items-center gap-1 bg-white rounded-full border border-rule p-1">
+            {/* Period pills */}
+            <div
+              className="flex items-center gap-1"
+              style={{ padding: 4, borderRadius: 24, border: "1px solid #8a99ad" }}
+            >
               {PERIODS.map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${period === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 34,
+                    height: 27,
+                    borderRadius: 24,
+                    border: period === p ? "1px solid rgba(110,208,255,0.2)" : "none",
+                    background: period === p ? "#3b8bb1" : "transparent",
+                    color: period === p ? "#fff" : "#8a99ad",
+                    fontFamily: "inherit",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
                 >
                   {p}
                 </button>
               ))}
             </div>
+
+            {/* AMC dropdown */}
             <div className="relative">
               <button
                 onClick={() => setAmcOpen((o) => !o)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-rule bg-white text-[13px] text-body hover:border-brand-navy"
+                className="flex items-center gap-2"
+                style={{
+                  padding: "9px 15px",
+                  borderRadius: 24,
+                  border: "1px solid #8a99ad",
+                  background: "transparent",
+                  fontFamily: "inherit",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "#4b5563",
+                  cursor: "pointer",
+                }}
               >
                 {amc === "All" ? "All AMCs" : amc}
-                <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform ${amcOpen ? "rotate-180" : ""}`} strokeWidth={2} />
+                <ChevronDown className={`w-3 h-3 transition-transform ${amcOpen ? "rotate-180" : ""}`} strokeWidth={2} />
               </button>
               {amcOpen && (
-                <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-rule rounded-xl shadow-premium py-1 min-w-[180px]">
+                <div
+                  className="absolute right-0 top-full mt-1 z-20 py-1 overflow-y-auto"
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    boxShadow: "0 14px 40px rgba(11,31,58,0.10)",
+                    minWidth: 180,
+                    maxHeight: 220,
+                  }}
+                >
                   {amcs.map((a) => (
                     <button
                       key={a}
                       onClick={() => { setAmc(a); setAmcOpen(false); }}
-                      className={`w-full text-left px-4 py-2 text-[13px] hover:bg-surface transition-colors ${amc === a ? "font-semibold text-primary" : "text-body"}`}
+                      className="w-full text-left"
+                      style={{
+                        padding: "8px 16px",
+                        fontSize: 13,
+                        color: amc === a ? "#14b7a3" : "#374151",
+                        fontWeight: amc === a ? 600 : 400,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
                     >
                       {a}
                     </button>
@@ -310,12 +421,30 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-1 bg-white rounded-full border border-rule p-1">
+
+            {/* Fund type pills */}
+            <div
+              className="flex items-center gap-1.5"
+              style={{ padding: 4, borderRadius: 24, border: "1px solid #8a99ad" }}
+            >
               {FILTERS.map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold transition-all ${filter === f ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "6px 11px 5px",
+                    borderRadius: 24,
+                    border: filter === f ? "1px solid #4599c1" : "none",
+                    background: filter === f ? "#3b8bb1" : "transparent",
+                    color: filter === f ? "#fff" : "#4b5563",
+                    fontFamily: "inherit",
+                    fontSize: filter === f ? 10 : 11,
+                    fontWeight: filter === f ? 700 : 500,
+                    cursor: "pointer",
+                  }}
                 >
                   {f}
                 </button>
@@ -324,27 +453,45 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Fund cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[33px]">
           {visible.map((fund) => (
             <FundCard key={fund.schemeCode} fund={fund} period={period} onRequireAuth={requireAuth} />
           ))}
           {visible.length === 0 && (
-            <p className="col-span-3 text-center py-12 text-muted">No funds in this category.</p>
+            <p className="col-span-3 text-center py-12" style={{ color: "#64748B" }}>
+              No funds in this category.
+            </p>
           )}
         </div>
 
+        {/* Load more / View all */}
         <div className="flex items-center justify-center gap-3 mt-8">
           {visibleCount < filtered.length && (
             <button
               onClick={() => setVisibleCount((c) => c + 6)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover shadow-btn"
+              className="inline-flex items-center gap-2 text-white text-[13.5px] font-semibold"
+              style={{
+                padding: "10px 24px",
+                borderRadius: 24,
+                background: "#14b7a3",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
               View More ({filtered.length - visibleCount} remaining)
             </button>
           )}
           <a
             href="/sifs"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full border border-rule text-[13.5px] font-semibold text-heading hover:border-brand-navy hover:bg-white"
+            className="inline-flex items-center gap-2 text-[13.5px] font-semibold"
+            style={{
+              padding: "10px 24px",
+              borderRadius: 24,
+              border: "1px solid #ececec",
+              color: "#0d2b3e",
+              textDecoration: "none",
+            }}
           >
             View all SIFs
             <ArrowRight className="w-4 h-4" />

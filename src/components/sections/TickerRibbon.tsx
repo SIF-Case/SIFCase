@@ -2,15 +2,22 @@ import type { TickerNav } from "@/lib/sifData";
 
 function TickerItem({ label, value, change, neg }: TickerNav) {
   return (
-    <span className="inline-flex items-center gap-2 px-5 flex-shrink-0">
-      <span className="text-[11px] font-semibold tracking-wide text-faint uppercase">
+    <span className="ticker-item inline-flex items-center gap-2 px-3 py-[6px] flex-shrink-0 border-r border-white/10">
+      <span className="text-[11px] font-medium text-[#D1D5DC]">
         {label}
       </span>
-      <span className="text-[11px] font-bold text-heading nums">{value}</span>
-      <span className={`text-[11px] font-semibold nums ${neg ? "text-loss" : "text-verified"}`}>
-        {change}
-      </span>
-      <span className="text-rule-strong mx-1">·</span>
+      {value && (
+        <span className="text-[11px] font-medium text-white nums">{value}</span>
+      )}
+      {change && (
+        <span
+          className={`text-[11px] font-normal nums ${
+            neg ? "text-red-400" : "text-[#05df72]"
+          }`}
+        >
+          {change}
+        </span>
+      )}
     </span>
   );
 }
@@ -20,7 +27,7 @@ export function TickerRibbon({ navItems }: { navItems: TickerNav[] }) {
   const doubled = [...navItems, ...navItems];
 
   return (
-    <div className="bg-surface border-b border-rule overflow-hidden h-8 flex items-center">
+    <div className="bg-[#0D1117] overflow-hidden flex items-center py-[6px]">
       <div className="ticker-track flex whitespace-nowrap">
         {doubled.map((item, i) => (
           <TickerItem key={i} {...item} />
