@@ -31,24 +31,24 @@ function FloatingStatCard({
 }: FloatingStatCardProps) {
   return (
     <article
-      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[22px] text-white ${className}`}
+      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[20px] py-[14px] text-white ${className}`}
     >
-      <p className="text-[10px] font-medium leading-3 text-white/70">{eyebrow}</p>
-      <p className="mt-[6px] whitespace-nowrap text-[11px] font-bold leading-3">{title}</p>
+      <p className="text-[12px] font-semibold leading-[14px] tracking-wider text-white/70 uppercase">{eyebrow}</p>
+      <p className="mt-[6px] whitespace-nowrap text-[14px] font-bold leading-[18px] text-white" title={title}>{title}</p>
 
-      <div className="mt-[17px] flex items-start justify-between gap-4">
+      <div className="mt-[12px] flex items-start justify-between gap-4">
         <div>
-          {metric && <p className="nums whitespace-nowrap text-[12px] font-bold leading-[12px]">{metric}</p>}
+          {metric && <p className="nums whitespace-nowrap text-[16px] font-bold leading-[18px]">{metric}</p>}
           {detail && (
-            <p className="mt-[2px] whitespace-pre-line text-[12px] font-medium leading-3 text-white/70">
+            <p className="mt-[2px] whitespace-pre-line text-[13px] font-medium leading-[16px] text-white/80">
               {detail}
             </p>
           )}
         </div>
 
         {trend && (
-          <div className="flex items-center gap-[2px] pt-[1px]">
-            <span className="nums whitespace-nowrap text-[10px] font-bold leading-3 text-[#00e275]">
+          <div className="flex items-center gap-[2px] pt-[2px]">
+            <span className="nums whitespace-nowrap text-[12px] font-bold leading-[14px] text-[#00e275]">
               {trend}
             </span>
             {showArrow && (
@@ -66,7 +66,7 @@ function FloatingStatCard({
       </div>
 
       {bars && (
-        <div className="mt-[9px] flex gap-[2px]">
+        <div className="mt-[8px] flex gap-[3px]">
           {bars.map((bar, index) => (
             <span
               key={`${bar}-${index}`}
@@ -92,11 +92,11 @@ export function HeroHeatmap({ stats, topFund }: { stats?: SnapshotStats; topFund
 
   return (
     <div
-      className="relative h-[281px] w-[378px] max-w-full"
+      className="relative h-[315px] w-[378px] max-w-full"
       aria-label="SIF market performance snapshot"
     >
       <FloatingStatCard
-        className="left-[186px] top-[1px] h-[109px] w-[192px] py-[6px] hero-card hero-card-1 z-[1]"
+        className="left-[110px] top-[0px] h-[125px] w-[235px] hero-card hero-card-1 z-[1]"
         eyebrow="TOP PERFORMER - 1M"
         title={topFund?.fundName || topFund?.name || "WM Equity Long-Short"}
         metric={formatCurrency(topFund?.nav)}
@@ -106,7 +106,7 @@ export function HeroHeatmap({ stats, topFund }: { stats?: SnapshotStats; topFund
       />
 
       <FloatingStatCard
-        className="left-0 top-[102px] h-[95px] w-[192px] py-[10px] hero-card hero-card-2 z-[2]"
+        className="left-[-40px] top-[95px] h-[125px] w-[235px] hero-card hero-card-2 z-[2]"
         eyebrow="MARKET SNAPSHOT"
         title={marketTitle}
         detail={`${stats?.uniqueAMCs ?? 13} AMCs\nRegistered`}
@@ -114,7 +114,7 @@ export function HeroHeatmap({ stats, topFund }: { stats?: SnapshotStats; topFund
       />
 
       <FloatingStatCard
-        className="left-[166px] top-[191px] h-[90px] w-[192px] py-[12px] hero-card hero-card-3 z-[3]"
+        className="left-[80px] top-[190px] h-[125px] w-[235px] hero-card hero-card-3 z-[3]"
         eyebrow="NFO OPEN"
         title="Kotak Infinity Hybrid L’S"
         detail="Closes 29 jun"

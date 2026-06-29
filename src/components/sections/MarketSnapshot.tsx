@@ -51,10 +51,11 @@ export function MarketSnapshot({ stats }: { stats: SnapshotStats }) {
   const cards = [
     { label: "SIFs Tracked", value: String(stats.totalSchemes) },
     { label: "AMCs Registered", value: String(stats.uniqueAMCs) },
-    { label: "Regular Plans", value: String(stats.totalRegular) },
-    { label: "Schemes", value: String(stats.totalSchemes) },
+    { label: "Regular Plans", value: String(stats.totalGrowthRegular) },
+    { label: "Schemes", value: String(stats.totalRegular) },
     { label: "NAV Records", value: stats.totalNavRecords.toLocaleString("en-IN") },
   ];
+
 
   return (
     <section

@@ -72,10 +72,56 @@ export function SEBIRiskometer({
   level: 1 | 2 | 3 | 4 | 5;
   title?: string;
   subtitle?: string;
-  size?: "md" | "sm";
+  size?: "md" | "sm" | "xs";
 }) {
   const level = Math.max(1, Math.min(5, Math.round(Number(rawLevel)))) as 1 | 2 | 3 | 4 | 5;
   if (!level || isNaN(level)) return null;
+
+  if (size === "xs") {
+    return (
+      <div className="w-full">
+        <div className="flex justify-between text-[7px] font-bold uppercase tracking-widest text-muted mb-0.5 px-0.5">
+          <span>Lower Risk</span>
+          <span>Higher Risk</span>
+        </div>
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4, 5].map((i) => {
+            const active = i === level;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                <div
+                  className="w-full flex items-center justify-center rounded-[2px] font-bold text-white relative"
+                  style={{
+                    backgroundColor: RISK_COLORS[i - 1],
+                    height: "14px",
+                    fontSize: "8px",
+                    outline: active ? "1.5px solid #0B1F3A" : "none",
+                    outlineOffset: "0.5px",
+                    boxShadow: active ? "0 0 0 0.5px #fff inset" : "none",
+                  }}
+                >
+                  {active && (
+                    <div className="absolute inset-0 rounded-[2px] border border-white" />
+                  )}
+                  {i}
+                </div>
+                {active ? (
+                  <svg width="6" height="4" viewBox="0 0 12 8">
+                    <polygon points="6,0 12,8 0,8" fill="#0B1F3A" />
+                  </svg>
+                ) : (
+                  <div className="h-[4px]" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-0.5 text-center text-[8px] font-semibold text-muted">
+          {RISK_LABELS[level - 1]}
+        </div>
+      </div>
+    );
+  }
 
   if (size === "sm") {
     return (

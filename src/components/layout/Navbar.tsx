@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { Menu, X, LogOut, User, ChevronDown, Search } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { AuthModal } from "@/components/auth/AuthModal";
-
 const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Explore Funds", href: "/sifs" },
@@ -15,9 +14,8 @@ const NAV_LINKS = [
   { label: "SIF 101", href: "/sif-101" },
   { label: "NFO", href: "/nfos" },
   { label: "Insights", href: "/read" },
-  { label: "News", href: "/read" },
+  { label: "News", href: "/news" },
 ];
-
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -63,19 +61,19 @@ export function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center flex-shrink-0 text-[20px] font-bold tracking-[-0.5px]"
+            className="flex items-center flex-shrink-0"
           >
-            <span className="text-[#0d2b3e]">SIF</span>
-            <span className="text-[#14b7a3]">CA</span>
-            <span className="text-[#0d2b3e]">SE</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="SIFcase" className="h-8 w-auto" />
           </Link>
+
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
             {NAV_LINKS.map((link) =>
               link.label === "Fund Houses" ? (
                 <div
-                  key={link.href}
+                  key={link.label}
                   ref={fundHousesRef}
                   className="relative px-[14px] py-[6px] rounded-[8px] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
                   role="button"
@@ -144,7 +142,7 @@ export function Navbar() {
                 </div>
               ) : (
                 <Link
-                  key={link.href}
+                  key={link.label}
                   href={link.href}
                   className={`px-[14px] py-[6px] rounded-[8px] text-[14px] transition-colors whitespace-nowrap ${
                     isActiveLink(link.href)
@@ -168,9 +166,7 @@ export function Navbar() {
               </span>
             </div>
 
-            {loading ? (
-              <div className="w-20 h-9 rounded-[8px] bg-[#f3f4f6] animate-pulse" />
-            ) : user ? (
+            {user ? (
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
@@ -250,7 +246,7 @@ export function Navbar() {
           <nav className="flex flex-col items-center space-y-3 text-[14.5px] font-medium w-full">
             {NAV_LINKS.map((link) => (
               <a
-                key={link.href}
+                key={link.label}
                 href={link.href}
                 className="text-[#374151] hover:text-[#14b7a3] transition-colors w-full text-center py-1.5"
                 onClick={() => setMobileOpen(false)}

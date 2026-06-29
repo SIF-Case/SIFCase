@@ -155,7 +155,7 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
             <p
               style={{
                 color: "#000",
-                fontSize: 13,
+                fontSize: 16,
                 fontWeight: 700,
                 lineHeight: "normal",
                 letterSpacing: "0.3px",
@@ -163,7 +163,7 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
             >
               {fund.fundName || fund.name}
             </p>
-            <p style={{ color: "#000", fontSize: 10, fontWeight: 500, lineHeight: "12px", letterSpacing: "0.3px", marginTop: 4 }}>
+            <p style={{ color: "#000", fontSize: 12, fontWeight: 500, lineHeight: "14px", letterSpacing: "0.3px", marginTop: 4 }}>
               {fund.companyName}
             </p>
           </div>
@@ -183,12 +183,12 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
               },
             ].map((s) => (
               <div key={s.label} className="flex flex-col gap-1">
-                <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
                   {s.label}
                 </span>
                 <span
                   className="nums"
-                  style={{ color: s.color, fontSize: 12, fontWeight: 500, letterSpacing: "0.3px" }}
+                  style={{ color: s.color, fontSize: 14, fontWeight: 500, letterSpacing: "0.3px" }}
                 >
                   {s.value}
                 </span>
@@ -198,13 +198,13 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
         </div>
 
         {/* NAV / AUM */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0" style={{ minWidth: 78 }}>
-          <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px" }}>NAV</span>
-          <span className="nums" style={{ color: "#000", fontSize: 11, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+        <div className="flex flex-col items-end gap-1 flex-shrink-0" style={{ minWidth: 90 }}>
+          <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>NAV</span>
+          <span className="nums" style={{ color: "#000", fontSize: 13, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
             ₹ {fund.nav.toFixed(4)}
           </span>
-          <span style={{ color: "#90a5ba", fontSize: 8, fontWeight: 500, letterSpacing: "0.3px" }}>AUM</span>
-          <span className="nums" style={{ color: "#000", fontSize: 11, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+          <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>AUM</span>
+          <span className="nums" style={{ color: "#000", fontSize: 13, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
             {fund.aum != null ? `₹ ${fund.aum.toFixed(0)} Cr` : "—"}
           </span>
         </div>
@@ -216,15 +216,15 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
       </div>
 
       {/* Risk meter */}
-      {fund.riskBand != null && <SEBIRiskometer level={fund.riskBand} size="sm" />}
+      {fund.riskBand != null && <SEBIRiskometer level={fund.riskBand} size="xs" />}
 
       {/* Actions */}
       <div className="flex items-center gap-[7px] pt-1">
         <a
           href={`/sifs/${fund.schemeCode.toLowerCase()}`}
-          className="flex-1 text-center text-[14px] font-[500] transition-opacity hover:opacity-80"
+          className="flex-1 text-center text-[12px] font-[500] transition-opacity hover:opacity-80"
           style={{
-            padding: "8px 12px",
+            padding: "6px 10px",
             borderRadius: 24,
             border: "1px solid #ececec",
             color: "#004c61",
@@ -241,15 +241,15 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
           aria-pressed={watching}
           className="flex-shrink-0 flex items-center justify-center disabled:opacity-50"
           style={{
-            width: 30,
-            height: 30,
+            width: 26,
+            height: 26,
             borderRadius: "50%",
             border: watching ? "1px solid #14b7a3" : "1px solid #ececec",
             background: watching ? "rgba(20,183,163,0.08)" : "transparent",
           }}
         >
           <Bookmark
-            className="w-4 h-4"
+            className="w-3.5 h-3.5"
             strokeWidth={2}
             fill={watching ? "#14b7a3" : "none"}
             color={watching ? "#14b7a3" : "#000"}
@@ -258,9 +258,9 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
         <a
           href="#"
           onClick={handleInvestClick}
-          className="flex-1 text-center text-white text-[14px] font-[500] transition-opacity hover:opacity-90"
+          className="flex-1 text-center text-white text-[12px] font-[500] transition-opacity hover:opacity-90"
           style={{
-            padding: "8px 20px",
+            padding: "6px 16px",
             borderRadius: 24,
             background: "#3b8bb1",
             textDecoration: "none",

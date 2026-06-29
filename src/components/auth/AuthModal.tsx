@@ -77,8 +77,18 @@ export function AuthModal({ open, onClose, reason }: Props) {
 
   useEffect(() => {
     if (!open || !captchaContainerRef.current || recaptchaRef.current) return;
+    try {
+      captchaContainerRef.current.innerHTML = "";
+    } catch {}
     recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, captchaContainerRef.current, { size: "invisible" });
-    return () => { recaptchaRef.current?.clear(); recaptchaRef.current = null; };
+    return () => {
+      try {
+        recaptchaRef.current?.clear();
+      } catch (e) {
+        console.warn("reCAPTCHA cleanup ignored:", e);
+      }
+      recaptchaRef.current = null;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -255,8 +265,6 @@ export function AuthModal({ open, onClose, reason }: Props) {
     }
   }
 
-  if (!open) return null;
-
   const isOtpStage = stage === "verify-phone" || stage === "verify-email" || stage === "link-email-otp";
   const verifyHandler =
     stage === "verify-phone" ? verifyPhoneOtp :
@@ -266,11 +274,11 @@ export function AuthModal({ open, onClose, reason }: Props) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className={`fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm ${open ? "" : "hidden"}`}
       onClick={(e) => { if (e.target === overlayRef.current) handleClose(); }}
     >
       <div className="w-full max-w-[400px] bg-white rounded-[20px] shadow-premium p-6 relative">
-        <div ref={captchaContainerRef} />
+        {open && <div ref={captchaContainerRef} />}
 
         <button
           onClick={handleClose}

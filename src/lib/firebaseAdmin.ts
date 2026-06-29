@@ -6,14 +6,29 @@ import fs from "fs";
 function initFirebaseAdmin() {
   if (admin.apps.length) return;
 
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  let credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
 
   if (credentialsJson) {
+    credentialsJson = credentialsJson.trim();
+    if (credentialsJson.startsWith("'") && credentialsJson.endsWith("'")) {
+      credentialsJson = credentialsJson.slice(1, -1);
+    }
+    if (credentialsJson.startsWith('"') && credentialsJson.endsWith('"')) {
+      credentialsJson = credentialsJson.slice(1, -1);
+    }
+
     let parsed: Record<string, string>;
     try {
       parsed = JSON.parse(credentialsJson);
-    } catch {
+    } catch (err) {
+      console.error("GOOGLE_APPLICATION_CREDENTIALS_JSON parse error:", err);
+      console.error("Value being parsed was:", JSON.stringify(credentialsJson));
       throw new Error("GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON");
+    }
+
+    // Fix private_key: .env storage may turn real newlines into literal \n
+    if (parsed.private_key) {
+      parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
     }
 
     if (parsed.type === "service_account") {
@@ -43,7 +58,8 @@ export async function verifyFirebaseToken(idToken: string) {
   try {
     initFirebaseAdmin();
     return await admin.auth().verifyIdToken(idToken);
-  } catch {
+  } catch (err) {
+    console.error("Firebase ID Token verification failed:", err);
     return null;
   }
 }

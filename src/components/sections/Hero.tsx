@@ -81,7 +81,7 @@ export function Hero({ stats, topFund }: { stats?: SnapshotStats; topFund?: Fund
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
               <Link
-                href="/compare"
+                href="/suitability"
                 className="inline-flex items-center justify-center gap-2 text-white text-[15px] font-medium transition-opacity hover:opacity-90"
                 style={{
                   height: 48,

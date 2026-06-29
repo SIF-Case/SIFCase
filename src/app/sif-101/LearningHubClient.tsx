@@ -2,163 +2,40 @@
 
 import { useState, useEffect } from "react";
 
-const TOPICS = [
-  {
-    id: "what-is-a-sif",
-    title: "What is a SIF?",
-    description:
-      "Understand the structure, mandate, and SEBI framework behind Specialised Investment Funds.",
-    duration: 4,
-    level: "Beginner" as const,
-    iconBg: "#E8F5F0",
-    icon: (
+export type SifEducationArticle = {
+  _id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  readTime: number;
+  coverDesktop: string;
+  coverMobile: string;
+  publishedAt: string | null;
+};
+
+/* ── Icon used for every article card ───────────────────────────────────── */
+function ArticleIcon({ bg }: { bg: string }) {
+  return (
+    <div className="hub-topic-icon" style={{ background: bg }}>
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
         <path d="M10 5.83334V17.5" stroke="black" strokeWidth="0.887" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M2.5 15C2.279 15 2.067 14.912 1.911 14.756C1.755 14.6 1.667 14.388 1.667 14.167V3.333C1.667 3.112 1.755 2.9 1.911 2.744C2.067 2.588 2.279 2.5 2.5 2.5H6.667C7.551 2.5 8.399 2.851 9.024 3.476C9.649 4.101 10 4.949 10 5.833C10 4.949 10.352 4.101 10.977 3.476C11.602 2.851 12.45 2.5 13.334 2.5H17.5C17.721 2.5 17.933 2.588 18.09 2.744C18.246 2.9 18.334 3.112 18.334 3.333V14.167C18.334 14.388 18.246 14.6 18.09 14.756C17.933 14.912 17.721 15 17.5 15H12.5C11.837 15 11.201 15.263 10.733 15.732C10.264 16.201 10 16.837 10 17.5C10 16.837 9.737 16.201 9.268 15.732C8.799 15.263 8.163 15 7.5 15H2.5Z" stroke="black" strokeWidth="0.887" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    ),
-  },
-  {
-    id: "products-strategies",
-    title: "Products & strategies",
-    description:
-      "Long-short equity, multi-asset, arbitrage — what each SIF strategy type actually does.",
-    duration: 6,
-    level: "Beginner" as const,
-    iconBg: "#E8F5F0",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22Z" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M12 18C15.314 18 18 15.314 18 12C18 8.686 15.314 6 12 6C8.686 6 6 8.686 6 12C6 15.314 8.686 18 12 18Z" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M12 14C13.105 14 14 13.105 14 12C14 10.895 13.105 10 12 10C10.895 10 10 10.895 10 12C10 13.105 10.895 14 12 14Z" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "how-sifs-work",
-    title: "How SIFs work",
-    description:
-      "Mechanics of daily NAV, portfolio disclosure, and what makes SIFs operationally distinct from MFs.",
-    duration: 5,
-    level: "Beginner" as const,
-    iconBg: "#E8F5F0",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M10 5.833V17.5" stroke="black" strokeWidth="0.887" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2.5 15C2.279 15 2.067 14.912 1.911 14.756C1.755 14.6 1.667 14.388 1.667 14.167V3.333C1.667 3.112 1.755 2.9 1.911 2.744C2.067 2.588 2.279 2.5 2.5 2.5H6.667C7.551 2.5 8.399 2.851 9.024 3.476C9.649 4.101 10 4.949 10 5.833C10 4.949 10.352 4.101 10.977 3.476C11.602 2.851 12.45 2.5 13.334 2.5H17.5C17.721 2.5 17.933 2.588 18.09 2.744C18.246 2.9 18.334 3.112 18.334 3.333V14.167C18.334 14.388 18.246 14.6 18.09 14.756C17.933 14.912 17.721 15 17.5 15H12.5C11.837 15 11.201 15.263 10.733 15.732C10.264 16.201 10 16.837 10 17.5C10 16.837 9.737 16.201 9.268 15.732C8.799 15.263 8.163 15 7.5 15H2.5Z" stroke="black" strokeWidth="0.887" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "categorisation",
-    title: "Categorisation",
-    description:
-      "The 5 SEBI categories of SIFs — equity, debt, hybrid, real estate, and commodity strategies.",
-    duration: 5,
-    level: "Intermediate" as const,
-    iconBg: "#FFF3E0",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M15 3.75C15.398 3.75 15.779 3.908 16.061 4.189C16.342 4.471 16.5 4.852 16.5 5.25V10.5C16.5 10.898 16.342 11.279 16.061 11.561C15.779 11.842 15.398 12 15 12H6.75C6.352 12 5.971 11.842 5.689 11.561C5.408 11.279 5.25 10.898 5.25 10.5V3.75C5.25 3.352 5.408 2.971 5.689 2.689C5.971 2.408 6.352 2.25 6.75 2.25H8.625C8.8 2.25 8.972 2.291 9.128 2.369C9.284 2.447 9.42 2.56 9.525 2.7L9.975 3.3C10.08 3.44 10.216 3.553 10.372 3.631C10.528 3.709 10.7 3.75 10.875 3.75H15Z" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2.25 6.201C2.021 6.333 1.832 6.523 1.7 6.752C1.568 6.981 1.499 7.24 1.5 7.504V14.25C1.5 14.648 1.658 15.029 1.939 15.311C2.221 15.592 2.602 15.75 3 15.75H11.25C11.513 15.75 11.772 15.681 12 15.549C12.228 15.417 12.417 15.228 12.549 15" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "risk-risk-band",
-    title: "Risk & Risk Band",
-    description:
-      "How the SEBI 1–6 Risk Band is computed, what each level means, and how to use it when comparing funds.",
-    duration: 4,
-    level: "Core" as const,
-    iconBg: "#EEF2FF",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M15 9.75C15 13.5 12.375 15.375 9.255 16.463C9.092 16.518 8.914 16.515 8.753 16.455C5.625 15.375 3 13.5 3 9.75V4.5C3 4.301 3.079 4.11 3.22 3.97C3.36 3.829 3.551 3.75 3.75 3.75C5.25 3.75 7.125 2.85 8.43 1.71C8.589 1.574 8.791 1.5 9 1.5C9.209 1.5 9.411 1.574 9.57 1.71C10.883 2.857 12.75 3.75 14.25 3.75C14.449 3.75 14.64 3.829 14.78 3.97C14.921 4.11 15 4.301 15 4.5V9.75Z" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M6.75 9H11.25" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M9 6.75V11.25" stroke="black" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "regulatory-framework",
-    title: "Regulatory framework",
-    description:
-      "SEBI circular, AMC eligibility, investment manager norms, and ongoing compliance obligations.",
-    duration: 7,
-    level: "Intermediate" as const,
-    iconBg: "#FFF3E0",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M8.25 12.75L9.75 14.25C10.073 14.573 10.474 14.716 10.875 14.716C11.276 14.716 11.677 14.573 12 14.25C12.323 13.927 12.466 13.526 12.466 13.125C12.466 12.724 12.323 12.323 12 12" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M10.5 10.5L12.375 12.375C12.674 12.673 13.078 12.841 13.5 12.841C13.922 12.841 14.327 12.673 14.625 12.375C14.924 12.076 15.091 11.672 15.091 11.25C15.091 10.828 14.924 10.423 14.625 10.125L11.715 7.215C11.293 6.793 10.721 6.557 10.125 6.557C9.529 6.557 8.957 6.793 8.535 7.215L7.875 7.875C7.577 8.173 7.172 8.341 6.75 8.341C6.328 8.341 5.924 8.173 5.625 7.875C5.327 7.576 5.159 7.172 5.159 6.75C5.159 6.328 5.327 5.923 5.625 5.625L7.733 3.517C8.417 2.835 9.309 2.4 10.268 2.282C11.227 2.164 12.198 2.369 13.028 2.865L13.38 3.075C13.7 3.267 14.079 3.334 14.445 3.262L15.75 3" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M15.75 2.25L16.5 10.5H15" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2.25 2.25L1.5 10.5L6.375 15.375C6.673 15.673 7.078 15.841 7.5 15.841C7.922 15.841 8.327 15.673 8.625 15.375C8.923 15.077 9.091 14.672 9.091 14.25C9.091 13.828 8.923 13.423 8.625 13.125" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2.25 3H8.25" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "taxation-of-sifs",
-    title: "Taxation of SIFs",
-    description:
-      "Short-term vs long-term gains, pass-through taxation, and how SIF distributions are treated under Indian tax law.",
-    duration: 6,
-    level: "Intermediate" as const,
-    iconBg: "#FFF3E0",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M8.25 11.25H9.75C10.148 11.25 10.529 11.092 10.811 10.811C11.092 10.529 11.25 10.148 11.25 9.75C11.25 9.352 11.092 8.971 10.811 8.689C10.529 8.408 10.148 8.25 9.75 8.25H7.5C7.05 8.25 6.675 8.4 6.45 8.7L2.25 12.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M5.25 15.75L6.45 14.7C6.675 14.4 7.05 14.25 7.5 14.25H10.5C11.325 14.25 12.075 13.95 12.6 13.35L16.05 10.05C16.339 9.777 16.508 9.399 16.52 9.001C16.531 8.603 16.384 8.217 16.11 7.928C15.837 7.638 15.459 7.469 15.061 7.458C14.663 7.447 14.277 7.594 13.988 7.868L10.838 10.793" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M1.5 12L6 16.5" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M12 8.925C13.201 8.925 14.175 7.951 14.175 6.75C14.175 5.549 13.201 4.575 12 4.575C10.799 4.575 9.825 5.549 9.825 6.75C9.825 7.951 10.799 8.925 12 8.925Z" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4.5 6C5.743 6 6.75 4.993 6.75 3.75C6.75 2.507 5.743 1.5 4.5 1.5C3.257 1.5 2.25 2.507 2.25 3.75C2.25 4.993 3.257 6 4.5 6Z" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "sif-vs-mf-vs-pms",
-    title: "SIF vs MF vs PMS",
-    description:
-      "A direct comparison of fees, liquidity, disclosures, and strategy flexibility across the three structures.",
-    duration: 5,
-    level: "Core" as const,
-    iconBg: "#EEF2FF",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M9 2.25V15.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M14.25 6L16.5 12C15.851 12.487 15.061 12.75 14.25 12.75C13.439 12.75 12.649 12.487 12 12L14.25 6ZM14.25 6V5.25" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2.25 5.25H3C5.093 5.25 7.153 4.735 9 3.75C10.847 4.735 12.907 5.25 15 5.25H15.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M3.75 6L6 12C5.351 12.487 4.561 12.75 3.75 12.75C2.939 12.75 2.149 12.487 1.5 12L3.75 6ZM3.75 6V5.25" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M5.25 15.75H12.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "ten-lakh-minimum",
-    title: "The ₹10 lakh minimum",
-    description:
-      "Why SEBI set a ₹10 lakh entry ticket, who qualifies as an eligible investor, and what changes for NRIs.",
-    duration: 4,
-    level: "Core" as const,
-    iconBg: "#EEF2FF",
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.7 }}>
-        <path d="M4.5 2.25H13.5" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4.5 6H13.5" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4.5 9.75L10.875 15.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4.5 9.75H6.75" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M6.75 9.75C11.75 9.75 11.75 2.25 6.75 2.25" stroke="black" strokeWidth="0.75" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-];
+    </div>
+  );
+}
 
+/* ── Level styling ───────────────────────────────────────────────────────── */
 const LEVEL_STYLES: Record<string, { bg: string; color: string }> = {
   Beginner:     { bg: "#E8F5F0", color: "#1A7A4A" },
   Intermediate: { bg: "#FFF3E0", color: "#B8600B" },
   Core:         { bg: "#EEF2FF", color: "#3730A3" },
 };
+
+const LEVEL_CYCLE: Array<"Beginner" | "Intermediate" | "Core"> = [
+  "Beginner", "Intermediate", "Core", "Beginner",
+];
+const ICON_BG_CYCLE = ["#E8F5F0", "#FFF3E0", "#EEF2FF", "#E8F5F0"];
 
 const STORAGE_KEY = "sif101_completed";
 
@@ -180,7 +57,7 @@ function ClockIcon() {
   );
 }
 
-export function LearningHubClient() {
+export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationArticles?: SifEducationArticle[] }) {
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
 
@@ -193,6 +70,18 @@ export function LearningHubClient() {
     }
     setHydrated(true);
   }, []);
+
+  /* Derive topics from DB articles — same shape the UI expects */
+  const topics = sifEducationArticles.map((article, i) => ({
+    id: article.slug,           // used as the localStorage key
+    slug: article.slug,
+    title: article.title,
+    description: article.excerpt,
+    duration: article.readTime,
+    level: LEVEL_CYCLE[i % LEVEL_CYCLE.length],
+    iconBg: ICON_BG_CYCLE[i % ICON_BG_CYCLE.length],
+    href: `/sif-101/${article.slug}`,
+  }));
 
   function toggleTopic(id: string) {
     setCompleted((prev) => {
@@ -212,38 +101,18 @@ export function LearningHubClient() {
   }
 
   const completedCount = completed.size;
-  const totalCount = TOPICS.length;
-  const progressPct = Math.round((completedCount / totalCount) * 100);
-  const nextTopic = TOPICS.find((t) => !completed.has(t.id));
+  const totalCount = topics.length;
+  const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const nextTopic = topics.find((t) => !completed.has(t.id));
 
   let progressTitle = "Get started";
   let progressMsg = "Start your learning journey — click any topic card below.";
   if (completedCount > 0 && completedCount < totalCount) {
     progressTitle = "Good progress — keep going";
     progressMsg = `You've completed ${completedCount} of ${totalCount} topics. Next up: ${nextTopic?.title}.`;
-  } else if (completedCount === totalCount) {
+  } else if (totalCount > 0 && completedCount === totalCount) {
     progressTitle = "Learning path complete!";
-    progressMsg = "You've completed all 9 topics. Great work!";
-  }
-
-  if (!hydrated) {
-    return (
-      <div className="hub-page-header">
-        <div className="hub-header-inner">
-          <div className="hub-header-content">
-            <div className="hub-breadcrumb">
-              <span className="hub-breadcrumb-link">SIF 101</span>
-              <span className="hub-breadcrumb-sep">›</span>
-              <span className="hub-breadcrumb-link">Learning Hub</span>
-            </div>
-            <h1 className="hub-heading">Your Learning Hub</h1>
-            <p className="hub-subheading">
-              Build confidence before you invest. Bite-sized articles across products, mechanics, risk, regulation and tax.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    progressMsg = `You've completed all ${totalCount} topics. Great work!`;
   }
 
   return (
@@ -276,7 +145,7 @@ export function LearningHubClient() {
               <span className="hub-sidebar-count">{completedCount} / {totalCount}</span>
             </div>
             <div className="hub-sidebar-list">
-              {TOPICS.map((topic) => {
+              {topics.map((topic) => {
                 const isDone = completed.has(topic.id);
                 const isCurrent = !isDone && topic.id === nextTopic?.id;
                 return (
@@ -293,7 +162,7 @@ export function LearningHubClient() {
                       {isDone && <CheckIcon />}
                     </button>
                     <a
-                      href={`/sif-101/${topic.id}`}
+                      href={topic.href}
                       className={`hub-sidebar-label${isDone ? " label-done" : isCurrent ? " label-current" : ""}`}
                       style={{ textDecoration: "none" }}
                     >
@@ -333,23 +202,23 @@ export function LearningHubClient() {
             </div>
           </div>
 
-          {/* Topics grid */}
+          {/* Topics grid — now driven by DB articles */}
           <div className="hub-topics-section">
             <p className="hub-topics-label">All topics</p>
             <div className="hub-topics-grid">
-              {TOPICS.map((topic) => {
+              {topics.length === 0 ? (
+                <p style={{ color: "#6B7685", fontSize: 14, gridColumn: "1 / -1" }}>No articles published yet.</p>
+              ) : topics.map((topic) => {
                 const isDone = completed.has(topic.id);
                 const lvl = LEVEL_STYLES[topic.level];
                 return (
                   <a
                     key={topic.id}
-                    href={`/sif-101/${topic.id}`}
+                    href={topic.href}
                     className={`hub-topic-card${isDone ? " topic-card-done" : ""}`}
                     style={{ textDecoration: "none" }}
                   >
-                    <div className="hub-topic-icon" style={{ background: topic.iconBg }}>
-                      {topic.icon}
-                    </div>
+                    <ArticleIcon bg={topic.iconBg} />
                     <div className="hub-topic-title-row">
                       <h3 className="hub-topic-title">{topic.title}</h3>
                       {isDone && (
@@ -643,7 +512,7 @@ export function LearningHubClient() {
         }
         .hub-topics-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 14px;
         }
         .hub-topic-card {
@@ -712,6 +581,10 @@ export function LearningHubClient() {
           margin: 0 0 14px;
           flex: 1;
           text-align: left;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
         .hub-topic-footer {
           display: flex;

@@ -54,29 +54,10 @@ export function Footer() {
           {/* ── Brand ─────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-10 h-10 flex-shrink-0">
-                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M20 2 L35 10 L35 30 L20 38 L5 30 L5 10 Z"
-                    fill="#1E4ED8"
-                    stroke="#1B43B8"
-                    strokeWidth="1"
-                  />
-                  <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle"
-                    fill="white" fontSize="13" fontWeight="700" fontFamily="Inter,sans-serif">
-                    SC
-                  </text>
-                </svg>
-              </div>
-              <div>
-                <span className="text-[16px] font-bold text-brand-navy tracking-tight">
-                  SIFCase
-                </span>
-                <span className="text-[12px] font-medium text-muted ml-1.5">
-                  by Aureva
-                </span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="SIFcase" className="h-7 w-auto" />
             </div>
+
 
             <p className="text-[13px] text-body leading-relaxed mb-3 max-w-[240px]">
               Aureva&apos;s intelligence platform for Specialized Investment Funds.

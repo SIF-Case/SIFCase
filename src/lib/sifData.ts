@@ -5,6 +5,7 @@ import PerformanceReport from "@/models/PerformanceReport";
 export interface SnapshotStats {
   totalSchemes: number;
   totalRegular: number;
+  totalGrowthRegular: number;
   uniqueAMCs: number;
   latestNavDate: string;
   totalNavRecords: number;
@@ -179,10 +180,11 @@ async function getCollections() {
 export async function getSnapshotStats(): Promise<SnapshotStats> {
   const { schemes, navs } = await getCollections();
 
-  const [totalSchemes, totalRegular, totalNavRecords, amcList, latestNavRecord] =
+  const [totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, latestNavRecord] =
     await Promise.all([
       schemes.countDocuments(),
       schemes.countDocuments({ plan: "Regular" }),
+      schemes.countDocuments({ plan: "Regular", option: "Growth" }),
       navs.countDocuments(),
       schemes.distinct("amc"),
       navs.findOne({}, { sort: { navDate: -1 } }),
@@ -191,6 +193,7 @@ export async function getSnapshotStats(): Promise<SnapshotStats> {
   return {
     totalSchemes,
     totalRegular,
+    totalGrowthRegular,
     uniqueAMCs: amcList.length,
     latestNavDate: latestNavRecord
       ? formatDate(latestNavRecord.navDate)
@@ -464,7 +467,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
         drawdowns,
         sparklines,
         sparklineDates,
-        riskBand: riskBandByName.get(s.fundName) ?? null,
+        riskBand: riskBandByName.get(s.fundName) ?? (strategyToCategory(s.strategy) === "Hybrid" ? 4 : 5),
       };
     });
 
@@ -474,10 +477,10 @@ export async function getTopFunds(): Promise<FundRow[]> {
 export async function getTickerNavs(): Promise<TickerNav[]> {
   const { schemes, navs } = await getCollections();
 
-  // Pick a few Regular plan Growth schemes for the ticker
+  // Only Regular plan Growth schemes for the ticker
   const regularSchemes = await schemes
-    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, amc: 1 } })
-    .limit(8)
+    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, fundName: 1, amc: 1 } })
+    .limit(12)
     .toArray();
 
   const items: TickerNav[] = [];
@@ -497,12 +500,15 @@ export async function getTickerNavs(): Promise<TickerNav[]> {
     const latest = recent[0].nav as number;
     const prev = recent.length > 1 ? (recent[1].nav as number) : latest;
     const change = pct(latest, prev);
-    const name = (s.schemeName as string)
+
+    // Use fundName (clean brand name) when available, else strip plan/option suffixes from schemeName
+    const rawName = (s.fundName as string) || (s.schemeName as string);
+    const name = rawName
       .replace(/- Growth.*$/i, "")
-      .replace(/- Regular Plan$/i, "")
+      .replace(/- Regular Plan.*$/i, "")
+      .replace(/- Direct Plan.*$/i, "")
       .trim()
-      .toUpperCase()
-      .slice(0, 22);
+      .toUpperCase();
 
     items.push({
       label: name,
