@@ -56,6 +56,8 @@ function ComboSelect({ value, options, placeholder, onChange, onAddOption, onRen
     if (value === old) onChange(v);
   }
 
+  
+
   return (
     <div className="relative">
       <button type="button" onClick={() => { setOpen((o) => !o); setAdding(false); setEditingOption(null); }}
@@ -471,6 +473,9 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
                   placeholder="— select —"
                   options={fundHouseNames}
                   onChange={(v) => set("subcategory", v)}
+                  onAddOption={(v) => addSubcategory(form.category, v)}
+                  onRenameOption={renameSubcategory}
+                  onReorderOptions={reorderSubcategories}
                 />
               </div>
             ) : form.category && (

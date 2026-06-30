@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Save, X, Pencil, ChevronLeft, ChevronRight, Loader2, Check, SlidersHorizontal } from "lucide-react";
+import { Search, RefreshCw, Save, X, Pencil, ChevronLeft, ChevronRight, Loader2, Check, SlidersHorizontal, Download } from "lucide-react";
 import { deriveCompanyNameShort } from "@/lib/schemeHelpers";
 
 type SchemeRow = {
@@ -82,6 +82,7 @@ function AdminSchemes() {
   const [drafts, setDrafts] = useState<Record<string, Partial<SchemeRow>>>({});
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => ({
     schemeCode: 80,
     schemeName: 240,
@@ -272,6 +273,61 @@ function AdminSchemes() {
     setInputSearch(""); setSearch(""); setPage(1);
   }
 
+  async function downloadCSV() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1", limit: "9999", q: search,
+        ...(filterPlan && { plan: filterPlan }),
+        ...(filterOption && { option: filterOption }),
+        ...(filterStrategy && { strategy: filterStrategy }),
+        ...(filterActive && { active: filterActive }),
+      });
+      const res = await fetch(`/api/admin/funds?${params}`);
+      const data = await res.json();
+      const all: SchemeRow[] = data.schemes ?? [];
+
+      // CSV columns — all fields except isActive
+      const CSV_COLS: { key: keyof SchemeRow; label: string }[] = [
+        { key: "schemeCode",        label: "Scheme Code" },
+        { key: "schemeName",        label: "Scheme Name" },
+        { key: "fundName",          label: "Fund Name" },
+        { key: "brandName",         label: "Brand" },
+        { key: "amc",               label: "AMC" },
+        { key: "companyName",       label: "Company Name" },
+        { key: "companyName_short", label: "Company Short" },
+        { key: "isinGrowth",        label: "ISIN Growth" },
+        { key: "isinReinvestment",  label: "ISIN Reinvestment" },
+        { key: "plan",              label: "Plan" },
+        { key: "option",            label: "Option" },
+        { key: "strategy",          label: "Strategy" },
+      ];
+
+      function esc(val: unknown): string {
+        const s = val == null ? "" : String(val);
+        return s.includes(",") || s.includes('"') || s.includes("\n")
+          ? `"${s.replace(/"/g, '""')}"`
+          : s;
+      }
+
+      const header = CSV_COLS.map((c) => c.label).join(",");
+      const body = all.map((row) =>
+        CSV_COLS.map((c) => esc(row[c.key])).join(",")
+      );
+
+      const csv = [header, ...body].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sifcase-schemes-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const dirtyCount = rows.filter((r) => isDirty(r.schemeCode)).length;
 
   const gridTemplateColumns = COLUMNS.map((c) => `${columnWidths[c.key]}px`).join(" ");
@@ -293,6 +349,11 @@ function AdminSchemes() {
           )}
           <button onClick={() => fetchSchemes()} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
             <RefreshCw className={`size-3.5 ${fetching ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          <button onClick={downloadCSV} disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body disabled:opacity-60">
+            {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {exporting ? "Exporting…" : "Download CSV"}
           </button>
           {editing ? (
             <>

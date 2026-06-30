@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Search, RefreshCw, Play, Loader2, CheckCircle, XCircle, X, ExternalLink, TrendingUp } from "lucide-react";
+import { Search, RefreshCw, Play, Loader2, CheckCircle, XCircle, X, ExternalLink, TrendingUp, Download } from "lucide-react";
 
 type Scheme = {
   schemeCode: string;
@@ -249,6 +249,7 @@ export default function AdminFunds() {
   const [triggering, setTriggering] = useState(false);
   const [triggerResult, setTriggerResult] = useState<TriggerResult>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchFunds = useCallback(async () => {
     setLoading(true);
@@ -272,6 +273,39 @@ export default function AdminFunds() {
     fetchFunds();
   }
 
+  async function downloadCSV() {
+    setExporting(true);
+    try {
+      // Fetch all schemes (no pagination)
+      const res = await fetch(`/api/admin/funds?page=1&limit=9999&q=${encodeURIComponent(search)}`);
+      const data = await res.json();
+      const all: Scheme[] = data.schemes ?? [];
+
+      const headers = ["Scheme Code", "Scheme Name", "AMC", "Strategy", "Plan", "Option", "NAV Records", "Last NAV Date"];
+      const rows = all.map((s) => [
+        s.schemeCode,
+        `"${s.schemeName.replace(/"/g, '""')}"`,
+        `"${s.amc.replace(/"/g, '""')}"`,
+        `"${s.strategy.replace(/"/g, '""')}"`,
+        s.plan,
+        s.option,
+        s.navCount,
+        s.lastNav ? new Date(s.lastNav).toLocaleDateString("en-IN") : "—",
+      ]);
+
+      const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sifcase-funds-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -282,6 +316,11 @@ export default function AdminFunds() {
         <div className="flex items-center gap-3">
           <button onClick={fetchFunds} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
             <RefreshCw className="size-3.5" /> Refresh
+          </button>
+          <button onClick={downloadCSV} disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body disabled:opacity-60">
+            {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {exporting ? "Exporting…" : "Download CSV"}
           </button>
           <button onClick={triggerNav} disabled={triggering}
             className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:bg-primary-hover disabled:opacity-60 shadow-btn">

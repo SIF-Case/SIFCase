@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   const db = mongoose.connection.db!;
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = Math.min(100, Math.max(10, parseInt(searchParams.get("limit") ?? "50")));
+  const limitParam = parseInt(searchParams.get("limit") ?? "50");
+  const limit = limitParam >= 9999 ? 9999 : Math.min(100, Math.max(10, limitParam));
   const search   = searchParams.get("q")        ?? "";
   const plan     = searchParams.get("plan")      ?? "";
   const option   = searchParams.get("option")    ?? "";

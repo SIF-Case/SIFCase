@@ -32,11 +32,11 @@ Title: ${input.title || "(none)"}
 ${plain}
 
 Return ONLY a JSON object with these exact keys:
-- title: specific, factual, under 65 chars (omit if current title is good)
-- excerpt: Write a concise 300–350 character summary of the article. Focus on what readers will learn and why it matters. Do not use phrases like "this article", "in this article", "we explain", or promotional wording. Sound educational and authoritative.
+- title: specific, factual, max 65 chars (omit if current title is good)
+- excerpt: Write a concise summary of the article (approx. 40-50 words). It MUST be complete sentences and strictly under 350 characters. Focus on what readers will learn and why it matters. Do not use phrases like "this article", "in this article", "we explain", or promotional wording. Sound educational and authoritative.
 - tags: array of 4–7 lowercase topic tags
-- seoTitle: 50–60 chars, focus keyphrase near the start
-- metaDescription: 150–160 chars, includes focus keyphrase, ends with reason to click
+- seoTitle: Max 60 chars, focus keyphrase near the start
+- metaDescription: Max 160 characters (approx. 20-25 words). MUST consist of complete sentences with no abrupt cut-offs. Include focus keyphrase and end with a compelling reason to click.
 - focusKeyphrase: single 2–5 word phrase to rank for
 - primaryKeyword: broader category term distinct from focusKeyphrase`;
 }

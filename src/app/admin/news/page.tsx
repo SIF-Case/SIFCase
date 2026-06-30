@@ -71,7 +71,7 @@ OUTPUT FORMAT — return ONLY a valid JSON array, nothing else before or after:
 
 Rules:
 - Return ONLY the JSON array — no preamble, no explanation, no markdown fences
-- Each article body must use \\n\\n between paragraphs (no HTML, no markdown)
+- Each article body must use \\n\ \n between paragraphs (no HTML, no markdown)
 - If all items are about the same story, return a single-item array
 - Never invent quotes, statistics, or facts not present in the source material`;
 
@@ -315,6 +315,39 @@ export default function AdminNews() {
     fetchFeed();
   }
 
+  async function deleteSelected() {
+    if (selected.size === 0) return;
+
+    if (!confirm(`Delete ${selected.size} selected news item(s)?`)) return;
+
+    setActionLoading("delete-selected");
+
+    try {
+      const res = await fetch("/api/admin/news-items", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ids: Array.from(selected),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Delete failed");
+        return;
+      }
+
+      setSelected(new Set());
+
+      fetchFeed();
+    } finally {
+      setActionLoading(null);
+    }
+  }
+  
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -610,6 +643,18 @@ export default function AdminNews() {
               <Sparkles className="size-4 text-primary shrink-0" />
               <span className="text-[13px] text-primary font-medium flex-1">{selected.size} item{selected.size > 1 ? "s" : ""} selected</span>
               <button onClick={() => setSelected(new Set())} className="text-[12px] text-muted hover:text-body px-2 py-1 rounded-[6px] hover:bg-white">Deselect all</button>
+              <button
+                onClick={deleteSelected}
+                disabled={actionLoading === "delete-selected"}
+                className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-red-200 text-loss bg-red-50 text-[13px] font-semibold hover:bg-red-100 disabled:opacity-50"
+              >
+                {actionLoading === "delete-selected"
+                  ? <Loader2 className="size-3.5 animate-spin" />
+                  : <Trash2 className="size-3.5" />
+                }
+
+                Delete Selected
+              </button>
               <button
                 onClick={generateArticles}
                 disabled={generating}
