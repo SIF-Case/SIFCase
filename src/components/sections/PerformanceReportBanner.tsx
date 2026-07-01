@@ -8,93 +8,73 @@ import { AuthModal } from "@/components/auth/AuthModal";
 
 const PENDING_KEY = "sif:pendingReportDownload";
 
-const DOT_X = 212.5;
-const TOOLTIP_LEFT_PCT = (173 / 474) * 100;
+// Wavy SIF performance path from Figma — realistic oscillating market movement
+const WAVY_PATH =
+  "M0 89.6C26.1 89.6 37 36.5 61.7 68.8C86.5 101.1 111.3 20 125 40.6C138.6 61.2 138.6 5.1 148 48.7C152.5 69.8 161 106.9 177 77.9C190.4 53.5 199.1 106.9 216.1 69.5C233.1 32.1 230.3 91.7 241.1 74.5C245.9 66.9 257.7 93 277.6 55.9C286 40.2 305.7 94.6 321.8 71.7C329.7 60.3 337.1 27.1 344.4 39.9C351.7 52.6 358.3 24.8 364.3 24.8C375.5 24.8 370.8 51.7 393 33.9C415.2 16 435.8 89.6 474 89.6";
 
-const PATH_D =
-  "M0 89.6C26.1 89.6 37 36.5 61.7 68.8C86.5 101.1 111.3 20 125 40.6C138.6 61.2 138.6 5.1 148 48.7C152.5 69.8 161 106.9 177 77.9C190.4 53.5 199.1 106.9 216.1 69.5C233.1 32.1 230.3 91.7 241.1 74.5C245.9 66.9 257.7 93 277.6 55.9C286 40.2 305.7 94.6 321.8 71.7C329.7 60.3 337.1 27.1 344.4 39.9C351.7 52.6 358.3 24.8 364.3 24.8C375.5 24.8 370.8 51.7 393 33.9C415.2 16 435.8 89.6 474.3 89.6";
+// Blob background fill shape — creates organic shaded area under the line
+const BLOB_PATH =
+  "M0 94.7C28.7 94.7 33.4 25.8 50.5 25.8C67.7 25.8 57 38.2 79.2 38.2C101.3 38.2 92.9 61.5 109.5 61.5C126.1 61.5 116.7 0 141.9 0C167.1 0 153.3 34 189.7 34C226.2 34 217.4 94.1 241.1 94.1C264.8 94.1 265.5 41.5 282.4 41.5C299.4 41.5 296.3 82.1 318.9 82.1C341.5 82.1 345.1 55.2 364.3 55.2C383.6 55.2 383.6 62.4 397.8 62.4C412 62.4 405.5 30.2 427.9 29.7C450.3 29.3 440.2 102 474.3 102";
 
 function startDownload(slug: string) {
   window.location.href = `/api/reports/${slug}/download`;
 }
 
-// Shared animateMotion props — dot travels 0→Jun→0 in a 5 s loop
-const MOTION_PROPS = {
-  dur: "5s",
-  repeatCount: "indefinite" as const,
-  calcMode: "spline" as const,
-  keyPoints: "0;0;0.44;0.44;0.44;0;0",
-  keyTimes: "0;0.05;0.55;0.72;0.87;0.92;1",
-  keySplines: "0.4 0 0.2 1;0.4 0 0.2 1;0 0 1 1;0 0 1 1;0.6 0 1 0.5;0 0 1 1",
-};
-
 function ReportChart() {
   return (
-    <div className="report-chart-container">
-      <div className="report-chart-tooltip" style={{ left: `${TOOLTIP_LEFT_PCT}%` }}>
-        <div className="report-chart-tooltip-body" />
-        <svg className="report-chart-tooltip-caret" width="7" height="5" viewBox="0 0 7 5" fill="none">
-          <path fillRule="evenodd" clipRule="evenodd" d="M6.85 0H0L3.42 4.37L6.85 0Z" fill="#DADADA" />
-        </svg>
-      </div>
-
-      <svg viewBox="0 0 474 114" fill="none" className="report-chart-svg" preserveAspectRatio="xMidYMid meet">
+    <div className="sif-chart-wrap">
+      {/*
+        viewBox top is -50 to give the tooltip room above the wavy path.
+        Path y-range is ~5–107. Tooltip sits 44px above dot origin = y≈-39 at worst.
+      */}
+      <svg viewBox="0 -50 474 160" fill="none" className="sif-chart-svg" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <linearGradient id="rptAreaGrad" x1="237" y1="102" x2="237" y2="0" gradientUnits="userSpaceOnUse">
+          <linearGradient id="sifBlobGrad" x1="237" y1="102" x2="237" y2="0" gradientUnits="userSpaceOnUse">
             <stop stopOpacity="0.01" />
             <stop offset="1" stopOpacity="0.15" />
           </linearGradient>
-          <filter id="line-glow" x="-15%" y="-80%" width="130%" height="260%">
-            <feGaussianBlur stdDeviation="1.8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
-        {/* Area — fades in as line completes */}
-        <path
-          className="report-chart-area"
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M0 94.7C28.7 94.7 33.4 25.8 50.5 25.8C67.7 25.8 57 38.2 79.2 38.2C101.3 38.2 92.9 61.5 109.5 61.5C126.1 61.5 116.7 0 141.9 0C167.1 0 153.3 34 189.7 34C226.2 34 217.4 94.1 241.1 94.1C264.8 94.1 265.5 41.5 282.4 41.5C299.4 41.5 296.3 82.1 318.9 82.1C341.5 82.1 345.1 55.2 364.3 55.2C383.6 55.2 383.6 62.4 397.8 62.4C412 62.4 405.5 30.2 427.9 29.7C450.3 29.3 440.2 102 474.3 102"
-          fill="url(#rptAreaGrad)"
-        />
+        {/* Organic background blob fill */}
+        <path fillRule="evenodd" clipRule="evenodd" d={BLOB_PATH} fill="url(#sifBlobGrad)" className="sif-blob" />
 
-        {/* Vertical reference line — appears when dot arrives at Jun */}
-        <line
-          x1={DOT_X} y1="20" x2={DOT_X} y2="114"
-          stroke="#D8D8D8" strokeWidth="0.56" strokeDasharray="3 2"
-          className="report-chart-vline"
-        />
-
-        {/* Main chart line — CSS draw loop */}
+        {/* Main wavy performance line */}
         <path
-          id="chart-main-path"
-          d={PATH_D}
+          id="sif-wave"
+          d={WAVY_PATH}
           stroke="#0F2918"
-          strokeWidth="0.56"
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          filter="url(#line-glow)"
-          className="report-chart-line"
+          className="sif-line"
         />
 
-        {/* Outer pulse ring — travels with dot, bursts at Jun */}
-        <circle r="5" fill="none" stroke="#0F2918" strokeWidth="0.8" className="report-chart-dot-ring">
-          <animateMotion {...MOTION_PROPS}>
-            <mpath href="#chart-main-path" />
+        {/*
+          Moving group: tooltip bubble + caret + dot share one animateMotion.
+          Group origin (0,0) = dot center on the path.
+          Tooltip bubble is 44px above; caret points down to the dot.
+        */}
+        <g className="sif-indicator">
+          {/* Tooltip bubble */}
+          <rect x="-25" y="-44" width="50" height="21" rx="8" fill="#0F2918" />
+          {/* Down-pointing caret */}
+          <polygon points="-4,-23 4,-23 0,-18" fill="#0F2918" />
+          {/* Short connector line from caret tip to dot */}
+          <line x1="0" y1="-18" x2="0" y2="-6" stroke="#D8D8D8" strokeWidth="0.56" />
+          {/* Dot */}
+          <ellipse rx="4.8" ry="5.1" fill="#000" />
+          <animateMotion
+            dur="5s"
+            repeatCount="indefinite"
+            calcMode="spline"
+            keyPoints="0;0;1;1;0"
+            keyTimes="0;0.04;0.86;0.93;1"
+            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0 0 1 1;0 0 1 1"
+          >
+            <mpath href="#sif-wave" />
           </animateMotion>
-        </circle>
-
-        {/* Dot — travels along path */}
-        <circle r="5" fill="#0F2918" className="report-chart-dot">
-          <animateMotion {...MOTION_PROPS}>
-            <mpath href="#chart-main-path" />
-          </animateMotion>
-        </circle>
+        </g>
       </svg>
     </div>
   );

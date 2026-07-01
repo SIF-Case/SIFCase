@@ -29,11 +29,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       excerpt: item.aiSummary || item.originalExcerpt,
       content: `<p>${item.aiSummary || item.originalExcerpt}</p><p><a href="${item.url}" target="_blank" rel="noopener">Read original article →</a></p>`,
       coverDesktop: item.imageUrl,
-      category: "News",
+      category: "General News",
       tags: item.tags,
       status: "draft",
       readTime,
-      publishedAt: null,
+      publishedAt: null, // Explicitly ensure it's not published
     });
 
     await NewsItem.findByIdAndUpdate(id, { promotedArticleId: article._id });

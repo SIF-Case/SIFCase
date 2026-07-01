@@ -208,9 +208,8 @@ export function FundDetailPanel({
         </div>
       )}
 
-      {/* Chart + risk metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-        {/* Chart */}
+      {/* Chart */}
+      <div>
         <div className="bg-white rounded-[18px] border border-rule shadow-card p-5">
           {visible.length < 2 ? (
             <div className="flex items-center justify-center h-48 text-muted text-sm">
@@ -407,18 +406,6 @@ export function FundDetailPanel({
           )}
         </div>
 
-        {/* Risk metrics panel */}
-        <div className="bg-white rounded-[18px] border border-rule shadow-card p-5 flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-3">
-            Risk-adjusted metrics · {chartPeriod}
-          </p>
-          {RISK_ROWS.map(({ label, value, cls }) => (
-            <div key={label} className="flex items-center justify-between py-2.5 border-b border-rule-soft last:border-0">
-              <span className="text-[13px] text-body">{label}</span>
-              <span className={`text-[14px] font-bold nums ${cls}`}>{value}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

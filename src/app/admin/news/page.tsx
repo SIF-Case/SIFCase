@@ -122,25 +122,43 @@ export default function AdminNews() {
 
   const fetchConfig = useCallback(async () => {
     setConfigLoading(true);
-    const res = await fetch("/api/admin/news-config");
-    const data = await res.json();
-    if (data.config) setConfig(c => ({ ...c, keywords: [], blacklistedKeywords: [], ...data.config }));
+    try {
+      const res = await fetch("/api/admin/news-config");
+      if (!res.ok) {
+        console.error("Failed to fetch config:", res.status);
+        setConfigLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.config) setConfig(c => ({ ...c, keywords: [], blacklistedKeywords: [], ...data.config }));
+    } catch (err) {
+      console.error("Error fetching config:", err);
+    }
     setConfigLoading(false);
   }, []);
 
   const fetchFeed = useCallback(async () => {
     setFeedLoading(true);
-    const params = new URLSearchParams({ page: String(page), q: search });
-    if (sourceFilter) params.set("source", sourceFilter);
-    if (visibilityFilter) params.set("visibility", visibilityFilter);
-    if (dateFrom) params.set("from", dateFrom);
-    if (dateTo) params.set("to", dateTo);
-    const res = await fetch(`/api/admin/news-items?${params}`);
-    const data = await res.json();
-    setItems(data.items ?? []);
-    setTotal(data.total ?? 0);
-    setPages(data.pages ?? 1);
-    setSources(data.sources ?? []);
+    try {
+      const params = new URLSearchParams({ page: String(page), q: search });
+      if (sourceFilter) params.set("source", sourceFilter);
+      if (visibilityFilter) params.set("visibility", visibilityFilter);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
+      const res = await fetch(`/api/admin/news-items?${params}`);
+      if (!res.ok) {
+        console.error("Failed to fetch news items:", res.status);
+        setFeedLoading(false);
+        return;
+      }
+      const data = await res.json();
+      setItems(data.items ?? []);
+      setTotal(data.total ?? 0);
+      setPages(data.pages ?? 1);
+      setSources(data.sources ?? []);
+    } catch (err) {
+      console.error("Error fetching news items:", err);
+    }
     setFeedLoading(false);
   }, [page, search, sourceFilter, visibilityFilter, dateFrom, dateTo]);
 
@@ -150,13 +168,18 @@ export default function AdminNews() {
   async function saveConfig() {
     setConfigSaving(true);
     setConfigMsg(null);
-    const res = await fetch("/api/admin/news-config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
+    try {
+      const res = await fetch("/api/admin/news-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      setConfigMsg(res.ok ? "Saved." : "Failed to save.");
+    } catch (err) {
+      console.error("Error saving config:", err);
+      setConfigMsg("Failed to save.");
+    }
     setConfigSaving(false);
-    setConfigMsg(res.ok ? "Saved." : "Failed to save.");
     setTimeout(() => setConfigMsg(null), 3000);
   }
 
@@ -347,7 +370,7 @@ export default function AdminNews() {
       setActionLoading(null);
     }
   }
-  
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">

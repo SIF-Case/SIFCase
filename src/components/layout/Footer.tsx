@@ -1,279 +1,309 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronRight,
-  Shield,
-  Clock,
-  CalendarDays,
-  FileText,
-  MapPin,
-  Activity,
-  Mail,
-  Headphones,
-  Building2,
-} from "lucide-react";
-
-// ── Section heading with blue underline ──────────────────────────────────────
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-2">
-      <h3 className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-brand-navy mb-1">
-        {children}
-      </h3>
-      <div className="w-8 h-[2.5px] bg-primary rounded-full" />
-    </div>
-  );
-}
-
-// ── Nav link with chevron ────────────────────────────────────────────────────
-function FooterLink({ href, label }: { href: string; label: string }) {
-  return (
-    <li>
-      <a
-        href={href}
-        className="flex items-center gap-1.5 text-[13.5px] text-body hover:text-primary group"
-      >
-        <ChevronRight className="w-3 h-3 text-faint group-hover:text-primary flex-shrink-0" strokeWidth={2.5} />
-        {label}
-      </a>
-    </li>
-  );
-}
+import Link from "next/link";
 
 export function Footer() {
   const [email, setEmail] = useState("");
 
   return (
-    <footer className="bg-white border-t border-rule">
-
-      {/* ── MAIN SECTION ──────────────────────────────────────────────────── */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-8 pb-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-7">
-
-          {/* ── Brand ─────────────────────────────── */}
-          <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.svg" alt="SIFcase" className="h-7 w-auto" />
-            </div>
-
-
-            <p className="text-[13px] text-body leading-relaxed mb-3 max-w-[240px]">
-              Aureva&apos;s intelligence platform for Specialized Investment Funds.
-              Research, compare, and analyze SIFs with institutional-grade depth.
-            </p>
-
-            <div className="flex items-center gap-2 text-[12px] text-muted">
-              <Activity className="w-3.5 h-3.5 text-verified flex-shrink-0" strokeWidth={2} />
-              Data cadence: Live NAV &nbsp;·&nbsp; Research refreshed regularly
-            </div>
+    <footer className="footer">
+      {/* ── TOP: Newsletter + Social ── */}
+      <div className="footer-top">
+        <div className="newsletter-group">
+          <span className="nl-eyebrow">SIF Alerts</span>
+          <div className="nl-form">
+            <input
+              className="nl-input"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button className="nl-btn">Get NFO &amp; NAV updates</button>
           </div>
-
-          {/* ── Nav columns ───────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            {/* PLATFORM */}
-            <div>
-              <SectionHeading>Platform</SectionHeading>
-              <ul className="space-y-2">
-                <FooterLink href="/sifs" label="Explore SIFs" />
-                <FooterLink href="/compare" label="Compare Funds" />
-                <FooterLink href="/performance" label="Performance Analytics" />
-                <FooterLink href="/dashboard" label="Market Dashboard" />
-              </ul>
-            </div>
-
-            {/* RESEARCH */}
-            <div>
-              <SectionHeading>Research</SectionHeading>
-              <ul className="space-y-2">
-                <FooterLink href="/research" label="Research Reports" />
-                <FooterLink href="/strategy" label="Strategy Intelligence" />
-                <FooterLink href="/learn" label="Learn SIFs" />
-                <FooterLink href="/calculators" label="Tools &amp; Calculators" />
-              </ul>
-            </div>
-
-            {/* INSTITUTIONAL */}
-            <div>
-              <SectionHeading>Institutional</SectionHeading>
-              <ul className="space-y-2">
-                <FooterLink href="/about" label="About SIFCase" />
-                <FooterLink href="/advisor" label="Advisor Connect" />
-                <FooterLink href="/contact" label="Callback Request" />
-              </ul>
-            </div>
-
-            {/* LEGAL */}
-            <div>
-              <SectionHeading>Legal</SectionHeading>
-              <ul className="space-y-2">
-                <FooterLink href="/disclaimer" label="Disclaimer" />
-                <FooterLink href="/privacy" label="Privacy Policy" />
-                <FooterLink href="/terms" label="Terms of Use" />
-                <FooterLink href="/sebi" label="SEBI Disclosure" />
-              </ul>
-            </div>
-          </div>
-
-          {/* ── Stay updated + social ─────────────── */}
-          <div>
-            <SectionHeading>Stay Updated</SectionHeading>
-            <p className="text-[13px] text-body leading-relaxed mb-3">
-              Subscribe for market insights and SIF updates.
-            </p>
-
-            {/* Email form */}
-            <div className="mb-4 space-y-2">
-              <div className="flex items-center rounded-[10px] border border-rule overflow-hidden shadow-card">
-                <div className="flex items-center pl-3">
-                  <Mail className="w-4 h-4 text-faint flex-shrink-0" strokeWidth={1.75} />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email address"
-                  className="flex-1 px-2.5 py-2.5 text-[13px] text-body placeholder:text-faint bg-transparent outline-none min-w-0"
-                />
-              </div>
-              <button className="w-full py-2.5 rounded-[10px] bg-brand-navy text-white text-[12.5px] font-semibold hover:bg-ink">
-                Subscribe
-              </button>
-            </div>
-
-            {/* Social icons */}
-            <div>
-              <p className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-brand-navy mb-3">
-                Follow Us
-              </p>
-              <div className="flex items-center gap-2.5">
-                <a href="#" aria-label="Facebook"
-                  className="w-9 h-9 rounded-full bg-[#1877F2] flex items-center justify-center hover:opacity-90">
-                  <span className="text-white text-[13px] font-bold">f</span>
-                </a>
-                <a href="#" aria-label="X"
-                  className="w-9 h-9 rounded-full bg-[#0F1419] flex items-center justify-center hover:opacity-80">
-                  <span className="text-white text-[11px] font-bold">𝕏</span>
-                </a>
-                <a href="#" aria-label="LinkedIn"
-                  className="w-9 h-9 rounded-full bg-[#0A66C2] flex items-center justify-center hover:opacity-90">
-                  <span className="text-white text-[11px] font-bold">in</span>
-                </a>
-                <a href="#" aria-label="Instagram"
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:opacity-90"
-                  style={{ background: "radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%)" }}>
-                  <span className="text-white text-[13px]">⬡</span>
-                </a>
-              </div>
-            </div>
-          </div>
+        </div>
+        <div className="social-row">
+          <span className="social-lbl">Follow</span>
+          <a className="soc" href="#" title="Twitter / X">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.257 5.622 5.907-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+          <a className="soc" href="#" title="LinkedIn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
+              <circle cx="4" cy="4" r="2" />
+            </svg>
+          </a>
+          <a className="soc" href="#" title="YouTube">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
+            </svg>
+          </a>
+          <a className="soc" href="#" title="WhatsApp">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+            </svg>
+          </a>
         </div>
       </div>
 
-      {/* ── COMPLIANCE SECTION ────────────────────────────────────────────── */}
-      <div className="border-t border-rule bg-surface">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-rule">
-
-            {/* Registration details */}
-            <div className="py-5 pr-0 md:pr-6">
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <Building2 className="w-4 h-4 text-brand-navy flex-shrink-0" strokeWidth={1.75} />
-                <SectionHeading>Aureva Capital Private Limited</SectionHeading>
-              </div>
-              <ul className="space-y-2">
-                {[
-                  { Icon: Shield, text: "SEBI Registration No: Awaiting" },
-                  { Icon: Clock, text: "AMFI-registered MFD: ARN-346247" },
-                  { Icon: CalendarDays, text: "Validity: 24-NOV-2025 to 23-NOV-2028" },
-                  { Icon: FileText, text: "CIN: U66190MH2025PTC460862" },
-                  { Icon: MapPin, text: "Awfis, B Wing 6F, Supreme Business Park, Hiranandani Gardens, Powai, Mumbai 400076" },
-                ].map(({ Icon, text }, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Icon className="w-3.5 h-3.5 text-muted flex-shrink-0 mt-[2px]" strokeWidth={1.75} />
-                    <span className="text-[12px] text-muted leading-relaxed">{text}</span>
-                  </li>
-                ))}
-              </ul>
+      {/* ── MAIN GRID ── */}
+      <div className="footer-main">
+        {/* Brand */}
+        <div className="brand-col">
+          <div className="logo-wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="SIFcase" className="h-7 w-auto" />
+          </div>
+          <p className="brand-desc">
+            India&apos;s dedicated SIF distribution &amp; research platform. Compare every SEBI-registered Specialised Investment Fund with verified data.
+          </p>
+          <div className="status-list">
+            <div className="status-item">
+              <span className="dot dot-live"></span> NAV updated daily · AMFI source
             </div>
-
-            {/* Principal officer + escalation */}
-            <div className="py-5 px-0 md:px-6">
-              <div className="mb-4">
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-8 h-8 rounded-full bg-mist flex items-center justify-center flex-shrink-0">
-                    <span className="text-[11px] font-bold text-brand-navy">PO</span>
-                  </div>
-                  <SectionHeading>Principal Officer</SectionHeading>
-                </div>
-                <p className="text-[15px] font-bold text-heading mb-2">Smita Sahai</p>
-                <a
-                  href="mailto:Smita.sahai@aurevawealth.com"
-                  className="flex items-center gap-2 text-[13px] text-primary hover:underline"
-                >
-                  <Mail className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  Smita.sahai@aurevawealth.com
-                </a>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2.5 mb-2">
-                  <Headphones className="w-4 h-4 text-brand-navy flex-shrink-0" strokeWidth={1.75} />
-                  <SectionHeading>Escalation</SectionHeading>
-                </div>
-                <p className="text-[12.5px] text-body leading-relaxed">
-                  You may also write to SEBI on SEBI Complaints Redress System (SCORES) at{" "}
-                  <a href="https://scores.sebi.gov.in" target="_blank" rel="noopener noreferrer"
-                    className="text-primary hover:underline">
-                    https://scores.sebi.gov.in
-                  </a>
-                  <br />
-                  For Online Dispute Resolution Portal click SMART ODR.
-                </p>
-              </div>
+            <div className="status-item">
+              <span className="dot dot-teal"></span> 98 SIFs · 14 AMCs tracked
             </div>
+            <div className="status-item">
+              <span className="dot dot-navy"></span> AMFI-registered distributor
+            </div>
+          </div>
+        </div>
 
-            {/* Disclaimer */}
-            <div className="py-5 pl-0 md:pl-6">
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <Shield className="w-4 h-4 text-brand-navy flex-shrink-0" strokeWidth={1.75} />
-                <SectionHeading>Disclaimer</SectionHeading>
-              </div>
-              <p className="text-[12px] text-body leading-relaxed mb-3">
-                Content on this website is issued by Aureva Capital Private Limited for general
-                information and educational purposes only. It does not constitute financial, tax,
-                legal, or investment advice. Investments in SIFs involve capital risk.
-              </p>
+        {/* Platform */}
+        <div className="nav-col">
+          <div className="col-head">Platform</div>
+          <ul>
+            <li>
+              <Link href="/sifs">Explore SIFs</Link>
+            </li>
+            <li>
+              <Link href="/compare">Compare funds</Link>
+            </li>
+            <li>
+              <Link href="/fund-houses">Fund houses</Link>
+            </li>
+            <li>
+              <Link href="/performance">Performance analytics</Link>
+            </li>
+            <li>
+              <Link href="/dashboard">Market dashboard</Link>
+            </li>
+            <li>
+              <Link href="/nfos">
+                NFO tracker <span className="pill-new">Live</span>
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Research */}
+        <div className="nav-col">
+          <div className="col-head">Research</div>
+          <ul>
+            <li>
+              <Link href="/research">Monthly reports</Link>
+            </li>
+            <li>
+              <Link href="/strategy">Strategy notes</Link>
+            </li>
+            <li>
+              <Link href="/learn">SIF 101 guide</Link>
+            </li>
+            <li>
+              <Link href="/calculators">Tools &amp; calculators</Link>
+            </li>
+            <li>
+              <Link href="/read">Insights</Link>
+            </li>
+            <li>
+              <Link href="/news">News</Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Invest */}
+        <div className="nav-col">
+          <div className="col-head">Invest</div>
+          <ul>
+            <li>
+              <Link href="/suitability">Find my SIF</Link>
+            </li>
+            <li>
+              <Link href="/advisor">Expert connect</Link>
+            </li>
+            <li>
+              <Link href="/contact">Callback request</Link>
+            </li>
+            <li>
+              <Link href="/about">About SIFcase</Link>
+            </li>
+            <li>
+              <Link href="/partner">Partner with us</Link>
+            </li>
+          </ul>
+        </div>
+
+        {/* Legal */}
+        <div className="nav-col">
+          <div className="col-head">Legal</div>
+          <ul>
+            <li>
+              <Link href="/disclaimer">Disclaimer</Link>
+            </li>
+            <li>
+              <Link href="/privacy">Privacy policy</Link>
+            </li>
+            <li>
+              <Link href="/terms">Terms of use</Link>
+            </li>
+            <li>
+              <Link href="/sebi">SEBI disclosure</Link>
+            </li>
+            <li>
+              <Link href="/grievance">Grievance redressal</Link>
+            </li>
+            <li>
               <a
-                href="/disclaimer"
-                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary hover:underline"
+                href="https://scores.sebi.gov.in"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                Read full disclaimer
-                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                SCORES · SEBI
               </a>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
       </div>
 
-      {/* ── BOTTOM BAR ────────────────────────────────────────────────────── */}
-      <div className="bg-brand-navy py-4">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[12px] text-white/70">
-            <Shield className="w-4 h-4 text-verified flex-shrink-0" strokeWidth={1.75} />
-            <span>© 2026 SIFCase by Aureva &nbsp;·&nbsp; Research &amp; Analytics</span>
+      {/* ── REGISTRATION STRIP ── */}
+      <div className="footer-reg">
+        <div>
+          <div className="reg-head">Entity details</div>
+          <div className="reg-val">
+            <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+              Aureva Capital Private Limited
+            </strong>
+            <br />
+            CIN: U66190MH2025PTC460862
+            <br />
+            Awfis, B Wing 6F, Supreme Business Park,
+            <br />
+            Hiranandani Gardens, Powai, Mumbai 400076
           </div>
-          <div className="flex items-center gap-2 text-[12px] text-white/50">
-            <Activity className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
-            <span>
-              For analytical purposes only &nbsp;·&nbsp; SIFs involve capital risk
-              &nbsp;·&nbsp; Consult your financial &amp; tax advisor
+        </div>
+        <div>
+          <div className="reg-head">Registrations</div>
+          <div className="tag-row">
+            <span className="rtag">
+              <span
+                className="td"
+                style={{ background: "var(--green)" }}
+              ></span>
+              AMFI MFD &amp; SIF Distributor
+            </span>
+            <span className="rtag">
+              <span
+                className="td"
+                style={{ background: "var(--green)" }}
+              ></span>
+              ARN-346247
+            </span>
+            <span className="rtag">
+              <span
+                className="td"
+                style={{ background: "var(--teal)" }}
+              ></span>
+              APRN: APRN0797924
+            </span>
+            <span className="rtag">
+              <span
+                className="td"
+                style={{ background: "var(--teal)" }}
+              ></span>
+              Startup India: DIPP232750
             </span>
           </div>
+          <div className="reg-val">
+            Principal Officer:{" "}
+            <strong style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+              Smita Sahai
+            </strong>
+            <br />
+            <a href="mailto:smita.sahai@aurevawealth.com">
+              smita.sahai@aurevawealth.com
+            </a>
+          </div>
+        </div>
+        <div>
+          <div className="reg-head">Grievance &amp; escalation</div>
+          <div className="reg-val">
+            <a href="mailto:support@sifcase.com">support@sifcase.com</a>
+            <br />
+            <br />
+            SEBI Complaints (SCORES):
+            <br />
+            <a
+              href="https://scores.sebi.gov.in"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              scores.sebi.gov.in
+            </a>
+            <br />
+            Online Dispute Resolution:{" "}
+            <a href="#" target="_blank" rel="noopener noreferrer">
+              SMART ODR Portal
+            </a>
+          </div>
         </div>
       </div>
 
+      {/* ── SEBI DISCLAIMER ── */}
+      <div className="footer-disclaimer">
+        <div className="disc-label">SEBI statutory disclaimer</div>
+        <p className="disc-text">
+          Investments in Specialized Investment Fund involves relatively higher risk including potential loss of capital, liquidity risk and market volatility. Please read all investment strategy related documents carefully before making the investment decision.
+        </p>
+      </div>
+
+      {/* ── BOTTOM BAR ── */}
+      <div className="footer-bottom">
+        <div className="copy">
+          © 2026 SIFcase by Aureva Capital · All rights reserved
+        </div>
+        <div className="bottom-links">
+          <Link href="/sitemap">Sitemap</Link>
+          <Link href="/accessibility">Accessibility</Link>
+          <Link href="/cookies">Cookie preferences</Link>
+        </div>
+        <div className="india-seal">
+          <div className="flag">
+            <span style={{ background: "#FF9933" }}></span>
+            <span
+              style={{
+                background: "#FFFFFF",
+                borderTop: "0.5px solid #eee",
+                borderBottom: "0.5px solid #eee",
+              }}
+            ></span>
+            <span style={{ background: "#138808" }}></span>
+          </div>
+          SEBI Regulated Product · India
+        </div>
+      </div>
     </footer>
   );
 }
