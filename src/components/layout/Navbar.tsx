@@ -21,6 +21,7 @@ export function Navbar() {
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fundHousesOpen, setFundHousesOpen] = useState(false);
+  const [mobileFundHousesOpen, setMobileFundHousesOpen] = useState(false);
   const [brandNames, setBrandNames] = useState<{ brandName: string; companyName_short: string }[]>([]);
   const fundHousesRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
@@ -62,6 +63,7 @@ export function Navbar() {
           <Link
             href="/"
             className="flex items-center flex-shrink-0"
+            aria-label="Go to home page"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.svg" alt="SIFcase" className="h-8 w-auto" />
@@ -244,16 +246,72 @@ export function Navbar() {
           }`}
         >
           <nav className="flex flex-col items-center space-y-3 text-[14.5px] font-medium w-full">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-[#374151] hover:text-[#14b7a3] transition-colors w-full text-center py-1.5"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((link) => 
+              link.label === "Fund Houses" ? (
+                <div key={link.label} className="w-full">
+                  <button
+                    onClick={() => {
+                      setMobileFundHousesOpen((v) => !v);
+                      loadBrandNames();
+                    }}
+                    className="flex items-center justify-center gap-1 text-[#374151] hover:text-[#14b7a3] transition-colors w-full text-center py-1.5"
+                  >
+                    {link.label}
+                    <ChevronDown
+                      className={`size-3.5 shrink-0 transition-transform duration-300 ${
+                        mobileFundHousesOpen ? "rotate-180 text-[#14b7a3]" : "text-[#374151]"
+                      }`}
+                    />
+                  </button>
+                  {mobileFundHousesOpen && (
+                    <div className="mt-2 px-4 pb-3">
+                      <a
+                        href={link.href}
+                        className="block px-3 py-2 text-[13px] font-semibold text-[#14b7a3] hover:bg-[#f3f4f6] rounded-lg mb-2"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        All Fund Houses &rarr;
+                      </a>
+                      <div className="border-t border-[#e5e7eb] mb-2" />
+                      {brandNames.length === 0 ? (
+                        <div className="px-3 py-2 text-[12px] text-[#64748B]">Loading…</div>
+                      ) : (
+                        <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                          {brandNames.map(({ brandName, companyName_short }) => (
+                            <a
+                              key={brandName}
+                              href={`/fund-house/${encodeURIComponent(
+                                brandName.toLowerCase().replace(/\s+/g, "-")
+                              )}`}
+                              className="flex flex-col px-3 py-2 rounded-lg hover:bg-[#f3f4f6] transition-colors"
+                              onClick={() => setMobileOpen(false)}
+                            >
+                              <span className="text-[13px] font-medium text-[#0d2b3e] leading-tight">
+                                {brandName}
+                              </span>
+                              {companyName_short && (
+                                <span className="text-[11px] text-[#64748B] leading-tight mt-0.5">
+                                  {companyName_short}
+                                </span>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="text-[#374151] hover:text-[#14b7a3] transition-colors w-full text-center py-1.5"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
           </nav>
           <div className="flex flex-col items-center space-y-3 mt-4 w-full pb-2">
             {user ? (

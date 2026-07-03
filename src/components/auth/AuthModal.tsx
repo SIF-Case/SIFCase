@@ -75,20 +75,25 @@ export function AuthModal({ open, onClose, reason }: Props) {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  useEffect(() => {
-    if (!open || !captchaContainerRef.current || recaptchaRef.current) return;
+  // Initialize reCAPTCHA only when modal opens AND we're about to send phone OTP
+  const initRecaptcha = () => {
+    if (recaptchaRef.current || !captchaContainerRef.current) return;
     try {
       captchaContainerRef.current.innerHTML = "";
     } catch {}
     recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, captchaContainerRef.current, { size: "invisible" });
-    return () => {
+  };
+
+  // Cleanup reCAPTCHA when modal closes
+  useEffect(() => {
+    if (!open && recaptchaRef.current) {
       try {
-        recaptchaRef.current?.clear();
+        recaptchaRef.current.clear();
       } catch (e) {
         console.warn("reCAPTCHA cleanup ignored:", e);
       }
       recaptchaRef.current = null;
-    };
+    }
   }, [open]);
 
   useEffect(() => {
@@ -107,6 +112,7 @@ export function AuthModal({ open, onClose, reason }: Props) {
   function handleClose() { reset(); onClose(); }
 
   async function sendPhoneOtp() {
+    initRecaptcha(); // Initialize only when actually needed
     const result = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
     confirmationRef.current = result;
     setStage("verify-phone");

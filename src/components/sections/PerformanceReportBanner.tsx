@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { ArrowRight, Download, ArrowUpRight } from "lucide-react";
 import type { LatestReportSummary } from "@/lib/sifData";
@@ -87,7 +88,12 @@ export function PerformanceReportBanner({
 }) {
   const { data: session } = useSession();
   const [authOpen, setAuthOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!session?.user || !report) return;
@@ -183,11 +189,14 @@ export function PerformanceReportBanner({
         </div>
       </div>
 
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        reason="download the performance report"
-      />
+      {mounted && createPortal(
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          reason="download the performance report"
+        />,
+        document.body
+      )}
     </section>
   );
 }

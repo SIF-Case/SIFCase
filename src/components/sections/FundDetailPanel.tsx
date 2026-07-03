@@ -169,26 +169,29 @@ export function FundDetailPanel({
   return (
     <div className="space-y-6">
       {/* Header + period selector */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         {header}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:justify-end">
           {avgSeries && (
             <button
               onClick={() => { setShowCategoryAvg((v) => !v); setTooltip(null); }}
-              className={`h-[30px] px-3 inline-flex items-center rounded-full border text-[12px] font-semibold transition-colors ${
-                showCategoryAvg ? "bg-brand-navy text-white border-brand-navy" : "bg-white text-muted border-rule hover:text-body hover:border-rule-strong"
+              className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors ${
+                showCategoryAvg ? "bg-[#0E9F8E] text-white border-[#0E9F8E]" : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
               }`}
             >
               Category Avg
             </button>
           )}
-          <div className="flex items-center gap-1 bg-surface rounded-full border border-rule p-1">
+          <div className="flex items-center gap-1">
             {CHART_PERIODS.map((p) => (
               <button
                 key={p}
                 onClick={() => { setChartPeriod(p); setTooltip(null); }}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${chartPeriod === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"
-                  }`}
+                className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium text-center transition-colors ${
+                  chartPeriod === p
+                    ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
+                    : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
+                }`}
               >
                 {p}
               </button>
@@ -199,20 +202,20 @@ export function FundDetailPanel({
 
       {canShowAvg && (
         <div className="flex items-center gap-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-muted">
-            <span className="size-2 rounded-full bg-[#1E4ED8]" /> {fund.fundName}
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B8299]">
+            <span className="w-5 h-[3px] rounded-[2px] bg-[#0E9F8E] inline-block" /> {fund.fundName}
           </span>
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-muted">
-            <span className="inline-block w-3 h-0.5 border-t-2 border-dashed border-[#94A3B8]" /> {categoryLabel ?? fund.strategy} avg
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B8299]">
+            <span className="inline-block w-3 h-0.5 border-t-2 border-dashed border-[#CCD5DD]" /> {categoryLabel ?? fund.strategy} avg
           </span>
         </div>
       )}
 
       {/* Chart */}
       <div>
-        <div className="bg-white rounded-[18px] border border-rule shadow-card p-5">
+        <div>
           {visible.length < 2 ? (
-            <div className="flex items-center justify-center h-48 text-muted text-sm">
+            <div className="flex items-center justify-center h-48 text-[#6B8299] text-sm">
               Insufficient data for this period
             </div>
           ) : (
@@ -228,8 +231,8 @@ export function FundDetailPanel({
               >
                 <defs>
                   <linearGradient id="fund-detail-grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1E4ED8" stopOpacity="0.18" />
-                    <stop offset="100%" stopColor="#1E4ED8" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#0E9F8E" stopOpacity="0.18" />
+                    <stop offset="100%" stopColor="#0E9F8E" stopOpacity="0" />
                   </linearGradient>
                 </defs>
                 {/* Y-axis gridlines + labels */}
@@ -314,7 +317,7 @@ export function FundDetailPanel({
                 <path
                   d={linePath}
                   fill="none"
-                  stroke="#1E4ED8"
+                  stroke="#0E9F8E"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -345,7 +348,7 @@ export function FundDetailPanel({
                         <g>
                           <rect
                             x={2} y={tip.y - 8} width={boxW} height={16} rx={3}
-                            fill="#1E4ED8"
+                            fill="#0E9F8E"
                           />
                           <text x={2 + boxW / 2} y={tip.y + 3} fontSize="9" fontWeight="700" fill="white" textAnchor="middle">
                             {label}
@@ -362,7 +365,7 @@ export function FundDetailPanel({
                         <g>
                           <rect
                             x={bx} y={H - PB} width={boxW} height={14} rx={3}
-                            fill="#1E4ED8"
+                            fill="#0E9F8E"
                           />
                           <text x={bx + boxW / 2} y={H - PB + 10} fontSize="9" fontWeight="700" fill="white" textAnchor="middle">
                             {label}
@@ -370,7 +373,7 @@ export function FundDetailPanel({
                         </g>
                       );
                     })()}
-                    <circle cx={tip.x} cy={tip.y} r="4" fill="white" stroke="#1E4ED8" strokeWidth="2" />
+                    <circle cx={tip.x} cy={tip.y} r="4" fill="white" stroke="#0E9F8E" strokeWidth="2" />
                   </>
                 )}
               </svg>

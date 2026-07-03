@@ -1169,4 +1169,4 @@ button, a, [role="button"], input, select {
   border-radius: 2px; overflow: hidden;
   flex-shrink: 0;
 }
-.flag span { flex: 1; display: block; }
+.flag span { flex: 1; display: block; } 

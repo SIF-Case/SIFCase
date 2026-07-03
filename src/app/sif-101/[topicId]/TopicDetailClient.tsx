@@ -72,6 +72,24 @@ export function TopicDetailClient({
   const prevTopic = topicIndex > 0 ? allArticles[topicIndex - 1] : null;
   const nextTopic = topicIndex < allArticles.length - 1 ? allArticles[topicIndex + 1] : null;
 
+  // Process content to add IDs to headings
+  const [processedContent, setProcessedContent] = useState(article.content);
+
+  useEffect(() => {
+    // Create a temporary DOM element to parse and modify the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = article.content;
+    
+    const headings = temp.querySelectorAll('h1, h2, h3, h4');
+    headings.forEach((heading, index) => {
+      const text = heading.textContent || "";
+      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `section-${index}`;
+      heading.id = id;
+    });
+    
+    setProcessedContent(temp.innerHTML);
+  }, [article.content]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -84,23 +102,27 @@ export function TopicDetailClient({
   useEffect(() => {
     if (!articleContentRef.current) return;
     
-    const headings = articleContentRef.current.querySelectorAll("h2, h3");
-    const toc: { id: string; label: string }[] = [];
-    
-    headings.forEach((heading, index) => {
-      const text = heading.textContent || "";
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `section-${index}`;
+    // Wait a bit for content to be fully rendered
+    const timer = setTimeout(() => {
+      if (!articleContentRef.current) return;
       
-      // Add ID to the heading if it doesn't have one
-      if (!heading.id) {
-        heading.id = id;
-      }
+      const headings = articleContentRef.current.querySelectorAll("h1, h2, h3, h4");
+      const toc: { id: string; label: string }[] = [];
       
-      toc.push({ id, label: text });
-    });
+      headings.forEach((heading) => {
+        const id = heading.id;
+        const text = heading.textContent || "";
+        
+        if (id && text) {
+          toc.push({ id, label: text });
+        }
+      });
+      
+      setSections(toc);
+    }, 100);
     
-    setSections(toc);
-  }, [article.content]);
+    return () => clearTimeout(timer);
+  }, [processedContent]);
 
   // Scroll spy for active section
   useEffect(() => {
@@ -160,8 +182,23 @@ export function TopicDetailClient({
 
   function scrollToSection(id: string) {
     const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!el) {
+      console.warn(`Element with id "${id}" not found`);
+      return;
+    }
+    
+    try {
+      const navbarHeight = 72; // Height of sticky navbar
+      const elementPosition = el.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navbarHeight - 20; // 20px extra padding
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+    } catch (error) {
+      // Fallback for browsers that don't support smooth scrolling
+      el.scrollIntoView({ behavior: "auto", block: "start" });
     }
   }
 
@@ -269,7 +306,7 @@ export function TopicDetailClient({
           <div
             ref={articleContentRef}
             className="article-body-wrap prose"
-            dangerouslySetInnerHTML={{ __html: article.content }}
+            dangerouslySetInnerHTML={{ __html: processedContent }}
           />
 
           {/* Bottom navigation */}
@@ -285,10 +322,32 @@ export function TopicDetailClient({
               )}
             </div>
             <div className="bottom-nav-right">
-              {nextTopic && (
+              {nextTopic ? (
                 <button className="bottom-nav-next" onClick={handleNext}>
                   <span>Next: {nextTopic.title}</span>
                   <ArrowRightIcon />
+                </button>
+              ) : (
+                <button 
+                  className="bottom-nav-finish" 
+                  onClick={() => {
+                    const next = new Set(completed);
+                    next.add(topicId);
+                    saveCompleted(next);
+                    setCompleted(next);
+                    router.push('/sif-101');
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M13.333 4L6 11.333 2.667 8"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>Finish Course</span>
                 </button>
               )}
             </div>
@@ -307,8 +366,12 @@ export function TopicDetailClient({
                   return (
                     <button
                       key={section.id}
+                      type="button"
                       className={`toc-item${isActive ? " toc-item-active" : ""}`}
-                      onClick={() => scrollToSection(section.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        scrollToSection(section.id);
+                      }}
                     >
                       {section.label}
                     </button>
@@ -694,6 +757,24 @@ export function TopicDetailClient({
         }
         .bottom-nav-next:hover {
           background: #0E8080;
+        }
+        .bottom-nav-finish {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #1A9E5F;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          color: #fff;
+          font-family: Inter, sans-serif;
+          font-size: 13.5px;
+          font-weight: 600;
+          padding: 9px 20px;
+          transition: background 0.15s;
+        }
+        .bottom-nav-finish:hover {
+          background: #168F53;
         }
 
         /* ── Right sidebar ─────────────────────────────── */

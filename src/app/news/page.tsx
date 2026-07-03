@@ -1,113 +1,190 @@
 import { connectDB } from "@/lib/mongodb";
-import NewsItem from "@/models/NewsItem";
-import { Newspaper, Clock, ArrowRight } from "lucide-react";
+import Article from "@/models/Article";
+import { Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TickerRibbon } from "@/components/sections/TickerRibbon";
+import { getTickerNavs } from "@/lib/sifData";
 
 export const metadata = {
   title: "Latest SIF News - SIFcase",
   description: "Stay updated with the latest news and developments in the Social Impact Fund industry.",
 };
 
-async function getVisibleNews() {
+async function getPublishedNews() {
   await connectDB();
-  const items = await NewsItem.find({ isVisible: true })
+  
+  // Get General News articles
+  const generalNews = await Article.find({ 
+    status: "published", 
+    category: "General News"
+  })
     .sort({ publishedAt: -1 })
     .limit(50)
+    .select("title slug excerpt subcategory publishedAt readTime category")
     .lean();
-  return items;
+  
+  // Get Fund Houses articles
+  const fundHousesNews = await Article.find({ 
+    status: "published", 
+    category: "Fund Houses"
+  })
+    .sort({ publishedAt: -1 })
+    .limit(50)
+    .select("title slug excerpt subcategory publishedAt readTime category")
+    .lean();
+  
+  return { generalNews, fundHousesNews };
 }
 
 export default async function NewsPage() {
-  const newsItems = await getVisibleNews();
+  const [newsData, tickerNavs] = await Promise.all([
+    getPublishedNews(),
+    getTickerNavs(),
+  ]);
+
+  const { generalNews, fundHousesNews } = newsData;
 
   return (
     <main className="flex flex-col min-h-screen bg-[#F4F6FA]">
+      <TickerRibbon navItems={tickerNavs} />
       <Navbar />
 
       <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-12 pb-20 w-full flex-1">
-        {/* Header matching Insights page */}
+        {/* Header */}
         <div className="mb-12">
           <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.15em] text-primary mb-2">Latest Updates</p>
           <h1 className="text-[42px] font-bold text-[#0B1F3A] tracking-[-1px] leading-none mb-3">SIF News</h1>
           <p className="text-[16px] text-[#64748B]">Stay updated with the latest news and developments in the Social Impact Fund industry.</p>
         </div>
 
-        {/* News Grid - matching Insights card design */}
-        {newsItems.length === 0 ? (
-          <div className="py-24 text-center text-[#64748B] text-[15px]">No news items available at the moment.</div>
+        {/* News Grid */}
+        {generalNews.length === 0 && fundHousesNews.length === 0 ? (
+          <div className="py-24 text-center text-[#64748B] text-[15px]">No news articles available at the moment.</div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {newsItems.map((item) => (
-              <article
-                key={item._id.toString()}
-                className="group flex flex-col bg-white rounded-[18px] border border-rule overflow-hidden shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow"
-              >
-                {/* Image with fixed height matching insights */}
-                <div className="w-full h-[165px] bg-mist relative overflow-hidden">
-                  {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Newspaper className="size-12 text-muted/20" />
-                    </div>
-                  )}
+          <>
+            {/* General News Section */}
+            {generalNews.length > 0 && (
+              <section className="mb-16">
+                <div className="flex items-center gap-3 mb-6">
+                  <h2 className="text-[28px] font-bold text-heading tracking-tight">General News</h2>
+                  <div className="flex-1 h-px bg-rule"></div>
                 </div>
-
-                <div className="flex flex-col flex-1 p-5">
-                  {/* Source & Read Time */}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary">
-                      {item.source}
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] text-faint">
-                      <Clock className="w-3 h-3" strokeWidth={2} />
-                      {item.aiSummary ? Math.max(1, Math.ceil(item.aiSummary.split(/\s+/).length / 200)) : 2} min
-                    </span>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
-                    {item.title}
-                  </h3>
-
-                  {/* Excerpt */}
-                  <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">
-                    {item.aiSummary || item.originalExcerpt || "Click to read the full article."}
-                  </p>
-
-                  {/* Footer: Date & Read Link */}
-                  <div className="mt-auto pt-2 flex items-center justify-between">
-                    <span className="text-[11px] text-faint">
-                      {new Date(item.publishedAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all"
+                
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {generalNews.map((article) => (
+                    <Link
+                      key={article._id.toString()}
+                      href={`/news/${article.slug}`}
+                      className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow"
                     >
-                      Read <ArrowRight className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
+                      <div className="flex flex-col flex-1">
+                        {/* Category & Read Time */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary truncate max-w-[140px]">
+                            {article.subcategory || "General"}
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px] text-faint">
+                            <Clock className="w-3 h-3" strokeWidth={2} />
+                            {article.readTime || 3} min
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
+                          {article.title}
+                        </h3>
+
+                        {/* Excerpt */}
+                        <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">
+                          {article.excerpt || "Click to read the full article."}
+                        </p>
+
+                        {/* Footer: Date & Read Arrow */}
+                        <div className="mt-auto pt-2 flex items-center justify-between">
+                          <span className="text-[11px] text-faint">
+                            {article.publishedAt
+                              ? new Date(article.publishedAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : ""}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
+                            Read <ArrowRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-              </article>
-            ))}
-          </div>
+              </section>
+            )}
+
+            {/* Fund Houses News Section */}
+            {fundHousesNews.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-6">
+                  <h2 className="text-[28px] font-bold text-heading tracking-tight">Fund Houses News</h2>
+                  <div className="flex-1 h-px bg-rule"></div>
+                </div>
+                
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {fundHousesNews.map((article) => (
+                    <Link
+                      key={article._id.toString()}
+                      href={`/news/${article.slug}`}
+                      className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow"
+                    >
+                      <div className="flex flex-col flex-1">
+                        {/* Category & Read Time */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary truncate max-w-[140px]">
+                            {article.subcategory || "Fund Houses"}
+                          </span>
+                          <span className="flex items-center gap-1 text-[11px] text-faint">
+                            <Clock className="w-3 h-3" strokeWidth={2} />
+                            {article.readTime || 3} min
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
+                          {article.title}
+                        </h3>
+
+                        {/* Excerpt */}
+                        <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">
+                          {article.excerpt || "Click to read the full article."}
+                        </p>
+
+                        {/* Footer: Date & Read Arrow */}
+                        <div className="mt-auto pt-2 flex items-center justify-between">
+                          <span className="text-[11px] text-faint">
+                            {article.publishedAt
+                              ? new Date(article.publishedAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : ""}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
+                            Read <ArrowRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
 
-        {/* Link to Articles */}
+        {/* Link to In-depth Articles */}
         <div className="mt-14 text-center">
           <Link
             href="/read"

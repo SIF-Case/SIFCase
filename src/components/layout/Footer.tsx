@@ -63,8 +63,10 @@ export function Footer() {
         {/* Brand */}
         <div className="brand-col">
           <div className="logo-wrap">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="SIFcase" className="h-7 w-auto" />
+            <Link href="/" aria-label="Go to home page">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="SIFcase" className="h-7 w-auto" />
+            </Link>
           </div>
           <p className="brand-desc">
             India&apos;s dedicated SIF distribution &amp; research platform. Compare every SEBI-registered Specialised Investment Fund with verified data.

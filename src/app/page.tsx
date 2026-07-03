@@ -48,7 +48,7 @@ export default async function HomePage() {
       <main className="flex flex-col min-h-screen">
         <TickerRibbon navItems={tickerNavs} />
         <Navbar />
-        <Hero stats={stats} topFund={topFunds[0]} />
+        <Hero stats={stats} topFund={topFunds[0]} allFunds={topFunds} />
         <WhySIFcase />
         <MarketSnapshot stats={stats} />
         <PerformanceReportBanner report={latestReport} />

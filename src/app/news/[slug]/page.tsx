@@ -1,42 +1,53 @@
 export const revalidate = 60;
 
+import { connectDB } from "@/lib/mongodb";
+import Article from "@/models/Article";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
-import { connectDB } from "@/lib/mongodb";
-import Article from "@/models/Article";
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Tag } from "lucide-react";
-import type { Metadata } from "next";
 import { getTickerNavs } from "@/lib/sifData";
+import { ArrowLeft, Tag } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   await connectDB();
-  const a = await Article.findOne({ slug, status: "published" }).lean();
-  if (!a) return { title: "Not found" };
+  const article = await Article.findOne({ 
+    slug: slug,
+    status: "published",
+    category: { $in: ["General News", "Fund Houses"] }
+  }).lean();
 
-  const title = a.seoTitle || a.title;
-  const description = a.metaDescription || a.excerpt;
-  const ogImg = a.ogImage || a.coverDesktop;
-  const url = `https://sifcase.in/read/${slug}`;
+  if (!article) {
+    return {
+      title: "News Not Found",
+    };
+  }
+
+  const title = article.seoTitle || article.title;
+  const description = article.metaDescription || article.excerpt;
+  const ogImg = article.ogImage || article.coverDesktop;
+  const url = `https://sifcase.in/news/${slug}`;
 
   return {
     title: `${title} — SIFcase`,
     description,
-    robots: a.robotsIndex ? "index, follow" : "noindex, nofollow",
-    alternates: { canonical: a.canonicalUrl || url },
+    robots: article.robotsIndex ? "index, follow" : "noindex, nofollow",
+    alternates: { canonical: article.canonicalUrl || url },
     openGraph: {
       title,
       description,
       url,
       type: "article",
-      publishedTime: a.publishedAt?.toISOString(),
-      modifiedTime: a.updatedAt?.toISOString(),
-      authors: [a.authorName],
+      publishedTime: article.publishedAt?.toISOString(),
+      modifiedTime: article.updatedAt?.toISOString(),
+      authors: [article.authorName],
       images: ogImg ? [{ url: ogImg, width: 1200, height: 630, alt: title }] : [],
     },
     twitter: {
@@ -48,25 +59,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ArticlePage({ params }: Props) {
-  const { slug } = await params;
+async function getArticle(slug: string) {
   await connectDB();
+  const article = await Article.findOne({ 
+    slug,
+    status: "published",
+    category: { $in: ["General News", "Fund Houses"] }
+  }).lean();
+  return article;
+}
+
+export default async function NewsArticlePage({ params }: Props) {
+  const { slug } = await params;
   const [article, tickerNavs] = await Promise.all([
-    Article.findOne({ slug, status: "published" }).lean(),
+    getArticle(slug),
     getTickerNavs(),
   ]);
-  if (!article) notFound();
+
+  if (!article) {
+    notFound();
+  }
 
   const publishDate = article.publishedAt
     ? new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
-  const pageUrl = `https://sifcase.in/read/${slug}`;
+  const pageUrl = `https://sifcase.in/news/${slug}`;
   const ogImg = article.ogImage || article.coverDesktop;
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
+    "@type": "NewsArticle",
     headline: article.seoTitle || article.title,
     description: article.metaDescription || article.excerpt,
     image: ogImg || undefined,
@@ -89,12 +112,12 @@ export default async function ArticlePage({ params }: Props) {
 
       {/* Article */}
       <div className="flex-1">
-        {/* Header — centered, max 680px */}
+        {/* Header — centered, max 1000px */}
         <header className="max-w-[1000px] mx-auto px-6 pt-12 pb-8">
           {/* Back + category */}
           <div className="flex items-center gap-3 mb-8">
-            <Link href="/read" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-body transition-colors">
-              <ArrowLeft className="size-3.5" /> Read
+            <Link href="/news" className="inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-body transition-colors">
+              <ArrowLeft className="size-3.5" /> News
             </Link>
             <span className="text-rule">·</span>
             <span className="text-[12px] font-mono uppercase tracking-widest text-primary">{article.category}</span>

@@ -73,7 +73,7 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
         .nfo-breadcrumb-wrap { background: var(--surface); border-bottom: 1px solid var(--border); }
         .nfo-breadcrumb { max-width: 1180px; margin: 0 auto; padding: 10px 1.5rem; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
         .nfo-breadcrumb a { color: var(--text-3); transition: color 0.15s; }
-        .nfo-breadcrumb a:hover { color: var(--primary); }
+        .nfo-breadcrumb a:hover { color: var(--accent); }
         .nfo-breadcrumb-sep { color: var(--border-s); font-size: 14px; }
         .nfo-breadcrumb-cur { color: var(--text-2); font-weight: 500; }
 
@@ -635,7 +635,7 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                       <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--text-1)" }}>
                         {doc.title}
                       </span>
-                      <span style={{ fontSize: "11.5px", color: "var(--primary)", fontWeight: 500 }}>
+                      <span style={{ fontSize: "11.5px", color: "var(--accent)", fontWeight: 500 }}>
                         Download →
                       </span>
                     </a>
@@ -769,20 +769,20 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                 Quick links
               </div>
               <div className="nfo-sidebar-info-row">
-                <Link href="/nfos" style={{ color: "var(--primary)", fontSize: "13px", fontWeight: 500 }}>
+                <Link href="/nfos" style={{ color: "var(--accent)", fontSize: "13px", fontWeight: 500 }}>
                   View all open NFOs →
                 </Link>
               </div>
               <div className="nfo-sidebar-info-row">
                 <Link
                   href={`/fund-house/${nfo.amcShort}`}
-                  style={{ color: "var(--primary)", fontSize: "13px", fontWeight: 500 }}
+                  style={{ color: "var(--accent)", fontSize: "13px", fontWeight: 500 }}
                 >
                   {nfo.amcShort.toUpperCase()} Mutual Fund SIFs →
                 </Link>
               </div>
               <div className="nfo-sidebar-info-row">
-                <Link href="/sif-101" style={{ color: "var(--primary)", fontSize: "13px", fontWeight: 500 }}>
+                <Link href="/sif-101" style={{ color: "var(--accent)", fontSize: "13px", fontWeight: 500 }}>
                   Learn how SIFs work →
                 </Link>
               </div>

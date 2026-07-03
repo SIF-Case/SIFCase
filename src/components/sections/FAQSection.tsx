@@ -48,30 +48,30 @@ export function FAQSection({ groups }: { groups: FaqGroup[] }) {
   const active = groups.find((g) => g.category === activeCategory) ?? groups[0];
 
   return (
-    <section className="bg-white py-[56px] px-6 lg:px-[212px]">
-      <div className="flex flex-col align-stretch gap-2 max-w-3xl mx-auto">
+    <section className="bg-white py-12 sm:py-16 lg:py-20">
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-10 flex flex-col gap-4">
         {/* Header */}
-        <div className="flex flex-col items-center gap-3 mb-1 text-center">
-          <p className="text-[15px] font-medium tracking-[0.2px] uppercase mb-0">
-            <span className="text-[#555] font-normal">Everything you need </span>
-            <span className="text-[#14b7a3]">to know</span>
+        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+          <p className="text-[13px] sm:text-[14px] font-medium tracking-wider uppercase">
+            <span className="text-muted font-normal">Everything you need </span>
+            <span className="text-primary">to know</span>
           </p>
-          <h2 className="text-[#111] text-[24px] font-bold tracking-[-0.67px] leading-[25px]">
+          <h2 className="text-heading text-[26px] sm:text-[32px] lg:text-[36px] font-extrabold tracking-tight leading-tight">
             Frequently Asked Questions
           </h2>
         </div>
 
         {/* Tab bar */}
         {groups.length > 1 && (
-          <div className="flex justify-center items-center gap-1 py-6 flex-wrap">
+          <div className="flex justify-center items-center gap-2 py-6 flex-wrap">
             {groups.map((g) => (
               <button
                 key={g.category}
                 onClick={() => { setActiveCategory(g.category); setOpenKey(null); }}
-                className={`py-1.5 px-4 rounded-full text-[14px] font-medium leading-5 border transition-all duration-150 ${
+                className={`py-2 px-5 rounded-full text-[13px] sm:text-[14px] font-semibold border transition-all duration-200 ${
                   g.category === active.category
-                    ? "bg-[#3b8bb1] border-[#3b8bb1] text-white"
-                    : "bg-transparent border-[#d8d8db] text-[#555] hover:border-[#3b8bb1] hover:text-[#3b8bb1]"
+                    ? "bg-primary border-primary text-white shadow-sm"
+                    : "bg-white border-rule text-muted hover:border-primary hover:text-primary hover:bg-primary/5"
                 }`}
               >
                 {g.category}
@@ -81,17 +81,17 @@ export function FAQSection({ groups }: { groups: FaqGroup[] }) {
         )}
 
         {/* Accordion */}
-        <div className="flex flex-col gap-2 w-full mt-2">
+        <div className="flex flex-col gap-3 w-full mt-2">
           {active.items.map((item, i) => {
             const key = `${active.category}-${i}`;
             const isOpen = openKey === key;
             return (
-              <div key={key} className="rounded-[14px] border border-[#d8d8db] bg-white overflow-hidden">
+              <div key={key} className="rounded-[14px] border border-rule bg-white overflow-hidden shadow-card hover:shadow-premium transition-shadow">
                 <button
                   onClick={() => setOpenKey(isOpen ? null : key)}
-                  className="w-full flex justify-between items-center py-4 px-5 bg-transparent border-0 cursor-pointer text-left gap-4 hover:bg-[#f8f9fb]/50 transition-colors"
+                  className="w-full flex justify-between items-center py-4 sm:py-5 px-4 sm:px-6 bg-transparent border-0 cursor-pointer text-left gap-3 sm:gap-4 hover:bg-surface/50 transition-colors"
                 >
-                  <span className="text-[#111] text-[15px] font-medium leading-[20.625px] tracking-[-0.234px] flex-1">
+                  <span className="text-heading text-[14px] sm:text-[15px] font-semibold leading-snug flex-1">
                     {item.question}
                   </span>
                   <span className="flex items-center justify-center w-6 h-6 shrink-0">
@@ -99,7 +99,7 @@ export function FAQSection({ groups }: { groups: FaqGroup[] }) {
                   </span>
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-4 text-[14px] leading-5 text-[#555]">
+                  <div className="px-4 sm:px-6 pb-4 sm:pb-5 text-[13px] sm:text-[14px] leading-relaxed text-body">
                     {item.answer}
                   </div>
                 )}
@@ -109,17 +109,17 @@ export function FAQSection({ groups }: { groups: FaqGroup[] }) {
         </div>
 
         {/* Still have questions */}
-        <div className="flex flex-col items-center gap-3 p-6 mt-4 rounded-[14px] border border-[#c8cace] bg-[#ecf4f1] text-center w-full">
-          <div className="flex items-center justify-center w-[30px] h-[30px] rounded-full bg-[rgba(217,217,217,0.6)]">
+        <div className="flex flex-col items-center gap-4 p-5 sm:p-6 mt-6 rounded-[14px] border border-rule bg-[#ecf4f1] text-center w-full">
+          <div className="flex items-center justify-center w-[36px] h-[36px] rounded-full bg-white/60 shadow-sm">
             <MailIcon />
           </div>
-          <div className="flex flex-col items-center gap-3 w-full">
-            <p className="text-[#111] text-[20px] font-medium leading-[25px] tracking-[-0.67px] m-0">Still have questions?</p>
-            <p className="w-auto max-w-[282px] text-[#555] text-[14px] font-normal leading-[15px] tracking-[0.2px] m-0">We're here to help you get the answers you need</p>
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-heading text-[18px] sm:text-[20px] font-bold leading-tight m-0">Still have questions?</p>
+            <p className="max-w-[320px] text-muted text-[13px] sm:text-[14px] leading-relaxed m-0">We're here to help you get the answers you need</p>
           </div>
           <a
             href="mailto:support@sifcase.com"
-            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-[#2d3c47] hover:opacity-90 transition-opacity text-[#cae973] text-[14px] font-medium leading-5 w-[170px] decoration-none"
+            className="flex items-center justify-center gap-2 py-2.5 px-5 rounded-[8px] bg-[#2d3c47] hover:bg-[#1f2b34] transition-colors text-[#cae973] text-[14px] font-semibold w-full sm:w-auto min-w-[180px] no-underline"
           >
             Contact Support
             <UserIcon />

@@ -131,8 +131,8 @@ function ComparisonRow({
 
   return (
     <div className="flex items-center gap-3 py-[9px] border-b border-[#E2E8EE] last:border-0">
-      <div className="w-[170px] shrink-0">
-        <span className={`text-[13px] ${isThisFund ? "font-semibold text-[#0F1C28]" : "font-medium text-[#3D5166]"}`}>
+      <div className="w-[100px] sm:w-[170px] shrink-0">
+        <span className={`text-[13px] truncate block ${isThisFund ? "font-semibold text-[#0F1C28]" : "font-medium text-[#3D5166]"}`}>
           {label}
         </span>
       </div>
@@ -325,20 +325,20 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
 
       {/* ── Breadcrumb ──────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[#E2E8EE]">
-        <div className="max-w-[1280px] mx-auto px-10">
-          <div className="flex items-center gap-1.5 py-[9px] text-[12px]">
-            <Link href="/" className="text-[#6B8299] hover:text-[#3D5166] transition-colors">Home</Link>
-            <span className="text-[#CCD5DD] text-[14px]">›</span>
-            <Link href="/sifs" className="text-[#6B8299] hover:text-[#3D5166] transition-colors">All SIFs</Link>
-            <span className="text-[#CCD5DD] text-[14px]">›</span>
-            <span className="text-[#3D5166] font-medium">{fund.fundName}</span>
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-10">
+          <div className="flex items-center gap-1.5 py-[9px] text-[12px] overflow-x-auto whitespace-nowrap">
+            <Link href="/" className="text-[#6B8299] hover:text-[#3D5166] transition-colors shrink-0">Home</Link>
+            <span className="text-[#CCD5DD] text-[14px] shrink-0">›</span>
+            <Link href="/sifs" className="text-[#6B8299] hover:text-[#3D5166] transition-colors shrink-0">All SIFs</Link>
+            <span className="text-[#CCD5DD] text-[14px] shrink-0">›</span>
+            <span className="text-[#3D5166] font-medium truncate">{fund.fundName}</span>
           </div>
         </div>
       </div>
 
       {/* ── Hero Banner ─────────────────────────────────────────────────────── */}
       <div className="bg-[#0C3B54] border-b border-white/[0.06]">
-        <div className="max-w-[1280px] mx-auto px-10 py-7">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-6 sm:py-7">
 
           {/* Tags row */}
           <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -361,7 +361,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
           </div>
 
           {/* Fund name */}
-          <h1 className="text-[24px] font-extrabold text-white leading-[1.2] tracking-[-0.4px] pt-1 mb-2">
+          <h1 className="text-[20px] sm:text-[24px] font-extrabold text-white leading-[1.2] tracking-[-0.4px] pt-1 mb-2">
             {fund.fundName}
           </h1>
 
@@ -408,30 +408,30 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
 
           {/* Returns strip */}
           <div className="pt-7 border-t border-white/[0.08]">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-white/30 mb-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-white/40 mb-5">
               Returns — source: AMFI NAV history
             </div>
-            <div className="flex flex-wrap gap-0">
+            <div className="flex flex-wrap gap-y-5 gap-x-6 sm:gap-x-8">
               {heroReturns.map((r, i) => {
                 const positive = r.value !== null ? r.value >= 0 : true;
                 const catPositive = r.catAvg !== null ? r.catAvg >= 0 : true;
                 return (
                   <div
                     key={r.label}
-                    className={`pr-6 mr-6 ${i < heroReturns.length - 1 ? "border-r border-white/[0.08]" : ""}`}
+                    className={`pr-6 sm:pr-8 ${i < heroReturns.length - 1 ? "sm:border-r border-white/[0.08]" : ""}`}
                   >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.6px] text-white/40 mb-2">{r.label}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-2.5">{r.label}</div>
                     {r.value !== null ? (
-                      <div className={`text-[19px] font-bold leading-none tracking-[-0.38px] ${positive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
+                      <div className={`text-[22px] font-bold leading-none tracking-tight ${positive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
                         {positive ? "+" : ""}{r.value.toFixed(1)}%
                       </div>
                     ) : (
-                      <div className="text-[15px] text-white/30 leading-none">—</div>
+                      <div className="text-[18px] text-white/30 leading-none">—</div>
                     )}
                     {r.note ? (
-                      <div className="text-[10px] text-white/30 mt-1.5">{r.note}</div>
+                      <div className="text-[11px] text-white/40 mt-2">{r.note}</div>
                     ) : r.catAvg !== null ? (
-                      <div className={`text-[10px] mt-1.5 ${catPositive ? "text-white/40" : "text-white/40"}`}>
+                      <div className={`text-[11.5px] mt-2 ${catPositive ? "text-white/50" : "text-white/50"}`}>
                         vs cat avg {catPositive ? "+" : ""}{r.catAvg.toFixed(1)}%
                       </div>
                     ) : null}
@@ -445,11 +445,11 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
 
       {/* ── Page body ───────────────────────────────────────────────────────── */}
       <div className="bg-[#F4F6F8] min-h-screen overflow-x-hidden">
-        <div className="max-w-[1280px] mx-auto px-10 py-8">
-          <div className="flex gap-8 items-start justify-between">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-6 sm:py-8">
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start lg:justify-between">
 
             {/* ── LEFT: Main content ────────────────────────────────────── */}
-            <div className="flex-1 min-w-0 max-w-[calc(100%-364px)] flex flex-col gap-6">
+            <div className="flex-1 min-w-0 w-full lg:max-w-[calc(100%-364px)] flex flex-col gap-6">
 
               {/* ── Category Context ─────────────────────────────────────── */}
               <section>
@@ -497,12 +497,19 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">
                 <FundTabs
                   performance={
-                    <div className="p-6">
+                    <div className="p-5">
                       <FundDetailPanel
                         fund={fund}
                         categoryAvg={categoryAvg}
                         categoryLabel={fund.strategy}
-                        header={null}
+                        header={
+                          <div className="flex items-center gap-2">
+                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                              <path d="M13.75 7.5h-2.5l-1.875 5.625L5.625 1.875 3.75 7.5H1.25" stroke="#0E2A47" strokeWidth="1.25" />
+                            </svg>
+                            <span className="text-[14px] font-bold text-[#0E2A47]">NAV Performance</span>
+                          </div>
+                        }
                       />
                     </div>
                   }
@@ -619,7 +626,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               {/* ── Category comparison ───────────────────────────────────── */}
               {compBars.length > 0 && (
                 <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8EE]">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-4 border-b border-[#E2E8EE]">
                     <div className="flex items-center gap-2">
                       <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-[#0E9F8E]">
                         <rect x="1" y="1" width="5" height="13" rx="1" fill="currentColor" opacity="0.3" />
@@ -871,7 +878,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
             </div>
 
             {/* ── RIGHT: Sidebar ────────────────────────────────────── */}
-            <div className="w-[340px] shrink-0 flex flex-col gap-6 sticky top-4 self-start ml-auto">
+            <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 lg:self-start lg:ml-auto">
 
               {/* NAV Action Card */}
               <div className="rounded-[14px] border border-white/[0.07] bg-[#0E2A47] p-5">

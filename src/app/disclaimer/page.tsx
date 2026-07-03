@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { Shield } from "lucide-react";
+import { getTickerNavs } from "@/lib/sifData";
 
 export const metadata: Metadata = {
   title: "Disclaimer — SIFCase",
@@ -43,9 +45,12 @@ const SECTIONS = [
   },
 ];
 
-export default function DisclaimerPage() {
+export default async function DisclaimerPage() {
+  const tickerNavs = await getTickerNavs();
+
   return (
     <main className="flex flex-col min-h-screen bg-surface">
+      <TickerRibbon navItems={tickerNavs} />
       <Navbar />
 
       {/* Hero */}

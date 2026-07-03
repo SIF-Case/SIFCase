@@ -39,15 +39,15 @@ export function WhySIFcase() {
   return (
     <>
       {/* Green trust pill bar */}
-      <section style={{ background: "#ecf4f1", padding: "2px 0" }}>
+      <section style={{ background: "#ecf4f1", padding: "8px 0" }}>
         <div
-          className="flex flex-wrap items-center justify-center gap-5 mx-auto"
-          style={{ height: 46, maxWidth: 1280, padding: "0 40px" }}
+          className="flex flex-wrap items-center justify-center gap-3 mx-auto px-6 sm:gap-5 lg:px-10"
+          style={{ maxWidth: 1280 }}
         >
           {TRUST_PILLS.map((label, i) => (
             <span
               key={label}
-              className="trust-pill inline-flex items-center whitespace-nowrap text-[14px] font-[500] leading-5"
+              className="trust-pill inline-flex items-center whitespace-nowrap text-[13px] font-[500] leading-5 sm:text-[14px]"
               style={{
                 padding: "12px 16px",
                 borderRadius: 16,

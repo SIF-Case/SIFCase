@@ -467,7 +467,7 @@ export async function getTopFunds(): Promise<FundRow[]> {
         drawdowns,
         sparklines,
         sparklineDates,
-        riskBand: riskBandByName.get(s.fundName) ?? (strategyToCategory(s.strategy) === "Hybrid" ? 4 : 5),
+        riskBand: riskBandByName.get(s.fundName) ?? null,
       };
     });
 

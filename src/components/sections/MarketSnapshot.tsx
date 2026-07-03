@@ -61,13 +61,12 @@ export function MarketSnapshot({ stats }: { stats: SnapshotStats }) {
     <section
       style={{
         background: "#004C61",
-        padding: "56px 112px 56px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 24,
       }}
-      className="market-snapshot-section"
+      className="market-snapshot-section px-6 py-14 sm:px-10 lg:px-[112px]"
     >
       <h2
         style={{

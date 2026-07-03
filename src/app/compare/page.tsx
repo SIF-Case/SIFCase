@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { ComparePageClient } from "./ComparePageClient";
 import { Providers } from "@/app/providers";
-import { getTopFunds } from "@/lib/sifData";
+import { getTopFunds, getTickerNavs } from "@/lib/sifData";
 
 export const revalidate = 3600;
 
@@ -18,11 +19,15 @@ export default async function ComparePage({ searchParams }: Props) {
   const { funds: fundsParam } = await searchParams;
   const initialCodes = fundsParam ? fundsParam.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean) : [];
 
-  const allFunds = await getTopFunds();
+  const [allFunds, tickerNavs] = await Promise.all([
+    getTopFunds(),
+    getTickerNavs(),
+  ]);
 
   return (
     <Providers funds={allFunds}>
       <div className="min-h-screen flex flex-col">
+        <TickerRibbon navItems={tickerNavs} />
         <Navbar />
         <main className="flex-1 bg-white">
           <ComparePageClient funds={allFunds} initialCodes={initialCodes} />

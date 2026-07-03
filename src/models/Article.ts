@@ -18,6 +18,7 @@ export interface IArticle extends Document {
   readTime: number;
   publishedAt: Date | null;
   updatedAt: Date;
+  externalUrl: string; // External news link
   // SEO fields
   seoTitle: string;
   metaDescription: string;
@@ -47,6 +48,7 @@ const ArticleSchema = new Schema<IArticle>(
     authorBio: { type: String, default: "" },
     readTime: { type: Number, default: 3 },
     publishedAt: { type: Date, default: null },
+    externalUrl: { type: String, default: "" }, // External news link
     // SEO
     seoTitle: { type: String, default: "" },
     metaDescription: { type: String, default: "" },

@@ -2,6 +2,7 @@ export const revalidate = 60;
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import ArticleOptions from "@/models/ArticleOptions";
@@ -9,6 +10,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Clock, ArrowRight } from "lucide-react";
 import slugify from "slugify";
+import { getTickerNavs } from "@/lib/sifData";
 
 export const metadata: Metadata = {
   title: "Read — SIFcase",
@@ -84,9 +86,12 @@ export default async function ReadPage() {
   const optionsDoc = await ArticleOptions.findOne({}).lean();
   const mainCategory = optionsDoc?.categories?.[0] ?? "General";
 
-  const articles = (await Article.find({ status: "published", category: mainCategory })
-    .sort({ order: 1, publishedAt: -1 })
-    .lean()) as unknown as ArticleDoc[];
+  const [articles, tickerNavs] = await Promise.all([
+    Article.find({ status: "published", category: mainCategory })
+      .sort({ order: 1, publishedAt: -1 })
+      .lean() as unknown as Promise<ArticleDoc[]>,
+    getTickerNavs(),
+  ]);
 
   const order: string[] = [];
   const grouped: Record<string, ArticleDoc[]> = {};
@@ -98,6 +103,7 @@ export default async function ReadPage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-[#F4F6FA]">
+      <TickerRibbon navItems={tickerNavs} />
       <Navbar />
 
       <div className="max-w-[1440px] mx-auto px-6 lg:px-10 pt-12 pb-20 w-full flex-1">

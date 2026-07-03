@@ -2,18 +2,26 @@ export const revalidate = 3600;
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Info, FileText, Users } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { ArticleCard, type ArticleDoc } from "@/app/read/page";
+import { TickerRibbon } from "@/components/sections/TickerRibbon";
+import { FundHouseCard } from "@/components/sections/FundHouseCard";
+import { Providers } from "@/app/providers";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
-import { getFundHouseBySlug, getSIFsWithReturns } from "@/lib/sifData";
-import { cn } from "@/lib/utils";
+import type { ArticleDoc } from "@/app/read/page";
+import {
+  getFundHouseBySlug,
+  getSIFsWithReturns,
+  getTopFunds,
+  getTickerNavs,
+  getFundDetailsForName,
+} from "@/lib/sifData";
 import type { Metadata } from "next";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -26,202 +34,336 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const TABS = [
-  { key: "funds", label: "Funds" },
-  { key: "news", label: "News" },
-  { key: "performance", label: "Performance" },
-] as const;
-
-function ReturnCell({ value }: { value: string | null }) {
-  if (!value) return <span className="text-[12px] text-faint italic">—</span>;
-  const isPositive = value.startsWith("+");
-  const isNegative = value.startsWith("-");
-  return (
-    <span className={cn("text-[13px] font-semibold nums", isPositive && "text-gain", isNegative && "text-loss", !isPositive && !isNegative && "text-muted")}>
-      {value}%
-    </span>
-  );
+function initialsFor(brandName: string): string {
+  const words = brandName.trim().split(/\s+/);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return brandName.slice(0, 2).toUpperCase();
 }
 
-export default async function FundHousePage({ params, searchParams }: Props) {
+export default async function FundHousePage({ params }: Props) {
   const { slug } = await params;
-  const { tab } = await searchParams;
-  const activeTab = TABS.some((t) => t.key === tab) ? tab! : "funds";
 
   const fundHouse = await getFundHouseBySlug(slug);
   if (!fundHouse) notFound();
 
-  const sifs = await getSIFsWithReturns("Regular", "Growth", fundHouse.brandName);
+  const [sifs, allFunds, tickerNavs] = await Promise.all([
+    getSIFsWithReturns("Regular", "Growth", fundHouse.brandName),
+    getTopFunds(),
+    getTickerNavs(),
+  ]);
 
-  let articles: ArticleDoc[] = [];
-  if (activeTab === "news") {
-    await connectDB();
-    const pattern = fundHouse.brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(pattern, "i");
-    articles = (await Article.find({
-      status: "published",
-      $or: [{ title: regex }, { excerpt: regex }, { content: regex }, { tags: regex }],
-    })
-      .sort({ publishedAt: -1 })
-      .limit(12)
-      .lean()) as unknown as ArticleDoc[];
+  const fundNamesInHouse = new Set(sifs.map((s) => s.fundName));
+  const houseFunds = allFunds.filter((f) => fundNamesInHouse.has(f.fundName));
+
+  const fundDetailsList = await Promise.all(
+    Array.from(fundNamesInHouse).map((name) => getFundDetailsForName(name))
+  );
+  const managerMap = new Map<string, string>();
+  for (const d of fundDetailsList) {
+    for (const m of d?.fundManagers ?? []) {
+      if (m.name && !managerMap.has(m.name)) managerMap.set(m.name, m.designation ?? "Fund Manager");
+    }
   }
+  const fundManagers = Array.from(managerMap, ([name, designation]) => ({ name, designation }));
+
+  await connectDB();
+  const articles = (await Article.find({
+    status: "published",
+    category: "Fund Houses",
+    subcategory: fundHouse.brandName,
+  })
+    .sort({ publishedAt: -1 })
+    .limit(6)
+    .select("title slug excerpt subcategory publishedAt readTime")
+    .lean()) as unknown as ArticleDoc[];
+
+  const activeSIFs = houseFunds.length;
+  const aumValues = houseFunds.map((f) => f.aum).filter((v): v is number => v !== null);
+  const aumFlagship = aumValues.length > 0 ? Math.max(...aumValues) : null;
+  const categories = Array.from(new Set(houseFunds.map((f) => f.category)));
+
+  const managerLine =
+    fundManagers.length > 0
+      ? `The strategies are managed by a team of ${fundManagers.length} fund manager${fundManagers.length === 1 ? "" : "s"}, with portfolio construction grounded in quantitative signals, derivative hedging, and active asset allocation.`
+      : `Portfolio construction spans ${categories.join(" and ") || "equity and hybrid"} mandates, managed to SEBI's Specialized Investment Fund framework.`;
 
   return (
-    <>
-      <Navbar />
-      <main>
+    <Providers funds={houseFunds}>
+      <main className="flex flex-col min-h-screen bg-surface">
+        <TickerRibbon navItems={tickerNavs} />
+        <Navbar />
+
         {/* HERO */}
-        <div className="bg-brand-navy text-white">
-          <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-10">
-            <div className="flex items-center gap-2 text-[12px] font-mono uppercase tracking-widest text-white/50 mb-6">
-              <Link href="/" className="hover:text-white transition-colors">Home</Link>
-              <span>/</span>
-              <Link href="/fund-houses" className="hover:text-white transition-colors">Fund Houses</Link>
-              <span>/</span>
-              <span className="text-white/80">{fundHouse.brandName}</span>
+        <div style={{ background: "#004C61" }} className="text-white">
+          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-[50px] pt-7 sm:pt-9 pb-7">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+                <span className="text-[17px] font-extrabold tracking-tight text-[#0F2137]">{initialsFor(fundHouse.brandName)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/45">{fundHouse.companyName}</span>
+                <span className="text-[11px] text-white/35">SEBI-registered AMC</span>
+              </div>
             </div>
 
-            <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight tracking-tight mb-3">
+            <h1 className="text-[26px] sm:text-[32px] lg:text-[38px] font-extrabold text-white leading-[1.1] tracking-tight pt-2">
               {fundHouse.brandName}
             </h1>
-            <p className="text-[13px] text-white/60">
-              {fundHouse.companyName} · {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"}
+
+            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-2 pt-4">
+              <span className="text-[13px] text-white/45">
+                {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"}
+              </span>
+              <span className="text-white/20">·</span>
+              <span className="text-[13px] text-white/45">
+                {activeSIFs} active SIF{activeSIFs === 1 ? "" : "s"}
+              </span>
+              {categories.length > 0 && (
+                <>
+                  <span className="text-white/20">·</span>
+                  <span className="text-[13px] text-white/45">{categories.join(" & ")} Long-Short</span>
+                </>
+              )}
+              <span className="text-white/20">·</span>
+              <span className="text-[13px] text-white/45">Min ₹10,00,000</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#1A9E5F17] text-[#4ADE80]">
+                <span className="size-1.5 rounded-full bg-[#4ADE80]" /> Active
+              </span>
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white/[0.07] border border-white/[0.12] text-white/55">
+                SEBI Regulated
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-[1280px] mx-auto w-full px-4 sm:px-6 lg:px-10 py-7 sm:py-9 flex flex-col gap-10 sm:gap-12">
+          {/* ABOUT */}
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-0.5 rounded-full bg-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Fund House</span>
+            </div>
+            <h2 className="text-[21px] font-extrabold text-heading tracking-tight">About {fundHouse.brandName}</h2>
+
+            <div className="flex flex-col lg:flex-row items-start gap-4">
+              <div className="flex-1 w-full rounded-[14px] border border-rule bg-white overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-rule flex items-center justify-between gap-3 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 text-[14px] font-bold text-heading">
+                    <Info className="size-3.5 text-primary" /> Overview
+                  </span>
+                  <span className="text-[12px] text-faint">{fundHouse.companyName}</span>
+                </div>
+                <div className="px-5 py-4 flex flex-col gap-4 text-[15px] leading-[1.7] text-body">
+                  <p>
+                    {fundHouse.brandName} is {fundHouse.companyName}&apos;s Specialized Investment Fund platform, offering
+                    institutional-grade strategies to eligible investors at a ₹10 lakh entry point. It operates{" "}
+                    {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"} across{" "}
+                    {categories.length > 0 ? categories.join(" and ") : "equity and hybrid"} asset classes — designed to
+                    generate alpha and manage downside risk in all market conditions.
+                  </p>
+                  <p>{managerLine}</p>
+                </div>
+              </div>
+
+              <div className="w-full lg:w-[320px] shrink-0 rounded-[14px] border border-rule bg-white overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-rule">
+                  <span className="inline-flex items-center gap-1.5 text-[14px] font-bold text-heading">
+                    <FileText className="size-3.5 text-primary" /> Key facts
+                  </span>
+                </div>
+                <div className="px-5 flex flex-col">
+                  {[
+                    ["AMC", fundHouse.companyName],
+                    ["Active SIFs", String(activeSIFs)],
+                    ["AUM (Flagship)", aumFlagship !== null ? `₹${aumFlagship.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr` : "—"],
+                    ["Min. Investment", "₹10,00,000"],
+                  ].map(([label, value], i, arr) => (
+                    <div
+                      key={label}
+                      className={`flex items-center justify-between py-[9px] ${i !== arr.length - 1 ? "border-b border-rule" : ""}`}
+                    >
+                      <span className="text-[14px] text-muted">{label}</span>
+                      <span className="text-[14px] font-semibold text-heading">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {fundManagers.length > 0 && (
+              <div className="rounded-[14px] border border-rule bg-white overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-rule flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-[14px] font-bold text-heading">
+                    <Users className="size-3.5 text-primary" /> Fund Managers
+                  </span>
+                  <span className="text-[12px] text-faint">
+                    {fundManagers.length} manager{fundManagers.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="px-5 py-4 flex items-center gap-0 overflow-x-auto">
+                  {fundManagers.map((m, i) => (
+                    <div key={m.name} className="flex items-center shrink-0">
+                      <div className="flex items-center gap-2.5 pr-4" style={{ paddingLeft: i === 0 ? 0 : 16 }}>
+                        <div
+                          className="size-[38px] rounded-full shrink-0 flex items-center justify-center text-white text-[12px] font-bold"
+                          style={{ background: "linear-gradient(135deg, #2E9E8F 0%, #267E72 100%)" }}
+                        >
+                          {m.name
+                            .replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/i, "")
+                            .split(/\s+/)
+                            .slice(0, 2)
+                            .map((w) => w[0])
+                            .join("")
+                            .toUpperCase()}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[13.5px] font-semibold text-heading whitespace-nowrap">{m.name}</span>
+                          <span className="text-[12px] text-muted whitespace-nowrap">{m.designation}</span>
+                        </div>
+                      </div>
+                      {i !== fundManagers.length - 1 && <div className="w-px h-9 bg-rule shrink-0" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* FUNDS AVAILABLE */}
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded-full bg-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Live SIFs</span>
+                </div>
+                <h2 className="text-[21px] font-extrabold text-heading tracking-tight">Funds Available</h2>
+              </div>
+              <Link href="/sifs" className="inline-flex items-center gap-1 text-[14px] font-semibold text-primary hover:text-primary-hover">
+                View all SIFs →
+              </Link>
+            </div>
+
+            {houseFunds.length === 0 ? (
+              <div className="py-16 text-center text-muted text-[15px] rounded-[14px] border border-rule bg-white">
+                No schemes found for this fund house.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {houseFunds.map((f) => (
+                  <FundHouseCard key={f.schemeCode} fund={f} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* NEWS & INSIGHTS */}
+          {articles.length > 0 && (
+            <section className="flex flex-col gap-6">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-0.5 rounded-full bg-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Latest Updates</span>
+                  </div>
+                  <h2 className="text-[21px] font-extrabold text-heading tracking-tight">News &amp; Insights</h2>
+                </div>
+                <Link href="/news" className="inline-flex items-center gap-1 text-[14px] font-semibold text-primary hover:text-primary-hover">
+                  View all news →
+                </Link>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {articles.map((a) => (
+                  <Link
+                    key={String(a._id)}
+                    href={`/news/${a.slug}`}
+                    className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-shadow"
+                  >
+                    <div className="flex flex-col flex-1">
+                      {/* Category & Read Time */}
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-[10.5px] font-semibold bg-primary-tint text-primary truncate max-w-[140px]">
+                          {a.subcategory || "Fund Houses"}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] text-faint">
+                          <span className="w-3 h-3" />
+                          {a.readTime || 3} min
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-[14.5px] font-bold text-heading leading-snug mb-3 group-hover:text-primary line-clamp-2">
+                        {a.title}
+                      </h3>
+
+                      {/* Excerpt */}
+                      <p className="text-[13px] text-body leading-relaxed flex-1 mb-3 line-clamp-3">
+                        {a.excerpt || "Click to read the full article."}
+                      </p>
+
+                      {/* Footer: Date & Read Arrow */}
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        <span className="text-[11px] text-faint">
+                          {a.publishedAt
+                            ? new Date(a.publishedAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : ""}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">
+                          Read →
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* NEWSLETTER */}
+          <div
+            className="flex flex-col sm:flex-row items-center gap-4 rounded-[14px] px-6 py-5"
+            style={{ background: "linear-gradient(92deg, #0F2137 0%, #1C3A5A 100%)" }}
+          >
+            <div className="flex-1 flex flex-col gap-0.5">
+              <h3 className="text-[15px] font-bold text-white">Stay Updated on {fundHouse.brandName} &amp; SIF Markets</h3>
+              <p className="text-[12.5px] text-white/45">NAV alerts, monthly performance reports, and SIF strategy updates — free.</p>
+            </div>
+            <form className="flex items-center gap-2 w-full sm:w-auto">
+              <input
+                type="email"
+                placeholder="Your email address"
+                className="h-10 w-full sm:w-[200px] px-3.5 rounded-[6px] border border-white/[0.15] bg-white/10 text-[13px] text-white placeholder:text-white/35 outline-none"
+              />
+              <button
+                type="submit"
+                className="h-10 shrink-0 px-4 rounded-[6px] text-[13px] font-semibold text-white"
+                style={{ background: "#2E9E8F" }}
+              >
+                Subscribe →
+              </button>
+            </form>
+          </div>
+
+          {/* DISCLAIMER */}
+          <div className="flex items-start gap-2.5 rounded-[10px] border border-rule bg-surface px-4 py-3">
+            <span className="text-[15px] leading-none pt-0.5">⚠️</span>
+            <p className="text-[11.5px] leading-[1.6] text-muted">
+              Content issued by Aureva Capital Private Limited for general information and educational purposes only. It
+              does not constitute financial, tax, legal, or investment advice. Investments in SIFs involve capital risk.
+              Please read all scheme documents carefully. Past performance is not indicative of future results.{" "}
+              <Link href="/disclaimer" className="font-semibold text-primary hover:text-primary-hover">
+                Read full disclaimer →
+              </Link>
             </p>
           </div>
         </div>
 
-        {/* TABS */}
-        <div className="bg-white border-b border-rule sticky top-0 z-10">
-          <div className="max-w-[1320px] mx-auto px-6 lg:px-8">
-            <nav className="flex gap-6">
-              {TABS.map((t) => (
-                <Link
-                  key={t.key}
-                  href={`/fund-house/${slug}?tab=${t.key}`}
-                  className={cn(
-                    "py-4 text-[13.5px] font-semibold border-b-2 transition-colors",
-                    activeTab === t.key
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted hover:text-heading"
-                  )}
-                >
-                  {t.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-10">
-          {activeTab === "funds" && (
-            <>
-              {sifs.length === 0 ? (
-                <div className="py-24 text-center text-muted text-[15px]">No schemes found for this fund house.</div>
-              ) : (
-                <div className="table-scroll rounded-[18px] border border-rule">
-                  <table className="w-full min-w-[760px] border-collapse text-left">
-                    <thead>
-                      <tr className="bg-surface border-b border-rule">
-                        {["SIF Name", "Strategy", "Option", "NAV", "NAV Date", "Since Inception", ""].map((col) => (
-                          <th key={col} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap first:pl-5 last:pr-5">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sifs.map((sif) => (
-                        <tr key={sif.schemeCode} className="border-b border-rule-soft last:border-0 hover:bg-[#FBFDFF]">
-                          <td className="px-4 py-4 pl-5 max-w-[260px]">
-                            <span className="text-[13.5px] font-semibold text-heading leading-snug line-clamp-2">{sif.name}</span>
-                            <span className="block text-[11px] text-faint mt-0.5">{sif.schemeCode}</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-[12.5px] text-body">{sif.strategy}</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface text-muted border border-rule">{sif.option}</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right">
-                            <span className="text-[14px] font-bold text-heading nums">₹{sif.nav}</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-[12px] text-muted">{sif.navDate}</span>
-                          </td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap">
-                            <ReturnCell value={sif.returnSI} />
-                          </td>
-                          <td className="px-4 py-4 pr-5 whitespace-nowrap">
-                            <Link href={`/sifs/${sif.schemeCode.toLowerCase()}`} className="text-[13px] font-semibold text-primary hover:text-primary-hover">
-                              View →
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "news" && (
-            <>
-              {articles.length === 0 ? (
-                <div className="py-24 text-center text-muted text-[15px]">No news articles found for {fundHouse.brandName}.</div>
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {articles.map((a) => (
-                    <ArticleCard key={String(a._id)} a={a} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {activeTab === "performance" && (
-            <>
-              {sifs.length === 0 ? (
-                <div className="py-24 text-center text-muted text-[15px]">No performance data available.</div>
-              ) : (
-                <div className="table-scroll rounded-[18px] border border-rule">
-                  <table className="w-full min-w-[700px] border-collapse text-left">
-                    <thead>
-                      <tr className="bg-surface border-b border-rule">
-                        {["SIF Name", "1M", "3M", "6M", "1Y", "Since Inception", "NAV Date"].map((col) => (
-                          <th key={col} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap first:pl-5 last:pr-5">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sifs.map((sif) => (
-                        <tr key={sif.schemeCode} className="border-b border-rule-soft last:border-0 hover:bg-[#FBFDFF]">
-                          <td className="px-4 py-4 pl-5 max-w-[260px]">
-                            <span className="text-[13.5px] font-semibold text-heading leading-snug line-clamp-2">{sif.name}</span>
-                          </td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap"><ReturnCell value={sif.return1m} /></td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap"><ReturnCell value={sif.return3m} /></td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap"><ReturnCell value={sif.return6m} /></td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap"><ReturnCell value={sif.return1y} /></td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap"><ReturnCell value={sif.returnSI} /></td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-[12px] text-muted">{sif.navDate}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <p className="mt-4 text-[12px] text-faint">All data sourced from AMFI NAV history.</p>
-            </>
-          )}
-        </div>
+        <Footer />
       </main>
-      <Footer />
-    </>
+    </Providers>
   );
 }

@@ -80,12 +80,12 @@ export function NFOListClient() {
         .nfo-breadcrumb-wrap { background: var(--surface); border-bottom: 1px solid var(--border); }
         .nfo-breadcrumb { max-width: 1180px; margin: 0 auto; padding: 10px 1.5rem; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
         .nfo-breadcrumb a { color: var(--text-3); transition: color 0.15s; }
-        .nfo-breadcrumb a:hover { color: var(--primary); }
+        .nfo-breadcrumb a:hover { color: var(--accent); }
         .nfo-breadcrumb-sep { color: var(--border-s); font-size: 14px; }
         .nfo-breadcrumb-cur { color: var(--text-2); font-weight: 500; }
 
         /* ── Page Hero ──────────────────────────────────────────────────── */
-        .nfo-page-hero { background: var(--navy); padding: 2.25rem 0 1.75rem; text-align: left; }
+        .nfo-page-hero { background: #004c61; padding: 2.25rem 0 1.75rem; text-align: left; }
         .nfo-page-hero-inner { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; }
         .nfo-hero-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-l); margin-bottom: 0.625rem; display: flex; align-items: center; gap: 7px; }
         .nfo-hero-eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-l); animation: nfo-pulse 2s infinite; }
@@ -110,8 +110,8 @@ export function NFOListClient() {
         /* ── Filter Bar ─────────────────────────────────────────────────── */
         .nfo-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .nfo-filter-chip { font-size: 12.5px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); transition: all 0.15s; cursor: pointer; }
-        .nfo-filter-chip:hover { border-color: var(--primary); color: var(--primary); }
-        .nfo-filter-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .nfo-filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+        .nfo-filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
         /* ── Open NFO Cards Grid ──────────────────────────────────────────── */
         .nfo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
@@ -156,8 +156,8 @@ export function NFOListClient() {
         .nfo-btn-primary { flex: 1; text-align: center; padding: 9px; background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 600; border-radius: var(--radius-s); transition: background 0.15s; }
         .nfo-btn-primary:hover { background: var(--accent-l); }
         .nfo-btn-secondary { padding: 9px 14px; background: var(--surface); color: var(--text-2); font-size: 12.5px; font-weight: 500; border-radius: var(--radius-s); border: 1px solid var(--border); transition: all 0.15s; cursor: pointer; }
-        .nfo-btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
-        .nfo-btn-secondary.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .nfo-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+        .nfo-btn-secondary.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
         /* ── Closing Soon Strip ──────────────────────────────────────────── */
         .nfo-alert-strip {
@@ -201,7 +201,7 @@ export function NFOListClient() {
 
         /* ── Newsletter strip ───────────────────────────────────────────── */
         .nfo-newsletter-strip {
-          background: var(--navy); border-radius: var(--radius-l); padding: 1.75rem 2rem;
+          background: #004c61; border-radius: var(--radius-l); padding: 1.75rem 2rem;
           display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;
           text-align: left;
         }
@@ -338,7 +338,7 @@ export function NFOListClient() {
                   <h3 className="nfo-card-name">{nfo.name}</h3>
 
                   <div className={`nfo-countdown ${nfo.isClosingSoon ? "urgent" : ""}`}>
-                    <svg className="nfo-countdown-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <svg className="nfo-countdown-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 6v6l4 2" />
                     </svg>

@@ -31,24 +31,24 @@ function FloatingStatCard({
 }: FloatingStatCardProps) {
   return (
     <article
-      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[20px] py-[14px] text-white ${className}`}
+      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[4%] py-[4%] text-white ${className}`}
     >
-      <p className="text-[12px] font-semibold leading-[14px] tracking-wider text-white/70 uppercase">{eyebrow}</p>
-      <p className="mt-[6px] whitespace-nowrap text-[14px] font-bold leading-[18px] text-white" title={title}>{title}</p>
+      <p className="text-[10px] font-semibold leading-[14px] tracking-wider text-white/70 uppercase sm:text-[12px]">{eyebrow}</p>
+      <p className="mt-[6px] truncate text-[12px] font-bold leading-[18px] text-white sm:text-[14px]" title={title}>{title}</p>
 
-      <div className="mt-[12px] flex items-start justify-between gap-4">
-        <div>
-          {metric && <p className="nums whitespace-nowrap text-[16px] font-bold leading-[18px]">{metric}</p>}
+      <div className="mt-[10px] flex items-start justify-between gap-2 sm:mt-[12px] sm:gap-4">
+        <div className="min-w-0">
+          {metric && <p className="nums whitespace-nowrap text-[14px] font-bold leading-[18px] sm:text-[16px]">{metric}</p>}
           {detail && (
-            <p className="mt-[2px] whitespace-pre-line text-[13px] font-medium leading-[16px] text-white/80">
+            <p className="mt-[2px] whitespace-pre-line text-[11px] font-medium leading-[16px] text-white/80 sm:text-[13px]">
               {detail}
             </p>
           )}
         </div>
 
         {trend && (
-          <div className="flex items-center gap-[2px] pt-[2px]">
-            <span className="nums whitespace-nowrap text-[12px] font-bold leading-[14px] text-[#00e275]">
+          <div className="flex shrink-0 items-center gap-[2px] pt-[2px]">
+            <span className="nums whitespace-nowrap text-[11px] font-bold leading-[14px] text-[#00e275] sm:text-[12px]">
               {trend}
             </span>
             {showArrow && (
@@ -85,38 +85,54 @@ function formatCurrency(value: number | null | undefined) {
   return `₹${value.toFixed(2)}`;
 }
 
-export function HeroHeatmap({ stats, topFund }: { stats?: SnapshotStats; topFund?: FundRow }) {
+export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[] }) {
   const oneMonthReturn = topFund?.returns?.["1M"];
   const marketTitle =
-    stats ? `${stats.totalSchemes} SIFs - ${stats.totalNavRecords.toLocaleString("en-IN")} NAV records` : "94 SIFs - ₹ 1,950 Cr AUM";
+    stats ? `${stats.totalGrowthRegular} SIFs - ${stats.totalNavRecords.toLocaleString("en-IN")} NAV records` : "94 SIFs - ₹ 1,950 Cr AUM";
+
+  // Generate risk bars based on the fund's risk band (1-5)
+  const riskBars: SignalBar[] | undefined = topFund?.riskBand
+    ? Array.from({ length: 5 }, (_, i) => (i < topFund.riskBand! ? "orange" : "white"))
+    : undefined;
+
+  // Calculate average 1-month return across all funds
+  const avgReturn = allFunds && allFunds.length > 0
+    ? allFunds
+        .map(f => f.returns["1M"])
+        .filter((r): r is number => r !== null)
+        .reduce((sum, r, _, arr) => sum + r / arr.length, 0)
+    : null;
+
+  const amcCount = stats?.uniqueAMCs ?? 13;
+  const avgReturnText = avgReturn !== null ? `${avgReturn >= 0 ? "+" : ""}${avgReturn.toFixed(1)}% avg` : "+4.2% avg";
 
   return (
     <div
-      className="relative h-[315px] w-[378px] max-w-full"
+      className="relative mx-auto aspect-[378/315] w-full max-w-[378px]"
       aria-label="SIF market performance snapshot"
     >
       <FloatingStatCard
-        className="left-[60px] top-[0px] h-[125px] w-[235px] hero-card hero-card-1 z-[1]"
+        className="left-[16%] top-[0%] h-[40%] w-[62%] hero-card hero-card-1 z-[1]"
         eyebrow="TOP PERFORMER - 1M"
         title={topFund?.fundName || topFund?.name || "WM Equity Long-Short"}
         metric={formatCurrency(topFund?.nav)}
         trend={oneMonthReturn != null ? `${oneMonthReturn >= 0 ? "+" : ""}${oneMonthReturn.toFixed(2)}%` : "+6.64%"}
         showArrow
-        bars={["orange", "orange", "orange", "orange", "white"]}
+        bars={riskBars}
       />
 
       <FloatingStatCard
-        className="left-[-60px] top-[110px] h-[125px] w-[235px] hero-card hero-card-2 z-[2]"
+        className="left-[0%] top-[35%] h-[40%] w-[62%] hero-card hero-card-2 z-[2]"
         eyebrow="MARKET SNAPSHOT"
         title={marketTitle}
-        detail={`${stats?.uniqueAMCs ?? 13} AMCs\nRegistered`}
-        trend="+4.2 % avg"
+        detail={`${amcCount} AMCs\nRegistered`}
+        trend={avgReturnText}
       />
 
       <FloatingStatCard
-        className="left-[30px] top-[220px] h-[125px] w-[235px] hero-card hero-card-3 z-[3]"
+        className="left-[8%] top-[70%] h-[40%] w-[62%] hero-card hero-card-3 z-[3]"
         eyebrow="NFO OPEN"
-        title="Kotak Infinity Hybrid L’S"
+        title="Kotak Infinity Hybrid L'S"
         detail="Closes 29 jun"
         trend="NFO OPEN"
       />

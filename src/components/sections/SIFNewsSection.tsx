@@ -15,6 +15,9 @@ function timeAgo(date: Date): string {
 
 export async function SIFNewsSection() {
   await connectDB();
+  // News data comes from the Article collection in MongoDB
+  // Articles are managed through the admin panel at /admin
+  // Only published articles with category "General News" are displayed
   const items = await Article.find({ status: "published", category: "General News" })
     .sort({ publishedAt: -1 })
     .limit(8)
