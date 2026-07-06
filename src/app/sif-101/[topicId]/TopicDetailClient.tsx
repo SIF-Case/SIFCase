@@ -80,10 +80,22 @@ export function TopicDetailClient({
     const temp = document.createElement('div');
     temp.innerHTML = article.content;
     
-    const headings = temp.querySelectorAll('h1, h2, h3, h4');
+    const headings = temp.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const usedIds = new Set<string>();
+    
     headings.forEach((heading, index) => {
       const text = heading.textContent || "";
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `section-${index}`;
+      let baseId = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `section-${index}`;
+      
+      // Ensure unique IDs
+      let id = baseId;
+      let counter = 1;
+      while (usedIds.has(id)) {
+        id = `${baseId}-${counter}`;
+        counter++;
+      }
+      usedIds.add(id);
+      
       heading.id = id;
     });
     
@@ -106,7 +118,7 @@ export function TopicDetailClient({
     const timer = setTimeout(() => {
       if (!articleContentRef.current) return;
       
-      const headings = articleContentRef.current.querySelectorAll("h1, h2, h3, h4");
+      const headings = articleContentRef.current.querySelectorAll("h1, h2, h3, h4, h5, h6");
       const toc: { id: string; label: string }[] = [];
       
       headings.forEach((heading) => {
@@ -119,10 +131,15 @@ export function TopicDetailClient({
       });
       
       setSections(toc);
+      
+      // Set first section as active initially if we have sections
+      if (toc.length > 0 && !activeSection) {
+        setActiveSection(toc[0].id);
+      }
     }, 100);
     
     return () => clearTimeout(timer);
-  }, [processedContent]);
+  }, [processedContent, activeSection]);
 
   // Scroll spy for active section
   useEffect(() => {
@@ -299,6 +316,18 @@ export function TopicDetailClient({
                 </svg>
                 <span>{article.readTime} min read</span>
               </div>
+              {article.publishedAt && (
+                <>
+                  <span className="article-meta-separator">·</span>
+                  <span className="article-published-date">
+                    {new Date(article.publishedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -596,6 +625,17 @@ export function TopicDetailClient({
           display: flex;
           align-items: center;
           gap: 5px;
+          color: #6B7685;
+          font-family: Inter, sans-serif;
+          font-size: 12px;
+          font-weight: 400;
+        }
+        .article-meta-separator {
+          color: #D1D5DB;
+          font-size: 14px;
+          font-weight: 300;
+        }
+        .article-published-date {
           color: #6B7685;
           font-family: Inter, sans-serif;
           font-size: 12px;

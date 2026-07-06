@@ -7,7 +7,8 @@ import { TopicDetailClient } from "./TopicDetailClient";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 
-export const revalidate = 60;
+// Revalidate on-demand only (via revalidatePath calls from admin)
+export const revalidate = false;
 
 export async function generateStaticParams() {
   await connectDB();

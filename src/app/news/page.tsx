@@ -7,6 +7,8 @@ import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { getTickerNavs } from "@/lib/sifData";
 
+// No revalidate - will use on-demand revalidation from API
+
 export const metadata = {
   title: "Latest SIF News - SIFcase",
   description: "Stay updated with the latest news and developments in the Social Impact Fund industry.",
@@ -15,23 +17,21 @@ export const metadata = {
 async function getPublishedNews() {
   await connectDB();
   
-  // Get General News articles
+  // Get General News articles - fetch all, no limit
   const generalNews = await Article.find({ 
     status: "published", 
     category: "General News"
   })
     .sort({ publishedAt: -1 })
-    .limit(50)
     .select("title slug excerpt subcategory publishedAt readTime category")
     .lean();
   
-  // Get Fund Houses articles
+  // Get Fund Houses articles - fetch all, no limit
   const fundHousesNews = await Article.find({ 
     status: "published", 
     category: "Fund Houses"
   })
     .sort({ publishedAt: -1 })
-    .limit(50)
     .select("title slug excerpt subcategory publishedAt readTime category")
     .lean();
   

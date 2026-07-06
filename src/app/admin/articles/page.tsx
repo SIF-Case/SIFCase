@@ -17,38 +17,61 @@ type Article = {
   createdAt: string;
 };
 
-function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
+function ReorderModal({ articles, mainCategory, currentTab, onClose, onSaved }: {
   articles: Article[];
-  mainCategory: string;
+  mainCategory: string | null;
+  currentTab: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const initial = useMemo(() => {
     const order: string[] = [];
     const grouped: Record<string, Article[]> = {};
-    for (const a of articles.filter((x) => x.category === mainCategory)) {
-      const sub = a.subcategory?.trim() || mainCategory;
-      if (!grouped[sub]) { grouped[sub] = []; order.push(sub); }
-      grouped[sub].push(a);
+    
+    // Filter articles based on current tab
+    let filteredArticles = articles;
+    if (mainCategory) {
+      // Specific category selected
+      filteredArticles = articles.filter((x) => x.category === mainCategory);
+    } else if (currentTab === "draft") {
+      // Draft Article tab - only unassigned drafts
+      filteredArticles = articles.filter((x) => !x.category);
     }
-    for (const sub of order) {
-      grouped[sub].sort((x, y) => (x.order ?? 0) - (y.order ?? 0)
+    // "all" tab shows everything - no additional filter needed
+    
+    // Group by category + subcategory
+    for (const a of filteredArticles) {
+      const cat = a.category || "Draft Article";
+      const sub = a.subcategory?.trim() || cat;
+      const groupKey = `${cat}::${sub}`;
+      if (!grouped[groupKey]) { grouped[groupKey] = []; order.push(groupKey); }
+      grouped[groupKey].push(a);
+    }
+    
+    for (const key of order) {
+      grouped[key].sort((x, y) => (x.order ?? 0) - (y.order ?? 0)
         || (new Date(y.publishedAt ?? 0).getTime() - new Date(x.publishedAt ?? 0).getTime()));
     }
     return { order, grouped };
-  }, [articles]);
+  }, [articles, mainCategory, currentTab]);
 
   const [groups, setGroups] = useState(initial.grouped);
   const [sectionOrder, setSectionOrder] = useState(initial.order);
   const [saving, setSaving] = useState(false);
 
-  function move(sub: string, idx: number, dir: -1 | 1) {
+  // Reset internal state whenever fresh articles are passed in
+  useEffect(() => {
+    setGroups(initial.grouped);
+    setSectionOrder(initial.order);
+  }, [initial]);
+
+  function move(groupKey: string, idx: number, dir: -1 | 1) {
     setGroups((g) => {
-      const list = [...g[sub]];
+      const list = [...g[groupKey]];
       const j = idx + dir;
       if (j < 0 || j >= list.length) return g;
       [list[idx], list[j]] = [list[j], list[idx]];
-      return { ...g, [sub]: list };
+      return { ...g, [groupKey]: list };
     });
   }
 
@@ -65,19 +88,42 @@ function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
   async function save() {
     setSaving(true);
     try {
-      const items = sectionOrder.flatMap((sub) => groups[sub].map((a, i) => ({ id: a._id, order: i })));
-      await Promise.all([
+      const items = sectionOrder.flatMap((groupKey) => groups[groupKey].map((a, i) => ({ id: a._id, order: i })));
+      
+      // Extract unique categories and their subcategory orders
+      const categorySubcategoryMap: Record<string, string[]> = {};
+      for (const groupKey of sectionOrder) {
+        const [cat, sub] = groupKey.split("::");
+        if (!categorySubcategoryMap[cat]) {
+          categorySubcategoryMap[cat] = [];
+        }
+        if (!categorySubcategoryMap[cat].includes(sub)) {
+          categorySubcategoryMap[cat].push(sub);
+        }
+      }
+      
+      const requests = [
         fetch("/api/admin/articles/reorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ items }),
         }),
-        fetch("/api/admin/article-options", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "reorder_subcategories", value: "", category: mainCategory, order: sectionOrder }),
-        }),
-      ]);
+      ];
+      
+      // Save subcategory order for each affected category
+      for (const [cat, subs] of Object.entries(categorySubcategoryMap)) {
+        if (cat !== "Draft Article") {
+          requests.push(
+            fetch("/api/admin/article-options", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "reorder_subcategories", value: "", category: cat, order: subs }),
+            })
+          );
+        }
+      }
+      
+      await Promise.all(requests);
       onSaved();
       onClose();
     } finally {
@@ -90,8 +136,10 @@ function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
       <div className="bg-white rounded-[14px] border border-rule shadow-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-rule sticky top-0 bg-white">
           <div>
-            <h2 className="text-[16px] font-bold text-heading">Reorder articles</h2>
-            <p className="text-[11.5px] text-muted mt-0.5">Sets the display order within each sub-category on /read.</p>
+            <h2 className="text-[16px] font-bold text-heading">
+              Reorder articles{mainCategory ? ` — ${mainCategory}` : currentTab === "draft" ? " — Draft Article" : ""}
+            </h2>
+            <p className="text-[11.5px] text-muted mt-0.5">Sets the display order within each sub-category on /read and /sif-101.</p>
           </div>
           <button onClick={onClose} className="size-7 inline-flex items-center justify-center rounded-[6px] text-muted hover:text-body">
             <X className="size-4" />
@@ -100,11 +148,14 @@ function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
 
         <div className="p-6 space-y-6">
           {sectionOrder.length === 0 ? (
-            <p className="text-[13px] text-muted text-center py-8">No General-category articles to reorder yet.</p>
-          ) : sectionOrder.map((sub, sIdx) => (
-            <div key={sub}>
+            <p className="text-[13px] text-muted text-center py-8">No articles to reorder yet.</p>
+          ) : sectionOrder.map((groupKey, sIdx) => {
+            const [cat, sub] = groupKey.split("::");
+            const displayLabel = mainCategory ? sub : `${cat} → ${sub}`;
+            return (
+            <div key={groupKey}>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-mono font-semibold uppercase tracking-widest text-primary">{sub}</p>
+                <p className="text-[11px] font-mono font-semibold uppercase tracking-widest text-primary">{displayLabel}</p>
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => moveSection(sIdx, -1)} disabled={sIdx === 0}
                     className="size-5 inline-flex items-center justify-center rounded-[4px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30">
@@ -117,16 +168,19 @@ function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
                 </div>
               </div>
               <div className="border border-rule rounded-[10px] overflow-hidden">
-                {groups[sub].map((a, idx) => (
+                {groups[groupKey].map((a, idx) => (
                   <div key={a._id} className="flex items-center gap-3 px-4 py-2.5 border-b border-rule last:border-0">
                     <span className="text-[11px] font-mono text-faint w-5 shrink-0">{idx + 1}</span>
                     <p className="flex-1 min-w-0 text-[13px] font-medium text-body truncate">{a.title}</p>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                      a.status === "published" ? "text-gain bg-green-50" : "text-muted bg-surface"
+                    }`}>{a.status}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={() => move(sub, idx, -1)} disabled={idx === 0}
+                      <button type="button" onClick={() => move(groupKey, idx, -1)} disabled={idx === 0}
                         className="size-6 inline-flex items-center justify-center rounded-[5px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed">
                         <ChevronUp className="size-3.5" />
                       </button>
-                      <button type="button" onClick={() => move(sub, idx, 1)} disabled={idx === groups[sub].length - 1}
+                      <button type="button" onClick={() => move(groupKey, idx, 1)} disabled={idx === groups[groupKey].length - 1}
                         className="size-6 inline-flex items-center justify-center rounded-[5px] border border-rule text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed">
                         <ChevronDown className="size-3.5" />
                       </button>
@@ -135,7 +189,8 @@ function ReorderModal({ articles, mainCategory, onClose, onSaved }: {
                 ))}
               </div>
             </div>
-          ))}
+          );
+          })}
 
           <div className="flex items-center gap-2 pt-1">
             <button onClick={save} disabled={saving || initial.order.length === 0}
@@ -162,6 +217,7 @@ export default function AdminArticles() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderLoading, setReorderLoading] = useState(false);
   const [tab, setTab] = useState("all");
   const [categories, setCategories] = useState<string[]>([]);
   const [addingCategory, setAddingCategory] = useState(false);
@@ -173,7 +229,7 @@ export default function AdminArticles() {
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/articles?all=1");
+    const res = await fetch("/api/admin/articles?all=1", { cache: "no-store" });
     const data = await res.json();
     setArticles(data.articles ?? []);
     setTotal(data.total ?? 0);
@@ -192,6 +248,13 @@ export default function AdminArticles() {
     if (!confirm(`Delete "${title}"?`)) return;
     await fetch(`/api/admin/articles/${id}`, { method: "DELETE" });
     fetch_();
+  }
+
+  async function openReorder() {
+    setReorderLoading(true);
+    await fetch_();
+    setReorderLoading(false);
+    setReorderOpen(true);
   }
 
   async function addCategory() {
@@ -240,10 +303,10 @@ export default function AdminArticles() {
           <button onClick={fetch_} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
             <RefreshCw className="size-3.5" />
           </button>
-          <button onClick={() => setReorderOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] font-semibold text-muted hover:text-body"
+          <button onClick={openReorder} disabled={reorderLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] font-semibold text-muted hover:text-body disabled:opacity-60"
             title="Set the display order of articles within each sub-category on /read">
-            <ArrowUpDown className="size-3.5" /> Reorder
+            {reorderLoading ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowUpDown className="size-3.5" />} Reorder
           </button>
           <Link href="/admin/articles/new"
             className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:bg-primary-hover shadow-btn">
@@ -376,7 +439,13 @@ export default function AdminArticles() {
       </div>
 
       {reorderOpen && (
-        <ReorderModal articles={articles} mainCategory={categories[0] ?? "General"} onClose={() => setReorderOpen(false)} onSaved={fetch_} />
+        <ReorderModal 
+          articles={articles} 
+          mainCategory={tab.startsWith("cat:") ? tab.slice(4) : null}
+          currentTab={tab}
+          onClose={() => setReorderOpen(false)} 
+          onSaved={fetch_} 
+        />
       )}
     </div>
   );

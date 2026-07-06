@@ -1,4 +1,5 @@
 "use client";
+import slugify from "slugify";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -158,7 +159,7 @@ function ComboSelect({ value, options, placeholder, onChange, onAddOption, onRen
 
 type ArticleData = {
   _id?: string;
-  slug?: string;
+  slug: string;
   title: string;
   excerpt: string;
   content: string;
@@ -167,11 +168,13 @@ type ArticleData = {
   useSeparateMobile: boolean;
   category: string;
   subcategory: string;
+  order: number;
   tags: string;
   status: "draft" | "published";
   authorName: string;
   authorBio: string;
   readTime: number;
+  publishedAt: string; // YYYY-MM-DD string for date input, "" if not set
   // SEO
   seoTitle: string;
   metaDescription: string;
@@ -183,9 +186,9 @@ type ArticleData = {
 };
 
 const DEFAULTS: ArticleData = {
-  title: "", excerpt: "", content: "", coverDesktop: "", coverMobile: "",
-  useSeparateMobile: false, category: "", subcategory: "", tags: "", status: "draft",
-  authorName: "SIFcase Team", authorBio: "", readTime: 3,
+  slug: "", title: "", excerpt: "", content: "", coverDesktop: "", coverMobile: "",
+  useSeparateMobile: false, category: "", subcategory: "", order: 0, tags: "", status: "draft",
+  authorName: "SIFcase Team", authorBio: "", readTime: 3, publishedAt: "",
   seoTitle: "", metaDescription: "", canonicalUrl: "", robotsIndex: true,
   ogImage: "", primaryKeyword: "", focusKeyphrase: "",
 };
@@ -209,7 +212,12 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
   const [form, setForm] = useState<ArticleData>(() => {
     const rawTags = (initial as { tags?: string[] | string } | undefined)?.tags;
     const tagsStr = Array.isArray(rawTags) ? rawTags.join(", ") : (rawTags ?? "");
-    return { ...DEFAULTS, ...initial, tags: tagsStr };
+    // Parse publishedAt to YYYY-MM-DD for date input
+    const rawPublishedAt = (initial as { publishedAt?: string | Date | null } | undefined)?.publishedAt;
+    const publishedAtStr = rawPublishedAt
+      ? new Date(rawPublishedAt).toISOString().slice(0, 10)
+      : "";
+    return { ...DEFAULTS, ...initial, tags: tagsStr, slug: initial?.slug ?? "", publishedAt: publishedAtStr };
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -347,6 +355,8 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
       ...form,
       status,
       tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      // Send publishedAt as ISO string if set, undefined otherwise (API will auto-set on first publish)
+      publishedAt: form.publishedAt ? new Date(form.publishedAt).toISOString() : undefined,
     };
 
     let res: Response;
@@ -358,6 +368,10 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
     const data = await res.json();
     setSaving(false);
     if (!res.ok) { setError(data.error ?? "Save failed"); return; }
+    // Update slug in form state if it changed (title rename triggers slug regen on backend)
+    if (data.slug && data.slug !== form.slug) {
+      setForm((f) => ({ ...f, slug: data.slug }));
+    }
     router.push("/admin/articles");
   }
 
@@ -374,7 +388,7 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
         </div>
         <div className="flex items-center gap-2">
           {form._id && form.status === "published" && (
-            <a href={`/read/${(initial as { slug?: string })?.slug ?? ""}`} target="_blank"
+            <a href={`/read/${form.slug}`} target="_blank"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-rule text-[12.5px] text-muted hover:text-body">
               <Eye className="size-3.5" /> Preview
             </a>
@@ -500,6 +514,44 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
                 className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
 
+            {/* Slug preview */}
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">URL Slug <span className="text-faint">(auto-updates on title change)</span></label>
+              <div className="flex items-center h-9 px-3 rounded-[8px] border border-rule bg-surface text-[12px] font-mono overflow-hidden gap-1">
+                <span className="text-faint shrink-0">read/</span>
+                <span className="truncate text-body">
+                  {form.slug || (form.title ? slugify(form.title, { lower: true, strict: true }) : "article-slug")}
+                </span>
+              </div>
+              <p className="text-[10px] text-faint mt-1">Saved slug updates automatically when you rename the title</p>
+            </div>
+
+            {/* Published date */}
+            <div>
+              <label className="block text-[11px] font-medium text-muted mb-1">Published Date</label>
+              <input
+                type="date"
+                value={form.publishedAt}
+                onChange={(e) => set("publishedAt", e.target.value)}
+                className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-[10px] text-faint mt-1">Leave blank to auto-set when first published</p>
+            </div>
+
+            {form.subcategory === "SIF Education" && (
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Order <span className="text-faint">(for SIF 101 sequence)</span></label>
+                <input 
+                  type="number" 
+                  value={form.order} 
+                  onChange={(e) => set("order", parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-full h-9 px-3 rounded-[8px] border border-rule bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30" 
+                />
+                <p className="text-[10px] text-faint mt-1">Lower numbers appear first in SIF 101</p>
+              </div>
+            )}
+
             <div>
               <label className="block text-[11px] font-medium text-muted mb-1">Author</label>
               <input value={form.authorName} onChange={(e) => set("authorName", e.target.value)}
@@ -518,19 +570,6 @@ export function ArticleEditor({ initial }: { initial?: Partial<ArticleData> & { 
               <span className="text-[12px] font-semibold text-body">
                 {Math.max(1, Math.round(form.content.replace(/<[^>]+>/g, "").trim().split(/\s+/).filter(Boolean).length / 265))} min
               </span>
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="bg-white rounded-[14px] border border-rule shadow-card p-4">
-            <p className="text-[11px] font-semibold text-muted uppercase tracking-widest mb-3">Status</p>
-            <div className="flex gap-2">
-              {(["draft", "published"] as const).map((s) => (
-                <button key={s} type="button" onClick={() => set("status", s)}
-                  className={`flex-1 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors capitalize ${form.status === s ? "bg-primary text-white border-primary" : "border-rule text-muted hover:text-body"}`}>
-                  {s}
-                </button>
-              ))}
             </div>
           </div>
 

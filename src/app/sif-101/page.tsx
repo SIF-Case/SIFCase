@@ -1,4 +1,5 @@
-export const revalidate = 60;
+// Revalidate on-demand only (via revalidatePath calls)
+export const revalidate = false;
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";

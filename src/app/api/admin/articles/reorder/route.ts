@@ -3,6 +3,7 @@ import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import mongoose from "mongoose";
+import { revalidatePath } from "next/cache";
 
 export async function POST(req: NextRequest) {
   if (!await hasPageAccess(req, "articles", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
       },
     })),
   );
+
+  // Revalidate SIF-101 pages since order affects display
+  revalidatePath("/sif-101");
 
   return NextResponse.json({ ok: true });
 }

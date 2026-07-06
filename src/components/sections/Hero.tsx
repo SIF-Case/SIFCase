@@ -15,7 +15,7 @@ export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topF
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_378px]">
           {/* Left content */}
           <div className="flex flex-col items-start gap-6 sm:gap-8">
-            {/* SEBI badge */}
+            {/* Platform badge */}
             <div
               className="inline-flex items-center gap-2 rounded-full border px-3 py-1"
               style={{ borderColor: "#14b7a3", background: "rgba(255,255,255,0.1)" }}
@@ -24,7 +24,7 @@ export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topF
                 className="text-[12px] font-medium leading-[20px] uppercase sm:text-[14px] sm:leading-[26px] lg:text-[16px] lg:leading-[30px]"
                 style={{ color: "#14b7a3" }}
               >
-                SEBI-Regulated · India&apos;s SIF Research Platform
+                India&apos;s SIF Research Platform
               </span>
             </div>
 
