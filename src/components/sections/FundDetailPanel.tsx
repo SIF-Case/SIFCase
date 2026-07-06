@@ -163,6 +163,21 @@ export function FundDetailPanel({
     [pts]
   );
 
+  const handleTouch = useCallback(
+    (e: React.TouchEvent<SVGSVGElement>) => {
+      const svg = svgRef.current;
+      if (!svg || pts.length < 2) return;
+      const rect = svg.getBoundingClientRect();
+      const touch = e.touches[0];
+      if (!touch) return;
+      const rawX = ((touch.clientX - rect.left) / rect.width) * W;
+      const fracX = (rawX - PL) / (W - PL - PR);
+      const idx = Math.min(pts.length - 1, Math.max(0, Math.round(fracX * (pts.length - 1))));
+      setTooltip({ x: pts[idx].x, y: pts[idx].y, idx });
+    },
+    [pts]
+  );
+
   const tip = tooltip;
   const tipAnchorRight = tip ? tip.x > W * 0.65 : false;
 
@@ -223,11 +238,14 @@ export function FundDetailPanel({
               <svg
                 ref={svgRef}
                 viewBox={`0 0 ${W} ${H}`}
-                className="w-full overflow-visible cursor-crosshair"
-                style={{ height: H }}
+                className="w-full overflow-visible cursor-crosshair select-none"
+                style={{ height: H, touchAction: "none" }}
                 preserveAspectRatio="none"
                 onMouseMove={handleMouseMove}
                 onMouseLeave={() => setTooltip(null)}
+                onTouchStart={handleTouch}
+                onTouchMove={handleTouch}
+                onTouchEnd={() => setTooltip(null)}
               >
                 <defs>
                   <linearGradient id="fund-detail-grad" x1="0" y1="0" x2="0" y2="1">

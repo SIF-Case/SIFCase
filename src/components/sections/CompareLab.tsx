@@ -21,11 +21,26 @@ export const COMPARE_PALETTE = ["#1E4ED8", "#0FAF75", "#F59E0B", "#DC2626", "#63
 type View = "Cumulative" | "Drawdown" | "Rolling" | "Volatility";
 
 function toDrawdown(s: number[]) { let p = s[0]; return s.map((v) => { p = Math.max(p, v); return ((v - p) / p) * 100; }); }
-function toRolling(s: number[]) { const w = Math.min(12, Math.max(2, Math.floor(s.length / 3))); return s.map((_, i) => i < w ? 0 : ((s[i] - s[i - w]) / s[i - w]) * 100); }
+function toRolling(s: number[]) {
+  const w = Math.min(12, Math.max(2, Math.floor(s.length / 3)));
+  const res = s.map((_, i) => i < w ? 0 : ((s[i] - s[i - w]) / s[i - w]) * 100);
+  const firstVal = res[w] || 0;
+  for (let i = 0; i < w; i++) res[i] = firstVal;
+  return res;
+}
 function toVolatility(s: number[]) {
   const w = Math.min(6, Math.max(2, Math.floor(s.length / 4)));
   const r = s.map((v, i) => i === 0 ? 0 : (v - s[i - 1]) / s[i - 1]);
-  return r.map((_, i) => { if (i < w) return 0; const win = r.slice(i - w, i); const m = win.reduce((a, b) => a + b, 0) / win.length; const v = win.reduce((a, b) => a + (b - m) ** 2, 0) / win.length; return Math.sqrt(v) * Math.sqrt(252) * 100; });
+  const vols = r.map((_, i) => {
+    if (i < w) return 0;
+    const win = r.slice(i - w, i);
+    const m = win.reduce((a, b) => a + b, 0) / win.length;
+    const v = win.reduce((a, b) => a + (b - m) ** 2, 0) / win.length;
+    return Math.sqrt(v) * Math.sqrt(252) * 100;
+  });
+  const firstVal = vols[w] || 0;
+  for (let i = 0; i < w; i++) vols[i] = firstVal;
+  return vols;
 }
 
 function shortName(name: string) {
@@ -33,7 +48,7 @@ function shortName(name: string) {
 }
 
 // Custom tooltip
-function ChartTooltip({ active, payload }: any) {
+function ChartTooltip({ active, payload, view }: any) {
   if (!active || !payload?.length) return null;
   const date: string = payload[0]?.payload?.date ?? "";
   return (
@@ -42,30 +57,39 @@ function ChartTooltip({ active, payload }: any) {
         <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{date}</p>
       )}
       <div className="space-y-1.5">
-        {payload.map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="size-2 rounded-full shrink-0" style={{ background: entry.color }} />
-              <span className="text-[11px] text-white/70 truncate max-w-[130px]">{entry.name}</span>
+        {payload.map((entry: any) => {
+          const isVol = view === "Volatility";
+          const displayVal = isVol
+            ? `${entry.value.toFixed(2)}%`
+            : `${entry.value >= 0 ? "+" : ""}${entry.value.toFixed(2)}%`;
+          const valColor = isVol
+            ? "text-white/90"
+            : (entry.value >= 0 ? "text-[#6EF0B6]" : "text-[#FF7070]");
+          return (
+            <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="size-2 rounded-full shrink-0" style={{ background: entry.color }} />
+                <span className="text-[11px] text-white/70 truncate max-w-[130px]">{entry.name}</span>
+              </div>
+              <span className={`text-[12px] font-bold tabular font-mono shrink-0 ${valColor}`}>
+                {displayVal}
+              </span>
             </div>
-            <span className={`text-[12px] font-bold tabular font-mono shrink-0 ${
-              entry.value >= 0 ? "text-[#6EF0B6]" : "text-[#FF7070]"
-            }`}>
-              {entry.value >= 0 ? "+" : ""}{entry.value.toFixed(2)}%
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // Custom Y-axis tick
-function YTick({ x, y, payload }: any) {
+function YTick({ x, y, payload, view }: any) {
   return (
     <text x={x - 6} y={y} dy={4} textAnchor="end"
       style={{ fontSize: 11, fontFamily: "var(--font-sans)", fill: "#94A3B8", fontVariantNumeric: "tabular-nums" }}>
-      {payload.value >= 0 ? "+" : ""}{payload.value.toFixed(1)}%
+      {view === "Volatility"
+        ? `${payload.value.toFixed(1)}%`
+        : `${payload.value >= 0 ? "+" : ""}${payload.value.toFixed(1)}%`}
     </text>
   );
 }
@@ -255,7 +279,7 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
               />
 
               <YAxis
-                tick={<YTick />}
+                tick={<YTick view={view} />}
                 axisLine={false}
                 tickLine={false}
                 width={52}
@@ -263,7 +287,7 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
               />
 
               <Tooltip
-                content={<ChartTooltip />}
+                content={<ChartTooltip view={view} />}
                 cursor={{ stroke: "#0B1F3A", strokeWidth: 1, strokeDasharray: "4 4" }}
               />
 

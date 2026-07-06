@@ -57,6 +57,18 @@ function NavChart({ records }: { records: NavRecord[] }) {
     setTip({ x: pts[idx].x, y: pts[idx].y, idx });
   }
 
+  function handleTouch(e: React.TouchEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rawX = ((touch.clientX - rect.left) / rect.width) * W;
+    const frac = (rawX - PL) / (W - PL - PR);
+    const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(frac * (sorted.length - 1))));
+    setTip({ x: pts[idx].x, y: pts[idx].y, idx });
+  }
+
   const anchorRight = tip ? tip.x > W * 0.6 : false;
 
   return (
@@ -64,11 +76,14 @@ function NavChart({ records }: { records: NavRecord[] }) {
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full cursor-crosshair"
-        style={{ height: H }}
+        className="w-full cursor-crosshair select-none"
+        style={{ height: H, touchAction: "none" }}
         preserveAspectRatio="none"
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTip(null)}
+        onTouchStart={handleTouch}
+        onTouchMove={handleTouch}
+        onTouchEnd={() => setTip(null)}
       >
         <defs>
           <linearGradient id="admin-nav-grad" x1="0" y1="0" x2="0" y2="1">

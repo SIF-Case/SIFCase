@@ -17,7 +17,7 @@ import { useCompareTray } from "@/components/ui/CompareTray";
 
 type View = "Cumulative" | "Drawdown" | "Rolling" | "Volatility";
 
-const PALETTE = ["#3B8BB1", "#22c55e", "#f59e0b", "#ef4444", "#a855f7"];
+const PALETTE = ["#14b7a3", "#22c55e", "#f59e0b", "#ef4444", "#a855f7"];
 
 const PRESETS: { id: string; label: string; icon: string }[] = [
   { id: "top",      label: "Top SI Return",      icon: "↑" },
@@ -33,14 +33,29 @@ function shortName(name: string) {
 
 function toCumulative(s: number[]) { const b = s[0]; return s.map((v) => ((v - b) / b) * 100); }
 function toDrawdown(s: number[]) { let p = s[0]; return s.map((v) => { p = Math.max(p, v); return ((v - p) / p) * 100; }); }
-function toRolling(s: number[]) { const w = Math.min(12, Math.max(2, Math.floor(s.length / 3))); return s.map((_, i) => i < w ? 0 : ((s[i] - s[i - w]) / s[i - w]) * 100); }
+function toRolling(s: number[]) {
+  const w = Math.min(12, Math.max(2, Math.floor(s.length / 3)));
+  const res = s.map((_, i) => i < w ? 0 : ((s[i] - s[i - w]) / s[i - w]) * 100);
+  const firstVal = res[w] || 0;
+  for (let i = 0; i < w; i++) res[i] = firstVal;
+  return res;
+}
 function toVolatility(s: number[]) {
   const w = Math.min(6, Math.max(2, Math.floor(s.length / 4)));
   const r = s.map((v, i) => i === 0 ? 0 : (v - s[i - 1]) / s[i - 1]);
-  return r.map((_, i) => { if (i < w) return 0; const win = r.slice(i - w, i); const m = win.reduce((a, b) => a + b, 0) / win.length; const v = win.reduce((a, b) => a + (b - m) ** 2, 0) / win.length; return Math.sqrt(v) * Math.sqrt(252) * 100; });
+  const vols = r.map((_, i) => {
+    if (i < w) return 0;
+    const win = r.slice(i - w, i);
+    const m = win.reduce((a, b) => a + b, 0) / win.length;
+    const v = win.reduce((a, b) => a + (b - m) ** 2, 0) / win.length;
+    return Math.sqrt(v) * Math.sqrt(252) * 100;
+  });
+  const firstVal = vols[w] || 0;
+  for (let i = 0; i < w; i++) vols[i] = firstVal;
+  return vols;
 }
 
-function ChartTooltip({ active, payload }: any) {
+function ChartTooltip({ active, payload, view }: any) {
   if (!active || !payload?.length) return null;
   const date: string = payload[0]?.payload?.date ?? "";
   return (
@@ -49,27 +64,38 @@ function ChartTooltip({ active, payload }: any) {
         <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2">{date}</p>
       )}
       <div className="space-y-1.5">
-        {payload.map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="size-2 rounded-full shrink-0" style={{ background: entry.color }} />
-              <span className="text-[11px] text-white/70 truncate max-w-[130px]">{entry.name}</span>
+        {payload.map((entry: any) => {
+          const isVol = view === "Volatility";
+          const displayVal = isVol
+            ? `${entry.value.toFixed(2)}%`
+            : `${entry.value >= 0 ? "+" : ""}${entry.value.toFixed(2)}%`;
+          const valColor = isVol
+            ? "text-white/90"
+            : (entry.value >= 0 ? "text-[#6EF0B6]" : "text-[#FF7070]");
+          return (
+            <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="size-2 rounded-full shrink-0" style={{ background: entry.color }} />
+                <span className="text-[11px] text-white/70 truncate max-w-[130px]">{entry.name}</span>
+              </div>
+              <span className={`text-[12px] font-bold tabular font-mono shrink-0 ${valColor}`}>
+                {displayVal}
+              </span>
             </div>
-            <span className={`text-[12px] font-bold tabular font-mono shrink-0 ${entry.value >= 0 ? "text-[#6EF0B6]" : "text-[#FF7070]"}`}>
-              {entry.value >= 0 ? "+" : ""}{entry.value.toFixed(2)}%
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function YTick({ x, y, payload }: any) {
+function YTick({ x, y, payload, view }: any) {
   return (
     <text x={x - 6} y={y} dy={4} textAnchor="end"
       style={{ fontSize: 11, fontFamily: "var(--font-sans)", fill: "#555", fontVariantNumeric: "tabular-nums" }}>
-      {payload.value >= 0 ? "+" : ""}{payload.value.toFixed(1)}%
+      {view === "Volatility"
+        ? `${payload.value.toFixed(1)}%`
+        : `${payload.value >= 0 ? "+" : ""}${payload.value.toFixed(1)}%`}
     </text>
   );
 }
@@ -154,15 +180,15 @@ export function BuildYourCompare({ funds }: Props) {
       {/* Lab Card */}
       <div className="max-w-[1320px] mx-auto w-full rounded-[17.44px] bg-white shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
         {/* Nav bar */}
-        <div className="flex items-center gap-4 sm:gap-[40px] p-4 sm:p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white flex-wrap md:flex-nowrap">
-          <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full max-w-[348px] h-[40px] box-border">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-[40px] p-4 sm:p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white">
+          <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full sm:max-w-[348px] box-border">
             {(["Cumulative", "Drawdown", "Rolling", "Volatility"] as const).map((type) => (
               <button
                 key={type}
-                className={`flex-1 flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer whitespace-nowrap transition-all duration-150 ${
+                className={`flex-1 flex items-center justify-center py-[7px] px-1.5 sm:px-[13px] rounded-[24px] border-none text-[11px] sm:text-[13px] font-medium cursor-pointer whitespace-nowrap transition-all duration-150 ${
                   type === view
-                    ? "bg-[#3b8bb1] text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
-                    : "bg-transparent text-[#6b7280] hover:text-[#3b8bb1]"
+                    ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                    : "bg-transparent text-[#6b7280] hover:text-primary"
                 }`}
                 onClick={() => setView(type)}
               >
@@ -171,14 +197,14 @@ export function BuildYourCompare({ funds }: Props) {
             ))}
           </div>
 
-          <div className="flex items-center gap-[4.36px] p-[4px] rounded-[24px] bg-white w-full max-w-[237px] box-border">
+          <div className="flex items-center gap-[4.36px] p-[4px] rounded-[24px] bg-white w-full sm:max-w-[237px] box-border">
             {periods.map((p) => (
               <button
                 key={p}
                 className={`flex-1 flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150 ${
                   p === period
-                    ? "bg-[#3b8bb1] text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
-                    : "bg-transparent text-[#6b7280] hover:text-[#3b8bb1]"
+                    ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                    : "bg-transparent text-[#6b7280] hover:text-primary"
                 }`}
                 onClick={() => setPeriod(p)}
               >
@@ -207,7 +233,7 @@ export function BuildYourCompare({ funds }: Props) {
             <div className="relative shrink-0">
               <button
                 onClick={() => setAddOpen((o) => !o)}
-                className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all"
+                className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-primary hover:text-primary cursor-pointer transition-all"
               >
                 <Plus className="size-3" />
                 Add fund
@@ -233,7 +259,7 @@ export function BuildYourCompare({ funds }: Props) {
         {/* Chart area */}
         {series.length > 0 && chartData.length > 1 ? (
           <div className="flex items-stretch p-[16px_12px_0] sm:p-[16px_22px_0] gap-0 flex-1 min-h-[280px] sm:min-h-[350px]">
-            <div className="flex-1 w-full h-[260px] sm:h-[320px] touch-none select-none">
+            <div className="flex-1 w-full h-[260px] sm:h-[320px] touch-none select-none overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                   <defs>
@@ -246,8 +272,16 @@ export function BuildYourCompare({ funds }: Props) {
                   </defs>
                   <CartesianGrid strokeDasharray="0" stroke="#F1F2F4" vertical={false} />
                   <XAxis dataKey="idx" tick={false} axisLine={false} tickLine={false} />
-                  <YAxis tick={<YTick />} axisLine={false} tickLine={false} width={48} tickCount={6} />
-                  <Tooltip content={<ChartTooltip />} cursor={{ stroke: "#0B1F3A", strokeWidth: 1, strokeDasharray: "4 4" }} />
+                  <YAxis tick={<YTick view={view} />} axisLine={false} tickLine={false} width={48} tickCount={6}
+                    domain={([min, max]: readonly (number | string)[]) => {
+                      const numMin = typeof min === "number" ? min : parseFloat(min);
+                      const numMax = typeof max === "number" ? max : parseFloat(max);
+                      const pad = Math.max((numMax - numMin) * 0.1, 1);
+                      return [Math.floor(numMin - pad), Math.ceil(numMax + pad)];
+                    }}
+                    allowDataOverflow={false}
+                  />
+                  <Tooltip content={<ChartTooltip view={view} />} cursor={{ stroke: "#0B1F3A", strokeWidth: 1, strokeDasharray: "4 4" }} />
                   {view !== "Volatility" && <ReferenceLine y={0} stroke="#B8C7D6" strokeWidth={1} />}
                   {series.map((s) => (
                     <Area key={s.id} type="monotone" dataKey={s.id} name={s.name}
@@ -287,7 +321,7 @@ export function BuildYourCompare({ funds }: Props) {
             <button
               key={p.id}
               onClick={() => applyPreset(p.id)}
-              className="flex items-center gap-[5px] py-[8px] px-[16px] rounded-[24px] border border-[#e5e7eb] bg-white text-[13px] font-medium text-[#374151] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all duration-150 shrink-0 whitespace-nowrap"
+              className="flex items-center gap-[5px] py-[8px] px-[16px] rounded-[24px] border border-[#e5e7eb] bg-white text-[13px] font-medium text-[#374151] hover:border-primary hover:text-primary cursor-pointer transition-all duration-150 shrink-0 whitespace-nowrap"
             >
               <span className="text-[11px] line-height-1">{p.icon}</span>
               {p.label}
@@ -305,8 +339,8 @@ export function BuildYourCompare({ funds }: Props) {
                 onClick={() => toggle(f.schemeCode)}
                 className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-[24px] border text-[12px] font-semibold transition-all duration-150 shadow-[0_1px_2px_rgba(0,0,0,0.05)] cursor-pointer ${
                   inTray
-                    ? "border-[#3b8bb1] bg-[#ecf4f1] text-[#3b8bb1]"
-                    : "border-[#e5e7eb] bg-white text-[#6b7280] hover:border-[#3b8bb1] hover:text-[#3b8bb1]"
+                    ? "border-primary bg-[#ecf4f1] text-primary"
+                    : "border-[#e5e7eb] bg-white text-[#6b7280] hover:border-primary hover:text-primary"
                 }`}
               >
                 <span className="size-1.5 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />

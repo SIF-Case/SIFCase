@@ -32,6 +32,22 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
     setTooltip({ x: px, y: py, idx });
   }, [data]);
 
+  const handleTouch = useCallback((e: React.TouchEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rawX = ((touch.clientX - rect.left) / rect.width) * W;
+    const fracX = (rawX - PAD) / (W - PAD * 2);
+    const idx = Math.min(data.length - 1, Math.max(0, Math.round(fracX * (data.length - 1))));
+    const min = Math.min(...data), max = Math.max(...data);
+    const range = max - min || 0.01;
+    const px = PAD + (idx / (data.length - 1)) * (W - PAD * 2);
+    const py = H - PAD - ((data[idx] - min) / range) * (H - PAD * 2);
+    setTooltip({ x: px, y: py, idx });
+  }, [data]);
+
   if (data.length < 2) return <div style={{ height: H }} />;
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -64,11 +80,15 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full overflow-visible cursor-crosshair"
+        className="w-full overflow-visible cursor-crosshair select-none"
         height={H}
         preserveAspectRatio="none"
+        style={{ touchAction: "none" }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setTooltip(null)}
+        onTouchStart={handleTouch}
+        onTouchMove={handleTouch}
+        onTouchEnd={() => setTooltip(null)}
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

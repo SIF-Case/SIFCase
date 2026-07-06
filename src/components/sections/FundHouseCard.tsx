@@ -121,6 +121,21 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
     [pts]
   );
 
+  const handleTouch = useCallback(
+    (e: React.TouchEvent<SVGSVGElement>) => {
+      const svg = svgRef.current;
+      if (!svg || pts.length < 2) return;
+      const rect = svg.getBoundingClientRect();
+      const touch = e.touches[0];
+      if (!touch) return;
+      const rawX = ((touch.clientX - rect.left) / rect.width) * W;
+      const frac = (rawX - PL) / (W - PL - PR);
+      const idx = Math.min(pts.length - 1, Math.max(0, Math.round(frac * (pts.length - 1))));
+      setTip({ x: pts[idx].x, y: pts[idx].y, idx });
+    },
+    [pts]
+  );
+
   if (data.length < 2) {
     return <div className="h-full flex items-center justify-center text-[12px] text-faint">Insufficient data</div>;
   }
@@ -131,9 +146,13 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        className="w-full h-full cursor-crosshair overflow-visible"
+        className="w-full h-full cursor-crosshair overflow-visible select-none"
+        style={{ touchAction: "none" }}
         onMouseMove={handleMove}
         onMouseLeave={() => setTip(null)}
+        onTouchStart={handleTouch}
+        onTouchMove={handleTouch}
+        onTouchEnd={() => setTip(null)}
       >
         <defs>
           <linearGradient id="nav-mini-grad" x1="0" y1="0" x2="0" y2="1">
@@ -264,7 +283,7 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
 
       {/* Returns strip + actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-t border-rule">
-        <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto">
+        <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto [-webkit-overflow-scrolling:touch]">
           <ReturnStat label="YTD" value={ytd} />
           <ReturnStat label="1M" value={fund.returns["1M"]} />
           <ReturnStat label="3M" value={fund.returns["3M"]} />

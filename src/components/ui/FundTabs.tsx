@@ -56,7 +56,7 @@ export function FundTabs({
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex items-center border-b border-[#E2E8EE] px-2 overflow-x-auto">
+      <div className="flex items-center border-b border-[#E2E8EE] px-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
         {TABS.map((tab) => (
           <button
             key={tab.key}
