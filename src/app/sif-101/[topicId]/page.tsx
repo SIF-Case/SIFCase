@@ -14,7 +14,7 @@ export async function generateStaticParams() {
   await connectDB();
   const articles = await Article.find({ 
     status: "published", 
-    subcategory: "SIF Education" 
+    category: "SIF Education" 
   })
     .select("slug")
     .lean();
@@ -31,7 +31,7 @@ export async function generateMetadata({
   const article = await Article.findOne({ 
     slug: topicId, 
     status: "published", 
-    subcategory: "SIF Education" 
+    category: "SIF Education" 
   })
     .select("title excerpt")
     .lean();
@@ -54,7 +54,7 @@ export default async function TopicDetailPage({
   // Fetch all published SIF Education articles for navigation
   const allArticles = await Article.find({ 
     status: "published", 
-    subcategory: "SIF Education" 
+    category: "SIF Education" 
   })
     .sort({ order: 1, publishedAt: -1 })
     .select("slug title excerpt readTime")
@@ -64,7 +64,7 @@ export default async function TopicDetailPage({
   const currentArticle = await Article.findOne({ 
     slug: topicId, 
     status: "published", 
-    subcategory: "SIF Education" 
+    category: "SIF Education" 
   })
     .select("slug title excerpt content readTime publishedAt tags")
     .lean();

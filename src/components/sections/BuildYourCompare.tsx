@@ -137,7 +137,7 @@ export function BuildYourCompare({ funds }: Props) {
   if (funds.length === 0) return null;
 
   return (
-    <section className="bg-[#f8f9fb] py-[84px] px-6 lg:px-[82px] flex flex-col items-start gap-[46px] w-full border-b border-rule">
+    <section className="bg-[#f8f9fb] py-12 md:py-[84px] px-4 sm:px-6 lg:px-[82px] flex flex-col items-start gap-8 md:gap-[46px] w-full border-b border-rule">
       {/* Section Header */}
       <div className="flex flex-col gap-3 pl-0 lg:pl-[30px] self-stretch w-full max-w-[1320px] mx-auto">
         <p className="text-[15px] font-normal uppercase text-black tracking-[0.2px]">
@@ -154,7 +154,7 @@ export function BuildYourCompare({ funds }: Props) {
       {/* Lab Card */}
       <div className="max-w-[1320px] mx-auto w-full rounded-[17.44px] bg-white shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
         {/* Nav bar */}
-        <div className="flex items-center gap-[40px] p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white flex-wrap md:flex-nowrap">
+        <div className="flex items-center gap-4 sm:gap-[40px] p-4 sm:p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white flex-wrap md:flex-nowrap">
           <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full max-w-[348px] h-[40px] box-border">
             {(["Cumulative", "Drawdown", "Rolling", "Volatility"] as const).map((type) => (
               <button
@@ -189,9 +189,9 @@ export function BuildYourCompare({ funds }: Props) {
         </div>
 
         {/* Fund tags */}
-        <div className="flex items-center gap-2 p-[14px_22px_10px] flex-wrap border-b border-[#f1f2f4]">
+        <div className="flex items-center gap-2 p-[14px_22px_10px] overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap border-b border-[#f1f2f4] [-webkit-overflow-scrolling:touch]">
           {selected.map((f, i) => (
-            <div key={f.schemeCode} className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151]">
+            <div key={f.schemeCode} className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151] shrink-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
               <span className="text-[12px] font-medium text-[#374151] whitespace-nowrap">{shortName(f.name)}</span>
               <button
@@ -204,7 +204,7 @@ export function BuildYourCompare({ funds }: Props) {
             </div>
           ))}
           {picked.length < 5 && (
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setAddOpen((o) => !o)}
                 className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all"
@@ -232,9 +232,9 @@ export function BuildYourCompare({ funds }: Props) {
 
         {/* Chart area */}
         {series.length > 0 && chartData.length > 1 ? (
-          <div className="flex items-stretch p-[16px_22px_0] gap-0 flex-1 min-h-[350px]">
-            <div className="flex-1 w-full h-[320px]">
-              <ResponsiveContainer width="100%" height={320}>
+          <div className="flex items-stretch p-[16px_12px_0] sm:p-[16px_22px_0] gap-0 flex-1 min-h-[280px] sm:min-h-[350px]">
+            <div className="flex-1 w-full h-[260px] sm:h-[320px] touch-none select-none">
+              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                   <defs>
                     {series.map((s) => (
@@ -269,7 +269,7 @@ export function BuildYourCompare({ funds }: Props) {
         )}
 
         {/* Legend + source */}
-        <div className="flex items-center justify-end gap-2 p-[12px_22px_18px] border-t border-[#f1f2f4] mt-2">
+        <div className="flex items-center justify-end flex-wrap gap-2 p-[12px_16px_18px] sm:p-[12px_22px_18px] border-t border-[#f1f2f4] mt-2">
           <span className="text-[#6b7280] text-[11px] font-medium tracking-[0.3px] uppercase">{viewLabel}</span>
           <span className="text-[#d1d5db] text-[11px]">|</span>
           <span className="text-[#6b7280] text-[11px] font-medium tracking-[0.3px] uppercase">AMFI</span>
@@ -281,13 +281,13 @@ export function BuildYourCompare({ funds }: Props) {
       {/* Presets + compare tray */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full max-w-[1320px] mx-auto pl-0 lg:pl-[30px]">
         {/* Presets bar */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <span className="text-[11px] font-semibold tracking-[0.5px] text-[#9ca3af] uppercase mr-1">PRESETS</span>
+        <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap w-full sm:w-auto [-webkit-overflow-scrolling:touch]">
+          <span className="text-[11px] font-semibold tracking-[0.5px] text-[#9ca3af] uppercase mr-1 shrink-0">PRESETS</span>
           {PRESETS.map((p) => (
             <button
               key={p.id}
               onClick={() => applyPreset(p.id)}
-              className="flex items-center gap-[5px] py-[8px] px-[16px] rounded-[24px] border border-[#e5e7eb] bg-white text-[13px] font-medium text-[#374151] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all duration-150"
+              className="flex items-center gap-[5px] py-[8px] px-[16px] rounded-[24px] border border-[#e5e7eb] bg-white text-[13px] font-medium text-[#374151] hover:border-[#3b8bb1] hover:text-[#3b8bb1] cursor-pointer transition-all duration-150 shrink-0 whitespace-nowrap"
             >
               <span className="text-[11px] line-height-1">{p.icon}</span>
               {p.label}

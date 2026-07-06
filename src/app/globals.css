@@ -116,6 +116,15 @@ button, a, [role="button"], input, select {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Hide scrollbar for touch-swipeable rows (fund tags, presets, nav pills) */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Ticker ribbon scroll */
 @keyframes ticker-scroll {
   0%   { transform: translateX(0); }
@@ -976,6 +985,37 @@ button, a, [role="button"], input, select {
 }
 .soc:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-glow); }
 
+@media (max-width: 640px) {
+  .footer-top {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px 20px;
+    gap: 16px;
+  }
+  .newsletter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .nl-form {
+    flex-direction: column;
+    width: 100%;
+    border-radius: 8px;
+  }
+  .nl-input {
+    width: 100%;
+    border-bottom: 0.5px solid var(--border-strong);
+  }
+  .nl-btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .social-row {
+    justify-content: space-between;
+  }
+}
+
 /* ── MAIN GRID ── */
 .footer-main {
   padding: 44px 36px 36px;
@@ -1169,4 +1209,4 @@ button, a, [role="button"], input, select {
   border-radius: 2px; overflow: hidden;
   flex-shrink: 0;
 }
-.flag span { flex: 1; display: block; } 
+.flag span { flex: 1; display: block; }

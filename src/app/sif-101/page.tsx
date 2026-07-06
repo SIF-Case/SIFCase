@@ -29,11 +29,11 @@ export type SifEducationArticle = {
 export default async function SIF101Page() {
   const tickerNavs = await getTickerNavs();
 
-  // Fetch published articles with subcategory "SIF Education"
+  // Fetch published articles with category "SIF Education"
   await connectDB();
   const rawArticles = await Article.find({ 
     status: "published", 
-    subcategory: "SIF Education" 
+    category: "SIF Education" 
   })
     .sort({ order: 1, publishedAt: -1 })
     .select("slug title excerpt readTime coverDesktop coverMobile publishedAt")

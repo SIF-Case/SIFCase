@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       if (article.category === "General News" || article.category === "Fund Houses") {
         revalidatePath("/news");
       }
-      if (article.subcategory === "SIF Education") {
+      if (article.category === "SIF Education") {
         revalidatePath("/sif-101");
         revalidatePath(`/sif-101/${article.slug}`);
       }

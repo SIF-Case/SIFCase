@@ -74,8 +74,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // ── Revalidation: compare OLD vs NEW state, not just new ──
     const wasPublished = existing.status === "published";
     const isPublished = article.status === "published";
-    const wasSifEdu = existing.subcategory === "SIF Education";
-    const isSifEdu = article.subcategory === "SIF Education";
+    const wasSifEdu = existing.category === "SIF Education";
+    const isSifEdu = article.category === "SIF Education";
     const wasNews = existing.category === "General News" || existing.category === "Fund Houses";
     const isNews = article.category === "General News" || article.category === "Fund Houses";
     const slugChanged = existing.slug !== article.slug;
@@ -122,7 +122,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       if (article.category === "General News" || article.category === "Fund Houses") {
         revalidatePath("/news");
       }
-      if (article.subcategory === "SIF Education") {
+      if (article.category === "SIF Education") {
         revalidatePath("/sif-101");
       }
       revalidatePath(`/read/${article.slug}`);
