@@ -205,12 +205,12 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
             <h3 className="mt-0.5 text-[15px] font-bold text-heading">Multi-fund NAV visualiser</h3>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap max-w-full [-webkit-overflow-scrolling:touch]">
           <Toggle active={view} options={["Cumulative", "Drawdown", "Rolling", "Volatility"] as const} onChange={setView} />
           <Toggle active={period} options={periods} onChange={setPeriod} />
           <button
             onClick={() => setShowCategoryAvg((v) => !v)}
-            className={`h-7 px-3 inline-flex items-center rounded-full border text-[11px] transition-colors ${
+            className={`h-7 px-3 inline-flex items-center rounded-full border text-[11px] transition-colors shrink-0 whitespace-nowrap ${
               showCategoryAvg ? "bg-brand-navy text-white border-brand-navy" : "bg-white text-muted border-rule hover:text-body hover:border-rule-strong"
             }`}
           >
@@ -391,10 +391,10 @@ function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }
 
 function Toggle<T extends string>({ active, options, onChange }: { active: T; options: readonly T[]; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex items-center bg-surface border border-rule rounded-full p-0.5">
+    <div className="inline-flex items-center bg-surface border border-rule rounded-full p-0.5 shrink-0">
       {options.map((o) => (
         <button key={o} onClick={() => onChange(o)}
-          className={`h-7 px-3 text-[11px] font-semibold rounded-full transition-all whitespace-nowrap ${
+          className={`h-7 px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all whitespace-nowrap ${
             active === o ? "bg-primary text-white shadow-btn" : "text-muted hover:text-body"
           }`}>
           {o}

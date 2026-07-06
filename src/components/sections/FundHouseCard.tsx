@@ -63,11 +63,11 @@ const CATEGORY_BADGE: Record<string, string> = {
 
 function ReturnStat({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="flex flex-col gap-0.5 flex-1 min-w-[62px] pr-4 last:pr-0">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-faint">{label}</span>
+    <div className="flex flex-col gap-0.5 flex-1 min-w-[56px] sm:min-w-[62px] pr-3 sm:pr-4 last:pr-0">
+      <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-faint whitespace-nowrap">{label}</span>
       <span
         className={cn(
-          "text-[16px] font-bold nums",
+          "text-[13px] sm:text-[16px] font-bold nums whitespace-nowrap",
           value === null ? "text-muted" : value >= 0 ? "text-gain" : "text-loss"
         )}
       >
@@ -80,8 +80,8 @@ function ReturnStat({ label, value }: { label: string; value: number | null }) {
 function MetricItem({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[13px] text-muted">{label}</span>
-      <span className={cn("text-[13px] font-semibold", negative ? "text-loss" : "text-heading")}>{value}</span>
+      <span className="text-[12px] sm:text-[13px] text-muted">{label}</span>
+      <span className={cn("text-[12px] sm:text-[13px] font-semibold", negative ? "text-loss" : "text-heading")}>{value}</span>
     </div>
   );
 }
@@ -121,21 +121,6 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
     [pts]
   );
 
-  const handleTouch = useCallback(
-    (e: React.TouchEvent<SVGSVGElement>) => {
-      const svg = svgRef.current;
-      if (!svg || pts.length < 2) return;
-      const rect = svg.getBoundingClientRect();
-      const touch = e.touches[0];
-      if (!touch) return;
-      const rawX = ((touch.clientX - rect.left) / rect.width) * W;
-      const frac = (rawX - PL) / (W - PL - PR);
-      const idx = Math.min(pts.length - 1, Math.max(0, Math.round(frac * (pts.length - 1))));
-      setTip({ x: pts[idx].x, y: pts[idx].y, idx });
-    },
-    [pts]
-  );
-
   if (data.length < 2) {
     return <div className="h-full flex items-center justify-center text-[12px] text-faint">Insufficient data</div>;
   }
@@ -146,13 +131,9 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        className="w-full h-full cursor-crosshair overflow-visible select-none"
-        style={{ touchAction: "none" }}
+        className="w-full h-full cursor-crosshair overflow-visible"
         onMouseMove={handleMove}
         onMouseLeave={() => setTip(null)}
-        onTouchStart={handleTouch}
-        onTouchMove={handleTouch}
-        onTouchEnd={() => setTip(null)}
       >
         <defs>
           <linearGradient id="nav-mini-grad" x1="0" y1="0" x2="0" y2="1">
@@ -241,13 +222,13 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
               </span>
             )}
           </div>
-          <h3 className="text-[16px] font-bold text-white leading-tight tracking-tight">{fund.fundName}</h3>
+          <h3 className="text-[14px] sm:text-[16px] font-bold text-white leading-snug sm:leading-tight tracking-tight break-words">{fund.fundName}</h3>
         </div>
 
         <div className="text-left sm:text-right shrink-0">
-          <span className="block text-[20px] font-extrabold text-white nums">₹{fund.nav.toFixed(4)}</span>
+          <span className="block text-[17px] sm:text-[20px] font-extrabold text-white nums">₹{fund.nav.toFixed(4)}</span>
           {dayChange && (
-            <span className={cn("block text-[12px] font-semibold nums mt-0.5", dayChange.change >= 0 ? "text-gain" : "text-loss")}>
+            <span className={cn("block text-[11px] sm:text-[12px] font-semibold nums mt-0.5", dayChange.change >= 0 ? "text-gain" : "text-loss")}>
               {dayChange.change >= 0 ? "+" : ""}₹{dayChange.change.toFixed(4)} ({dayChange.pct >= 0 ? "+" : ""}
               {dayChange.pct.toFixed(2)}%)
             </span>
@@ -258,7 +239,7 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
       {/* NAV chart */}
       <div className="px-5 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-          <span className="text-[12px] font-semibold uppercase tracking-wider text-muted">NAV History · Source: AMFI</span>
+          <span className="text-[10.5px] sm:text-[12px] font-semibold uppercase tracking-wider text-muted">NAV History · Source: AMFI</span>
           <div className="flex items-center gap-1">
             {CHART_PERIODS.map((p) => (
               <button
@@ -283,7 +264,7 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
 
       {/* Returns strip + actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-t border-rule">
-        <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+        <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto">
           <ReturnStat label="YTD" value={ytd} />
           <ReturnStat label="1M" value={fund.returns["1M"]} />
           <ReturnStat label="3M" value={fund.returns["3M"]} />
