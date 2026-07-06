@@ -98,9 +98,10 @@ type Props = {
   funds: FundRow[];
   initialPicked?: string[];
   controlled?: boolean;
+  onPeriodChange?: (p: PeriodKey) => void;
 };
 
-export function CompareLab({ funds, initialPicked, controlled }: Props) {
+export function CompareLab({ funds, initialPicked, controlled, onPeriodChange }: Props) {
   const [picked, setPicked] = useState<string[]>(() =>
     initialPicked?.length ? initialPicked : funds.slice(0, 3).map((f) => f.schemeCode),
   );
@@ -110,6 +111,10 @@ export function CompareLab({ funds, initialPicked, controlled }: Props) {
   }, [controlled, initialPicked?.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [period, setPeriod] = useState<PeriodKey>("SI");
+
+  useEffect(() => {
+    onPeriodChange?.(period);
+  }, [period]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view, setView] = useState<View>("Cumulative");
   const [addOpen, setAddOpen] = useState(false);
   const [showCategoryAvg, setShowCategoryAvg] = useState(false);

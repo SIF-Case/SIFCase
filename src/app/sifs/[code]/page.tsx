@@ -31,6 +31,73 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function NavActionCard({
+  fund,
+  navChange,
+  navChangePositive,
+  navChangePct,
+  fundDetails,
+  className,
+}: {
+  fund: any;
+  navChange: number | null;
+  navChangePositive: boolean;
+  navChangePct: number | null;
+  fundDetails: any;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-[14px] border border-white/[0.07] bg-[#0E2A47] p-5 ${className ?? ""}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-white/[0.38] mb-1.5">
+        Latest NAV
+      </div>
+      <div className="text-[30px] font-bold text-white leading-none tracking-[-0.9px]">
+        ₹{fund.nav.toFixed(4)}
+      </div>
+      <div className="flex items-center gap-2 mt-2 mb-0.5">
+        {navChange !== null && (
+          <span className={`text-[14px] font-semibold ${navChangePositive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
+            {navChangePositive ? "+" : ""}₹{Math.abs(navChange).toFixed(4)}
+            {navChangePct !== null && ` (${navChangePositive ? "+" : ""}${navChangePct.toFixed(2)}%)`}
+          </span>
+        )}
+        <span className="text-[12px] text-white/[0.38]">{fund.navDate}</span>
+      </div>
+
+      {/* Sidebar stats */}
+      <div className="mt-4 space-y-0 border-t border-white/[0.07] pt-2">
+        {[
+          { label: "AUM", value: fmtCr(fund.aum) },
+          { label: "Min investment", value: fmtInr(fundDetails?.minInvestment ?? null) },
+          { label: "Exit load", value: fundDetails?.exitLoad ?? "—" },
+          { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : "—" },
+          { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.07] last:border-0">
+            <span className="text-[13px] text-white/[0.42]">{label}</span>
+            <span className="text-[13px] font-medium text-white">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA buttons */}
+      <div className="mt-4 space-y-2">
+        <button className="w-full h-10 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors">
+          Invest Online
+        </button>
+        <Link
+          href="/compare"
+          className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
+        >
+          <Plus className="size-3.5" />
+          Add to compare
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+
 function fmtPct(v: number | null, decimals = 2): string | null {
   if (v === null) return null;
   return `${v >= 0 ? "+" : ""}${v.toFixed(decimals)}%`;
@@ -623,6 +690,16 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 />
               </div>
 
+              <div className="block lg:hidden">
+                <NavActionCard
+                  fund={fund}
+                  navChange={navChange}
+                  navChangePositive={navChangePositive}
+                  navChangePct={navChangePct}
+                  fundDetails={fundDetails}
+                />
+              </div>
+
               {/* ── Category comparison ───────────────────────────────────── */}
               {compBars.length > 0 && (
                 <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">
@@ -881,53 +958,14 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
             <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 lg:self-start lg:ml-auto">
 
               {/* NAV Action Card */}
-              <div className="rounded-[14px] border border-white/[0.07] bg-[#0E2A47] p-5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-white/[0.38] mb-1.5">
-                  Latest NAV
-                </div>
-                <div className="text-[30px] font-bold text-white leading-none tracking-[-0.9px]">
-                  ₹{fund.nav.toFixed(4)}
-                </div>
-                <div className="flex items-center gap-2 mt-2 mb-0.5">
-                  {navChange !== null && (
-                    <span className={`text-[14px] font-semibold ${navChangePositive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
-                      {navChangePositive ? "+" : ""}₹{Math.abs(navChange).toFixed(4)}
-                      {navChangePct !== null && ` (${navChangePositive ? "+" : ""}${navChangePct.toFixed(2)}%)`}
-                    </span>
-                  )}
-                  <span className="text-[12px] text-white/[0.38]">{fund.navDate}</span>
-                </div>
-
-                {/* Sidebar stats */}
-                <div className="mt-4 space-y-0 border-t border-white/[0.07] pt-2">
-                  {[
-                    { label: "AUM", value: fmtCr(fund.aum) },
-                    { label: "Min investment", value: fmtInr(fundDetails?.minInvestment ?? null) },
-                    { label: "Exit load", value: fundDetails?.exitLoad ?? "—" },
-                    { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : "—" },
-                    { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.07] last:border-0">
-                      <span className="text-[13px] text-white/[0.42]">{label}</span>
-                      <span className="text-[13px] font-medium text-white">{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA buttons */}
-                <div className="mt-4 space-y-2">
-                  <button className="w-full h-10 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors">
-                    Invest Online
-                  </button>
-                  <Link
-                    href="/compare"
-                    className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="size-3.5" />
-                    Add to compare
-                  </Link>
-                </div>
-              </div>
+              <NavActionCard
+                fund={fund}
+                navChange={navChange}
+                navChangePositive={navChangePositive}
+                navChangePct={navChangePct}
+                fundDetails={fundDetails}
+                className="hidden lg:block"
+              />
 
               {/* Scheme Information */}
               <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">

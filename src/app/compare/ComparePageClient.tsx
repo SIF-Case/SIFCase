@@ -7,7 +7,6 @@ import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { CompareLab } from "@/components/sections/CompareLab";
 import { Sparkline } from "@/components/ui/Sparkline";
 
-const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
 
 const SECTION_ROWS: {
   section: string;
@@ -232,7 +231,7 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
             <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Performance Lab</div>
             <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">NAV chart comparison</h2>
           </div>
-          <CompareLab funds={selected} initialPicked={selected.map((f) => f.schemeCode)} controlled />
+          <CompareLab funds={selected} initialPicked={selected.map((f) => f.schemeCode)} controlled onPeriodChange={setPeriod} />
         </section>
       )}
 
@@ -243,17 +242,6 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
             <div>
               <div className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Side-by-Side</div>
               <h2 className="text-[24px] font-bold text-heading tracking-[-0.3px]">Full comparison</h2>
-            </div>
-            <div className="flex items-center gap-1 bg-white border border-rule rounded-full p-1">
-              {PERIODS.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${period === p ? "bg-primary text-white" : "text-muted hover:text-heading"}`}
-                >
-                  {p}
-                </button>
-              ))}
             </div>
           </div>
 

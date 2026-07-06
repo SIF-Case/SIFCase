@@ -105,7 +105,7 @@ export function Navbar() {
                   </span>
                   {fundHousesOpen && (
                     <div
-                      className="absolute left-0 top-full mt-2.5 z-30 bg-white border border-[#e5e7eb] rounded-[14px] shadow-[0_14px_40px_rgba(11,31,58,0.10)] py-1.5 w-[480px] max-h-80 overflow-y-auto"
+                      className="absolute left-0 top-full mt-2.5 z-30 bg-white border border-[#e5e7eb] rounded-[14px] shadow-[0_14px_40px_rgba(11,31,58,0.10)] py-1.5 w-[480px] max-h-80 overflow-y-auto [-webkit-overflow-scrolling:touch]"
                       onMouseLeave={() => setFundHousesOpen(false)}
                     >
                       <a
@@ -276,7 +276,7 @@ export function Navbar() {
                       {brandNames.length === 0 ? (
                         <div className="px-3 py-2 text-[12px] text-[#64748B]">Loading…</div>
                       ) : (
-                        <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                        <div className="flex flex-col gap-1 max-h-60 overflow-y-auto [-webkit-overflow-scrolling:touch]">
                           {brandNames.map(({ brandName, companyName_short }) => (
                             <a
                               key={brandName}
