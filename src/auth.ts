@@ -5,8 +5,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
-import { verifyFirebaseToken } from "@/lib/firebaseAdmin";
-import { consumeEmailOtp } from "@/lib/otp";
+import { consumeEmailOtp, consumePhoneOtp } from "@/lib/otp";
 import { logClientActivity } from "@/lib/activityLogger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -68,28 +67,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
     Credentials({
-      id: "phone",
-      credentials: { idToken: { label: "Firebase ID Token" } },
+      id: "phone-otp",
+      credentials: {
+        phone: { label: "Phone" },
+        otp: { label: "OTP" },
+      },
       async authorize(credentials) {
-        if (!credentials?.idToken) return null;
-        const decoded = await verifyFirebaseToken(credentials.idToken as string);
-        if (!decoded?.phone_number) return null;
+        if (!credentials?.phone || !credentials?.otp) return null;
+        const phone = credentials.phone as string;
+        const result = await consumePhoneOtp(phone, credentials.otp as string);
+        if (!result.ok) return null;
         await connectDB();
-        let user = await User.findOne({ phone: decoded.phone_number });
+        let user = await User.findOne({ phone });
         if (!user) {
-          user = await User.create({ phone: decoded.phone_number, name: decoded.phone_number });
+          user = await User.create({ phone, name: phone });
           try {
-            await logClientActivity(user._id.toString(), "Create User", "Registered user account via Phone/Firebase Login");
+            await logClientActivity(user._id.toString(), "Create User", "Registered user account via Phone/SMS Login");
           } catch (err) {
             console.error("Phone sign up client logger error:", err);
           }
         }
         return {
           id: user._id.toString(),
-          name: user.name ?? decoded.phone_number,
+          name: user.name ?? phone,
           email: user.email ?? null,
           image: user.image ?? null,
-          phone: decoded.phone_number,
+          phone,
         };
       },
     }),

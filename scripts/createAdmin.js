@@ -58,10 +58,8 @@ async function main() {
     }
 
     console.log('\nNext steps:');
-    console.log('1. Enable Phone Auth in Firebase Console (Authentication > Sign-in method > Phone)');
-    console.log(`2. Add ${phone} as a test number with OTP: 123456`);
-    console.log('3. Log in on the website using that phone number and OTP 123456');
-    console.log('4. Go to http://localhost:3000/admin');
+    console.log(`1. Log in on the website using ${phone} — an OTP will be sent via Fast2SMS`);
+    console.log('2. Go to http://localhost:3000/admin');
   } catch (err) {
     console.error('Error:', err.message);
   } finally {

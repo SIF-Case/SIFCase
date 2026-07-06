@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
-import { issueEmailOtp, maskEmail } from "@/lib/otp";
+import { issueEmailOtp, issuePhoneOtp, maskEmail } from "@/lib/otp";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -21,5 +21,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ channel: "phone" });
+  try {
+    const result = await issuePhoneOtp(phone);
+    if (!result.ok) return NextResponse.json({ error: "Please wait a moment before requesting another code" }, { status: 429 });
+    return NextResponse.json({ channel: "phone" });
+  } catch {
+    return NextResponse.json({ error: "Couldn't send the code, try again" }, { status: 500 });
+  }
 }

@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { signIn, getSession, useSession } from "next-auth/react";
 import { X, Loader2, Phone, Mail, ArrowLeft } from "lucide-react";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase";
 
 const COUNTRIES = [
   { code: "IN", dial: "+91", flag: "🇮🇳", name: "India" },
@@ -26,7 +24,7 @@ const COUNTRIES = [
 
 type Stage =
   | "phone"            // enter phone number
-  | "verify-phone"     // SMS OTP entry (Firebase) — new/unknown numbers, or known numbers without an email
+  | "verify-phone"     // SMS OTP entry (Fast2SMS) — new/unknown numbers, or known numbers without an email
   | "verify-email"     // email OTP entry — returning users with a verified email (no SMS sent)
   | "link"             // phone verified, no email yet — choose Google or Email
   | "link-email-form"  // name + email entry
@@ -63,9 +61,6 @@ export function AuthModal({ open, onClose, reason }: Props) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
-  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
-  const captchaContainerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const fullPhone = `${country.dial}${phone.replace(/\D/g, "")}`;
@@ -73,27 +68,6 @@ export function AuthModal({ open, onClose, reason }: Props) {
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  // Initialize reCAPTCHA only when modal opens AND we're about to send phone OTP
-  const initRecaptcha = () => {
-    if (recaptchaRef.current || !captchaContainerRef.current) return;
-    try {
-      captchaContainerRef.current.innerHTML = "";
-    } catch {}
-    recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, captchaContainerRef.current, { size: "invisible" });
-  };
-
-  // Cleanup reCAPTCHA when modal closes
-  useEffect(() => {
-    if (!open && recaptchaRef.current) {
-      try {
-        recaptchaRef.current.clear();
-      } catch (e) {
-        console.warn("reCAPTCHA cleanup ignored:", e);
-      }
-      recaptchaRef.current = null;
-    }
   }, [open]);
 
   useEffect(() => {
@@ -110,14 +84,6 @@ export function AuthModal({ open, onClose, reason }: Props) {
   }
 
   function handleClose() { reset(); onClose(); }
-
-  async function sendPhoneOtp() {
-    initRecaptcha(); // Initialize only when actually needed
-    const result = await signInWithPhoneNumber(firebaseAuth, fullPhone, recaptchaRef.current!);
-    confirmationRef.current = result;
-    setStage("verify-phone");
-    setResendIn(RESEND_COOLDOWN);
-  }
 
   async function submitPhone() {
     setError("");
@@ -136,10 +102,10 @@ export function AuthModal({ open, onClose, reason }: Props) {
       if (data.channel === "email") {
         setMaskedEmail(data.masked ?? "");
         setStage("verify-email");
-        setResendIn(RESEND_COOLDOWN);
       } else {
-        await sendPhoneOtp();
+        setStage("verify-phone");
       }
+      setResendIn(RESEND_COOLDOWN);
     } catch (e: unknown) {
       setError((e as Error).message ?? "Failed to send code");
     } finally {
@@ -152,9 +118,7 @@ export function AuthModal({ open, onClose, reason }: Props) {
     setError(""); setOtp("");
     setLoading(true);
     try {
-      if (stage === "verify-phone") {
-        await sendPhoneOtp();
-      } else if (stage === "verify-email") {
+      if (stage === "verify-phone" || stage === "verify-email") {
         const res = await fetch("/api/auth/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -185,10 +149,8 @@ export function AuthModal({ open, onClose, reason }: Props) {
     if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
     setLoading(true);
     try {
-      const result = await confirmationRef.current!.confirm(otp);
-      const idToken = await result.user.getIdToken();
-      const res = await signIn("phone", { idToken, redirect: false });
-      if (res?.error) throw new Error(res.error);
+      const res = await signIn("phone-otp", { phone: fullPhone, otp, redirect: false });
+      if (res?.error) throw new Error("Invalid code");
       const freshSession = await getSession();
       if (freshSession?.user?.isAdmin) {
         window.location.href = "/admin";
@@ -284,8 +246,6 @@ export function AuthModal({ open, onClose, reason }: Props) {
       onClick={(e) => { if (e.target === overlayRef.current) handleClose(); }}
     >
       <div className="w-full max-w-[400px] bg-white rounded-[20px] shadow-premium p-6 relative">
-        {open && <div ref={captchaContainerRef} />}
-
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 p-1.5 rounded-full text-muted hover:text-heading hover:bg-surface transition-colors"
