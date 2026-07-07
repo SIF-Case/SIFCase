@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, LogOut, User, ChevronDown, Search } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { SearchModal } from "./SearchModal";
 const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Explore Funds", href: "/sifs" },
@@ -23,6 +24,7 @@ export function Navbar() {
   const [fundHousesOpen, setFundHousesOpen] = useState(false);
   const [mobileFundHousesOpen, setMobileFundHousesOpen] = useState(false);
   const [brandNames, setBrandNames] = useState<{ brandName: string; companyName_short: string }[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const fundHousesRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
 
@@ -40,6 +42,17 @@ export function Navbar() {
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
   const pathname = usePathname();
@@ -161,12 +174,20 @@ export function Navbar() {
           {/* Desktop right — search + auth */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             {/* Search box */}
-            <div className="flex items-center gap-2 px-[14px] py-[6px] border border-[#e5e7eb] rounded-[8px] bg-[#f9fafb] min-w-[200px] cursor-text">
-              <Search className="w-3.5 h-3.5 text-[#9ca3af] flex-shrink-0" strokeWidth={2} />
-              <span className="text-[13px] text-[#9ca3af] leading-[24px]">
-                Search funds, topics etc
-              </span>
-            </div>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center justify-between gap-4 px-[14px] py-[6px] border border-[#e5e7eb] rounded-[8px] bg-[#f9fafb] min-w-[220px] cursor-pointer hover:bg-[#f3f4f6] text-left transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5 text-[#9ca3af] flex-shrink-0" strokeWidth={2} />
+                <span className="text-[13px] text-[#9ca3af] leading-[24px]">
+                  Search funds, topics etc
+                </span>
+              </div>
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#E2E8F0] bg-white text-[9px] font-semibold text-[#64748B] tracking-wide select-none">
+                ⌘K
+              </kbd>
+            </button>
 
             {user ? (
               <div className="relative">
@@ -227,14 +248,23 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded-full text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {/* Mobile search + hamburger */}
+          <div className="flex md:hidden items-center gap-1.5">
+            <button
+              className="p-2 rounded-full text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <button
+              className="p-2 rounded-full text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}
@@ -345,6 +375,7 @@ export function Navbar() {
       </header>
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }

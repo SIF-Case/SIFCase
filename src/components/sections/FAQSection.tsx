@@ -86,10 +86,17 @@ export function FAQSection({ groups }: { groups: FaqGroup[] }) {
             const key = `${active.category}-${i}`;
             const isOpen = openKey === key;
             return (
-              <div key={key} className="rounded-[14px] border border-rule bg-white overflow-hidden shadow-card hover:shadow-premium transition-shadow">
+              <div
+                key={key}
+                className={`rounded-[14px] border border-rule overflow-hidden shadow-card transition-all duration-200 ${
+                  isOpen ? "bg-[#ecf4f1]" : "bg-white"
+                }`}
+              >
                 <button
                   onClick={() => setOpenKey(isOpen ? null : key)}
-                  className="w-full flex justify-between items-center py-4 sm:py-5 px-4 sm:px-6 bg-transparent border-0 cursor-pointer text-left gap-3 sm:gap-4 hover:bg-surface/50 transition-colors"
+                  className={`w-full flex justify-between items-center py-4 sm:py-5 px-4 sm:px-6 bg-transparent border-0 cursor-pointer text-left gap-3 sm:gap-4 transition-colors ${
+                    isOpen ? "hover:bg-black/[0.03]" : "hover:bg-surface/50"
+                  }`}
                 >
                   <span className="text-heading text-[14px] sm:text-[15px] font-semibold leading-snug flex-1">
                     {item.question}

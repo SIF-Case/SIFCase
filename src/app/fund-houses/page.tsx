@@ -1,13 +1,13 @@
 /**
  * /fund-houses — listing page for all fund houses.
  *
- * Previously the Navbar linked here but no page existed, causing a hard
- * browser reload. This page renders all fund houses with clickable cards
- * that navigate client-side to /fund-house/[slug].
+ * Displays all AMCs with their branding (logo + overview) managed via the
+ * admin panel. Falls back to initials avatar when no logo is configured.
  */
 export const revalidate = 3600;
 
 import Link from "next/link";
+import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
@@ -15,6 +15,7 @@ import { Providers } from "@/app/providers";
 import { getTopFunds, getTickerNavs } from "@/lib/sifData";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
+import FundHouse from "@/models/FundHouse";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -39,35 +40,78 @@ interface FundHouseSummary {
   companyName: string;
   schemeCount: number;
   activeCount: number;
+  logoUrl: string;
+  overview: string;
 }
 
 async function getFundHouses(): Promise<FundHouseSummary[]> {
   await connectDB();
   const db = mongoose.connection.db!;
-  const rows = await db
-    .collection("sifschemes")
-    .aggregate([
-      { $match: { brandName: { $exists: true, $ne: "" } } },
-      {
-        $group: {
-          _id: "$brandName",
-          companyName: { $first: "$companyName" },
-          schemeCount: { $sum: 1 },
-          activeCount: {
-            $sum: { $cond: [{ $eq: ["$plan", "Regular"] }, 1, 0] },
+
+  const [rows, branding] = await Promise.all([
+    db
+      .collection("sifschemes")
+      .aggregate([
+        { $match: { brandName: { $exists: true, $ne: "" } } },
+        {
+          $group: {
+            _id: "$brandName",
+            companyName: { $first: "$companyName" },
+            schemeCount: { $sum: 1 },
+            activeCount: {
+              $sum: { $cond: [{ $eq: ["$plan", "Regular"] }, 1, 0] },
+            },
           },
         },
-      },
-      { $sort: { _id: 1 } },
-    ])
-    .toArray();
+        { $sort: { _id: 1 } },
+      ])
+      .toArray(),
+    FundHouse.find({}).lean(),
+  ]);
 
-  return rows.map((r) => ({
-    brandName: r._id as string,
-    companyName: (r.companyName as string) || (r._id as string),
-    schemeCount: r.schemeCount as number,
-    activeCount: r.activeCount as number,
-  }));
+  const brandingMap = new Map(branding.map((b) => [b.brandName, b]));
+
+  return rows.map((r) => {
+    const b = brandingMap.get(r._id as string);
+    return {
+      brandName: r._id as string,
+      companyName: (r.companyName as string) || (r._id as string),
+      schemeCount: r.schemeCount as number,
+      activeCount: r.activeCount as number,
+      logoUrl: b?.logoUrl ?? "",
+      overview: b?.overview ?? "",
+    };
+  });
+}
+
+// ── Logo/Avatar component (server-rendered, with client error boundary via CSS)
+function FundLogo({
+  logoUrl,
+  brandName,
+}: {
+  logoUrl: string;
+  brandName: string;
+}) {
+  if (logoUrl) {
+    return (
+      <div className="size-12 rounded-[12px] bg-white border border-rule flex items-center justify-center overflow-hidden shrink-0">
+        <Image
+          src={logoUrl}
+          alt={brandName}
+          width={48}
+          height={48}
+          className="object-contain p-1"
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="size-12 rounded-[12px] bg-[#0C3B54] flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E] transition-colors">
+      <span className="text-[14px] font-extrabold text-white">
+        {initialsFor(brandName)}
+      </span>
+    </div>
+  );
 }
 
 export default async function FundHousesPage() {
@@ -121,11 +165,7 @@ export default async function FundHousesPage() {
                 >
                   {/* Logo avatar + name */}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="size-12 rounded-[12px] bg-[#0C3B54] flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E] transition-colors">
-                      <span className="text-[14px] font-extrabold text-white">
-                        {initialsFor(fh.brandName)}
-                      </span>
-                    </div>
+                    <FundLogo logoUrl={fh.logoUrl} brandName={fh.brandName} />
                     <div className="min-w-0">
                       <div className="text-[14px] font-bold text-heading leading-tight truncate group-hover:text-primary transition-colors">
                         {fh.brandName}
@@ -135,6 +175,13 @@ export default async function FundHousesPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Overview text (if set) */}
+                  {fh.overview && (
+                    <p className="text-[12px] text-body leading-relaxed mb-4 line-clamp-3">
+                      {fh.overview}
+                    </p>
+                  )}
 
                   {/* Stats row */}
                   <div className="flex items-center gap-3 flex-wrap text-[12px] text-muted border-t border-rule pt-3 mt-auto">

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { FundRow, SnapshotStats } from "@/lib/sifData";
 
 type SignalBar = "orange" | "white";
@@ -12,6 +13,7 @@ type FloatingStatCardProps = {
   trend?: string;
   showArrow?: boolean;
   bars?: SignalBar[];
+  href?: string;
 };
 
 const barColor = {
@@ -28,11 +30,10 @@ function FloatingStatCard({
   trend,
   showArrow = false,
   bars,
+  href,
 }: FloatingStatCardProps) {
-  return (
-    <article
-      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[4%] py-[4%] text-white ${className}`}
-    >
+  const content = (
+    <>
       <p className="text-[10px] font-semibold leading-[14px] tracking-wider text-white/70 uppercase sm:text-[12px]">{eyebrow}</p>
       <p className="mt-[6px] truncate text-[12px] font-bold leading-[18px] text-white sm:text-[14px]" title={title}>{title}</p>
 
@@ -76,6 +77,25 @@ function FloatingStatCard({
           ))}
         </div>
       )}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[4%] py-[4%] text-white transition-all hover:border-white hover:shadow-lg hover:scale-[1.02] cursor-pointer ${className}`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <article
+      className={`absolute overflow-hidden rounded-[12px] border border-white/50 px-[4%] py-[4%] text-white ${className}`}
+    >
+      {content}
     </article>
   );
 }
@@ -119,6 +139,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
         trend={oneMonthReturn != null ? `${oneMonthReturn >= 0 ? "+" : ""}${oneMonthReturn.toFixed(2)}%` : "+6.64%"}
         showArrow
         bars={riskBars}
+        href={topFund?.schemeCode ? `/sifs/${topFund.schemeCode.toLowerCase()}` : "/sifs"}
       />
 
       <FloatingStatCard
@@ -127,6 +148,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
         title={marketTitle}
         detail={`${amcCount} AMCs\nRegistered`}
         trend={avgReturnText}
+        href="/sifs"
       />
 
       <FloatingStatCard
@@ -135,6 +157,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
         title="Kotak Infinity Hybrid L'S"
         detail="Closes 29 jun"
         trend="NFO OPEN"
+        href="/nfos"
       />
     </div>
   );

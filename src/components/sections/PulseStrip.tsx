@@ -56,7 +56,7 @@ export function PulseStrip({ funds, monthLabels, topFunds }: Props) {
           )}
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        <div className="grid lg:grid-cols-[1fr_340px] gap-6">
           <div className="bg-white border border-rule rounded-[18px] overflow-hidden shadow-card">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px] border-collapse">
@@ -212,8 +212,8 @@ function LeaderRow({ f, val, tone }: { f: FundRow; val: number; tone: "positive"
   const valueColor = tone === "gold" ? (val >= 0 ? "text-gain" : "text-loss") : tone === "positive" ? "text-gain" : "text-loss";
   const spark = f.sparklines["SI"];
   return (
-    <li className="group flex items-center gap-2.5 py-1.5 px-1 rounded-md hover:bg-surface transition-colors">
-      <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="flex items-center gap-2.5 min-w-0 flex-1">
+    <li className="group flex items-center gap-2 py-1.5 px-1 rounded-md hover:bg-surface transition-colors">
+      <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="flex items-center gap-2 min-w-0 flex-1">
         <div className="min-w-0 flex-1">
           <div className="text-[12px] font-medium truncate text-body">
             {f.name.replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "").replace(/\s*(SIF|Fund)\s*$/i, "").trim().split(" ").slice(0, 3).join(" ")}
@@ -221,18 +221,18 @@ function LeaderRow({ f, val, tone }: { f: FundRow; val: number; tone: "positive"
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted truncate">{f.amc}</div>
         </div>
         {spark.length > 1 && (
-          <div className="w-12 h-5 shrink-0 opacity-70">
+          <div className="w-10 h-5 shrink-0 opacity-70">
             <Sparkline data={spark} stroke={val >= 0 ? "var(--color-gain)" : "var(--color-loss)"} />
           </div>
         )}
-        <div className={`tabular text-[12px] font-semibold w-14 text-right ${valueColor}`}>
+        <div className={`tabular text-[12px] font-semibold w-12 text-right shrink-0 ${valueColor}`}>
           {val >= 0 ? "+" : ""}{val.toFixed(2)}%
         </div>
       </Link>
       <button
         onClick={() => toggle(f.schemeCode)}
         title={inTray ? "Remove from compare" : "Add to compare"}
-        className={`size-6 inline-flex items-center justify-center rounded-md border transition ${
+        className={`size-6 shrink-0 inline-flex items-center justify-center rounded-md border transition ${
           inTray ? "bg-primary text-white border-primary" : "border-rule-strong text-muted hover:text-body hover:bg-surface"
         }`}
       >

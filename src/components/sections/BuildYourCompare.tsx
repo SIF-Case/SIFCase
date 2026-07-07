@@ -109,10 +109,17 @@ export function BuildYourCompare({ funds }: Props) {
   const [period, setPeriod] = useState<PeriodKey>("SI");
   const [view, setView] = useState<View>("Cumulative");
   const [addOpen, setAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toggle, has } = useCompareTray();
 
   const selected = picked.map((id) => funds.find((f) => f.schemeCode === id)!).filter(Boolean);
-  const addable = funds.filter((f) => !picked.includes(f.schemeCode));
+  const addable = funds
+    .filter((f) => !picked.includes(f.schemeCode))
+    .filter((f) => 
+      searchQuery === "" || 
+      shortName(f.name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   const series = useMemo(() => {
     return selected.map((f, i) => {
@@ -178,7 +185,7 @@ export function BuildYourCompare({ funds }: Props) {
       </div>
 
       {/* Lab Card */}
-      <div className="max-w-[1320px] mx-auto w-full rounded-[17.44px] bg-white shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+      <div className="max-w-[1320px] mx-auto w-full rounded-[17.44px] bg-white shadow-[0_2px_16px_0_rgba(0,0,0,0.08)] overflow-visible flex flex-col">
         {/* Nav bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-[40px] p-4 sm:p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white">
           <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full sm:max-w-[348px] box-border">
@@ -215,7 +222,9 @@ export function BuildYourCompare({ funds }: Props) {
         </div>
 
         {/* Fund tags */}
-        <div className="flex items-center gap-2 p-[14px_22px_10px] overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap border-b border-[#f1f2f4] [-webkit-overflow-scrolling:touch]">
+        <div className={`relative z-40 flex items-center gap-2 p-[14px_22px_10px] pb-[14px] no-scrollbar flex-nowrap sm:flex-wrap border-b border-[#f1f2f4] [-webkit-overflow-scrolling:touch] ${
+          addOpen ? "overflow-visible" : "overflow-x-auto overflow-y-visible"
+        }`}>
           {selected.map((f, i) => (
             <div key={f.schemeCode} className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151] shrink-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
@@ -230,7 +239,7 @@ export function BuildYourCompare({ funds }: Props) {
             </div>
           ))}
           {picked.length < 5 && (
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 z-[100]">
               <button
                 onClick={() => setAddOpen((o) => !o)}
                 className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-primary hover:text-primary cursor-pointer transition-all"
@@ -239,18 +248,26 @@ export function BuildYourCompare({ funds }: Props) {
                 Add fund
               </button>
               {addOpen && (
-                <div className="absolute z-30 top-full mt-2 left-0 w-72 bg-white border border-rule rounded-[14px] shadow-premium p-2 max-h-[280px] overflow-auto">
-                  {addable.length === 0 && <div className="px-3 py-2 text-[11px] text-muted">All funds added</div>}
-                  {addable.map((f) => (
-                    <button
-                      key={f.schemeCode}
-                      onClick={() => { setPicked([...picked, f.schemeCode]); setAddOpen(false); }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface text-[12px] truncate text-[#374151] font-medium transition-colors"
-                    >
-                      {shortName(f.name)}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div 
+                    className="fixed inset-0 z-[98]" 
+                    onClick={() => setAddOpen(false)}
+                  />
+                  <div className="absolute z-[99] top-full mt-2 left-0 w-72 bg-white border border-rule rounded-[14px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] max-h-[280px] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-white hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+                    <div className="p-2">
+                      {addable.length === 0 && <div className="px-3 py-2 text-[11px] text-muted">All funds added</div>}
+                      {addable.map((f) => (
+                        <button
+                          key={f.schemeCode}
+                          onClick={() => { setPicked([...picked, f.schemeCode]); setAddOpen(false); }}
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface text-[12px] truncate text-[#374151] font-medium transition-colors"
+                        >
+                          {shortName(f.name)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -258,7 +275,7 @@ export function BuildYourCompare({ funds }: Props) {
 
         {/* Chart area */}
         {series.length > 0 && chartData.length > 1 ? (
-          <div className="flex items-stretch p-[16px_12px_0] sm:p-[16px_22px_0] gap-0 flex-1 min-h-[280px] sm:min-h-[350px]">
+          <div className="relative z-[1] flex items-stretch p-[16px_12px_0] sm:p-[16px_22px_0] gap-0 flex-1 min-h-[280px] sm:min-h-[350px]">
             <div className="flex-1 w-full h-[260px] sm:h-[320px] touch-none select-none overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
