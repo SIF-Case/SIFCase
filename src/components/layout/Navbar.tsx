@@ -108,19 +108,19 @@ export function Navbar() {
                       className="absolute left-0 top-full mt-2.5 z-30 bg-white border border-[#e5e7eb] rounded-[14px] shadow-[0_14px_40px_rgba(11,31,58,0.10)] py-1.5 w-[480px] max-h-80 overflow-y-auto [-webkit-overflow-scrolling:touch]"
                       onMouseLeave={() => setFundHousesOpen(false)}
                     >
-                      <a
+                      <Link
                         href={link.href}
                         className="block px-4 py-2 text-[12px] font-semibold text-[#14b7a3] hover:bg-[#f3f4f6]"
                       >
                         All Fund Houses &rarr;
-                      </a>
+                      </Link>
                       <div className="border-t border-[#e5e7eb] my-1" />
                       {brandNames.length === 0 ? (
                         <div className="px-4 py-2 text-[12px] text-[#64748B]">Loading…</div>
                       ) : (
                         <div className="grid grid-cols-2 px-2 pb-1">
                           {brandNames.map(({ brandName, companyName_short }) => (
-                            <a
+                            <Link
                               key={brandName}
                               href={`/fund-house/${encodeURIComponent(
                                 brandName.toLowerCase().replace(/\s+/g, "-")
@@ -135,7 +135,7 @@ export function Navbar() {
                                   {companyName_short}
                                 </span>
                               )}
-                            </a>
+                            </Link>
                           ))}
                         </div>
                       )}
@@ -198,12 +198,12 @@ export function Navbar() {
                           {user.email ?? (session.user as { phone?: string }).phone ?? ""}
                         </p>
                       </div>
-                      <a
+                      <Link
                         href={user.isAdmin ? "/admin" : "/dashboard"}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#374151] hover:bg-[#f3f4f6] transition-colors"
                       >
                         <User className="size-3.5" /> {user.isAdmin ? "Admin Panel" : "My Dashboard"}
-                      </a>
+                      </Link>
                       <button
                         onClick={() => {
                           signOut();
@@ -265,20 +265,20 @@ export function Navbar() {
                   </button>
                   {mobileFundHousesOpen && (
                     <div className="mt-2 px-4 pb-3">
-                      <a
+                      <Link
                         href={link.href}
                         className="block px-3 py-2 text-[13px] font-semibold text-[#14b7a3] hover:bg-[#f3f4f6] rounded-lg mb-2"
                         onClick={() => setMobileOpen(false)}
                       >
                         All Fund Houses &rarr;
-                      </a>
+                      </Link>
                       <div className="border-t border-[#e5e7eb] mb-2" />
                       {brandNames.length === 0 ? (
                         <div className="px-3 py-2 text-[12px] text-[#64748B]">Loading…</div>
                       ) : (
                         <div className="flex flex-col gap-1 max-h-60 overflow-y-auto [-webkit-overflow-scrolling:touch]">
                           {brandNames.map(({ brandName, companyName_short }) => (
-                            <a
+                            <Link
                               key={brandName}
                               href={`/fund-house/${encodeURIComponent(
                                 brandName.toLowerCase().replace(/\s+/g, "-")
@@ -294,7 +294,7 @@ export function Navbar() {
                                   {companyName_short}
                                 </span>
                               )}
-                            </a>
+                            </Link>
                           ))}
                         </div>
                       )}
@@ -302,14 +302,14 @@ export function Navbar() {
                   )}
                 </div>
               ) : (
-                <a
+                <Link
                   key={link.label}
                   href={link.href}
                   className="text-[#374151] hover:text-[#14b7a3] transition-colors w-full text-center py-1.5"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
-                </a>
+                </Link>
               )
             )}
           </nav>

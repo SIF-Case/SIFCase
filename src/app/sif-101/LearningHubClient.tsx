@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export type SifEducationArticle = {
   _id: string;
@@ -161,13 +162,13 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
                     >
                       {isDone && <CheckIcon />}
                     </button>
-                    <a
+                    <Link
                       href={topic.href}
                       className={`hub-sidebar-label${isDone ? " label-done" : isCurrent ? " label-current" : ""}`}
                       style={{ textDecoration: "none" }}
                     >
                       {topic.title}
-                    </a>
+                    </Link>
                   </div>
                 );
               })}
@@ -212,7 +213,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
                 const isDone = completed.has(topic.id);
                 const lvl = LEVEL_STYLES[topic.level];
                 return (
-                  <a
+                  <Link
                     key={topic.id}
                     href={topic.href}
                     className={`hub-topic-card${isDone ? " topic-card-done" : ""}`}
@@ -237,7 +238,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
                         {topic.level}
                       </span>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -251,8 +252,8 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
               <p className="hub-cta-sub">You&apos;ve covered the basics — explore strategies that fit your goals.</p>
             </div>
             <div className="hub-cta-actions">
-              <a href="/sifs" className="hub-cta-primary">Explore Funds →</a>
-              <a href="/sifs" className="hub-cta-secondary">Find my Ideal SIF</a>
+              <Link href="/sifs" className="hub-cta-primary">Explore Funds →</Link>
+              <Link href="/sifs" className="hub-cta-secondary">Find my Ideal SIF</Link>
             </div>
           </div>
         </div>

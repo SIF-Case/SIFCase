@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { STORAGE_KEY } from "../topicsData";
 
 export type ArticleMeta = {
@@ -263,7 +264,7 @@ export function TopicDetailClient({
                     >
                       {done && <CheckIcon />}
                     </button>
-                    <a
+                    <Link
                       href={`/sif-101/${a.slug}`}
                       className={`topic-sidebar-label${
                         done
@@ -274,7 +275,7 @@ export function TopicDetailClient({
                       }`}
                     >
                       {a.title}
-                    </a>
+                    </Link>
                   </div>
                 );
               })}
@@ -287,9 +288,9 @@ export function TopicDetailClient({
           {/* Article header */}
           <div className="article-header">
             <div className="article-breadcrumb">
-              <a href="/sif-101" className="breadcrumb-link">
+              <Link href="/sif-101" className="breadcrumb-link">
                 SIF 101
-              </a>
+              </Link>
               <span className="breadcrumb-sep">›</span>
               <span className="breadcrumb-current">{article.title}</span>
             </div>
@@ -440,10 +441,10 @@ export function TopicDetailClient({
               <ul className="related-articles-list">
                 {relatedArticles.map((relArticle) => (
                   <li key={relArticle.slug} className="related-article-item">
-                    <a href={`/read/${relArticle.slug}`} className="related-article-link">
+                    <Link href={`/read/${relArticle.slug}`} className="related-article-link">
                       <span className="related-article-arrow">›</span>
                       <span>{relArticle.title}</span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,17 @@
 import { connectDB } from "./mongodb";
 import mongoose from "mongoose";
 import PerformanceReport from "@/models/PerformanceReport";
+import { unstable_cache } from "next/cache";
+
+// ── Cache config ─────────────────────────────────────────────────────────────
+// All public data functions are wrapped with Next.js unstable_cache.
+// They share the 'sif-data' tag so the fetch-nav cron can call
+// revalidateTag('sif-data') after a successful NAV import to bust stale data.
+// The next user request after invalidation re-populates the cache automatically.
+
+const CACHE_TTL = 60 * 60 * 2; // 2 hours in seconds
+const CACHE_TAG = ["sif-data"]; // shared tag for revalidateTag('sif-data') in fetch-nav
+
 
 export interface SnapshotStats {
   totalSchemes: number;
@@ -177,7 +188,7 @@ async function getCollections() {
   };
 }
 
-export async function getSnapshotStats(): Promise<SnapshotStats> {
+async function _getSnapshotStats(): Promise<SnapshotStats> {
   const { schemes, navs } = await getCollections();
 
   const [totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, latestNavRecord] =
@@ -202,7 +213,13 @@ export async function getSnapshotStats(): Promise<SnapshotStats> {
   };
 }
 
-export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string, brandName?: string): Promise<SIFRow[]> {
+export const getSnapshotStats = unstable_cache(
+  _getSnapshotStats,
+  ["snapshot-stats"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
+async function _getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string, brandName?: string): Promise<SIFRow[]> {
   const { schemes, navs } = await getCollections();
 
   const filter: Record<string, string> = {};
@@ -292,6 +309,12 @@ export async function getSIFsWithReturns(plan?: "Regular" | "Direct", option?: s
   return rows;
 }
 
+export const getSIFsWithReturns = unstable_cache(
+  _getSIFsWithReturns,
+  ["sifs-with-returns"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
 function brandNameToSlug(brandName: string): string {
   return brandName.toLowerCase().replace(/\s+/g, "-");
 }
@@ -303,7 +326,7 @@ export interface FundHouseInfo {
 }
 
 // Resolve a URL slug (e.g. "abc-mutual-fund") back to its brandName (e.g. "ABC Mutual Fund")
-export async function getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> {
+async function _getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> {
   const { schemes } = await getCollections();
   const rows = await schemes.aggregate([
     { $match: { brandName: { $exists: true, $ne: "" } } },
@@ -323,6 +346,12 @@ export async function getFundHouseBySlug(slug: string): Promise<FundHouseInfo | 
   return null;
 }
 
+export const getFundHouseBySlug = unstable_cache(
+  _getFundHouseBySlug,
+  ["fund-house-by-slug"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
 const RISK_BAND_STRING_MAP_EARLY: Record<string, 1 | 2 | 3 | 4 | 5> = {
   "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
   "Moderately High Risk": 4, "High Risk": 5,
@@ -340,8 +369,8 @@ function normaliseRiskBandEarly(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
   return null;
 }
 
-export async function getTopFunds(): Promise<FundRow[]> {
-  const sifs = await getSIFsWithReturns("Regular", "Growth");
+async function _getTopFunds(): Promise<FundRow[]> {
+  const sifs = await _getSIFsWithReturns("Regular", "Growth");
 
   // Belt-and-suspenders: drop any IDCW that slipped through via mis-tagged option field
   const growthOnly = sifs.filter((s) => {
@@ -474,7 +503,13 @@ export async function getTopFunds(): Promise<FundRow[]> {
   return funds;
 }
 
-export async function getTickerNavs(): Promise<TickerNav[]> {
+export const getTopFunds = unstable_cache(
+  _getTopFunds,
+  ["top-funds"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
+async function _getTickerNavs(): Promise<TickerNav[]> {
   const { schemes, navs } = await getCollections();
 
   // Only Regular plan Growth schemes for the ticker
@@ -521,6 +556,12 @@ export async function getTickerNavs(): Promise<TickerNav[]> {
   return items;
 }
 
+export const getTickerNavs = unstable_cache(
+  _getTickerNavs,
+  ["ticker-navs"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
 // ── Monthly Heatmap ───────────────────────────────────────────────────────────
 
 export interface MonthlyHeatmapFund {
@@ -531,7 +572,7 @@ export interface MonthlyHeatmapFund {
   months: (number | null)[];
 }
 
-export async function getMonthlyHeatmapData(monthsBack = 7): Promise<{
+async function _getMonthlyHeatmapData(monthsBack = 7): Promise<{
   funds: MonthlyHeatmapFund[];
   monthLabels: string[];
 }> {
@@ -600,6 +641,12 @@ export async function getMonthlyHeatmapData(monthsBack = 7): Promise<{
 
   return { funds, monthLabels: periods.map((p) => p.label) };
 }
+
+export const getMonthlyHeatmapData = unstable_cache(
+  _getMonthlyHeatmapData,
+  ["monthly-heatmap"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
 
 // ── Fund Detail ───────────────────────────────────────────────────────────────
 
@@ -695,7 +742,7 @@ function normaliseRiskBand(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
   return null;
 }
 
-export async function getFundDetailsForName(fundName: string): Promise<FundDetailsData | null> {
+async function _getFundDetailsForName(fundName: string): Promise<FundDetailsData | null> {
   await connectDB();
   const db = mongoose.connection.db!;
   const escaped = fundName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -712,7 +759,13 @@ export async function getFundDetailsForName(fundName: string): Promise<FundDetai
   return data;
 }
 
-export async function getFundDetail(code: string): Promise<FundDetail | null> {
+export const getFundDetailsForName = unstable_cache(
+  _getFundDetailsForName,
+  ["fund-details-for-name"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
+async function _getFundDetail(code: string): Promise<FundDetail | null> {
   const { schemes, navs } = await getCollections();
 
   const upperCode = code.toUpperCase();
@@ -862,6 +915,12 @@ export async function getFundDetail(code: string): Promise<FundDetail | null> {
   };
 }
 
+export const getFundDetail = unstable_cache(
+  _getFundDetail,
+  ["fund-detail"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
 // ── Monthly Performance Reports ──────────────────────────────────────────────
 
 export interface MonthlyReportFundRow {
@@ -994,7 +1053,7 @@ export interface LatestReportSummary {
 }
 
 /** Latest published monthly report plus its live-computed performance data, for the homepage banner. */
-export async function getLatestPublishedReport(): Promise<LatestReportSummary | null> {
+async function _getLatestPublishedReport(): Promise<LatestReportSummary | null> {
   await connectDB();
   const report = await PerformanceReport.findOne({ published: true }).sort({ monthKey: -1 }).lean();
   if (!report) return null;
@@ -1011,13 +1070,19 @@ export async function getLatestPublishedReport(): Promise<LatestReportSummary | 
   };
 }
 
+export const getLatestPublishedReport = unstable_cache(
+  _getLatestPublishedReport,
+  ["latest-published-report"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
+
 export interface FaqGroup {
   category: string;
   items: { question: string; answer: string }[];
 }
 
 /** Published FAQs grouped by category, in admin-defined order, for the homepage FAQ section. */
-export async function getPublishedFaqs(): Promise<FaqGroup[]> {
+async function _getPublishedFaqs(): Promise<FaqGroup[]> {
   await connectDB();
   const [Faq, FaqCategory] = await Promise.all([
     (await import("@/models/Faq")).default,
@@ -1039,3 +1104,9 @@ export async function getPublishedFaqs(): Promise<FaqGroup[]> {
   }
   return groups;
 }
+
+export const getPublishedFaqs = unstable_cache(
+  _getPublishedFaqs,
+  ["published-faqs"],
+  { tags: CACHE_TAG, revalidate: CACHE_TTL }
+);
