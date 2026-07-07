@@ -30,14 +30,10 @@ export async function GET(request: Request) {
   // Log the result
   await CronLog.create({
     job: "fetch-risk-bands",
-    status: result.errors.length === 0 ? "success" : "partial",
+    status: result.errors.length === 0 ? "success" : "error",
+    message: `Fetched: ${result.fetched}, updated: ${result.updated}, skipped: ${result.skipped}. Errors: ${result.errors.length}`,
+    fundsUpdated: result.updated,
     duration,
-    details: {
-      fetched: result.fetched,
-      updated: result.updated,
-      skipped: result.skipped,
-      errors: result.errors,
-    },
   });
 
   return NextResponse.json({
