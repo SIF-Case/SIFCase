@@ -10,6 +10,9 @@ import Article from "@/models/Article";
 // Revalidate on-demand only (via revalidatePath calls from admin)
 export const revalidate = false;
 
+// Allow dynamic params for articles created after build
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   await connectDB();
   const articles = await Article.find({ 

@@ -94,14 +94,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (wasSifEdu && wasPublished) {
       revalidatePath(`/sif-101/${existing.slug}`);
     }
-    // Always revalidate new slug if it IS now SIF Education+published (covers creates, moves in, and content edits)
+    // Always revalidate current slug if it IS SIF Education+published (covers creates, moves in, and content edits)
     if (isSifEdu && isPublished) {
       revalidatePath(`/sif-101/${article.slug}`);
+    }
+    // Also revalidate if slug changed and was previously in SIF Education
+    if (slugChanged && wasSifEdu && wasPublished && isSifEdu && isPublished) {
+      revalidatePath(`/sif-101/${existing.slug}`);
     }
 
     // /read/[slug] page — same old/new + published logic
     if (wasPublished) revalidatePath(`/read/${existing.slug}`);
-    if (isPublished && slugChanged) revalidatePath(`/read/${article.slug}`);
+    if (isPublished) revalidatePath(`/read/${article.slug}`);
 
     return NextResponse.json({ ok: true, slug: article.slug });
   } catch (error: any) {
@@ -124,6 +128,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       }
       if (article.category === "SIF Education") {
         revalidatePath("/sif-101");
+        revalidatePath(`/sif-101/${article.slug}`);
       }
       revalidatePath(`/read/${article.slug}`);
     }

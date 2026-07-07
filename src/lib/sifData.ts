@@ -95,7 +95,7 @@ function subYears(date: Date, years: number): Date {
 }
 
 function pct(current: number, base: number): number {
-  return +((( current - base) / base) * 100).toFixed(2);
+  return +(((current - base) / base) * 100).toFixed(2);
 }
 
 // Annualised (CAGR) return for periods longer than 1 year; absolute return otherwise.
@@ -386,90 +386,90 @@ export async function getTopFunds(): Promise<FundRow[]> {
   }
 
   const funds: FundRow[] = sorted.map((s) => {
-      const allHistory = navsByCode.get(s.schemeCode) ?? [];
+    const allHistory = navsByCode.get(s.schemeCode) ?? [];
 
-      const latestDate = allHistory.length ? allHistory[allHistory.length - 1].navDate : new Date();
+    const latestDate = allHistory.length ? allHistory[allHistory.length - 1].navDate : new Date();
 
-      const cutoffs: Record<string, Date> = {
-        "1M": subMonths(latestDate, 1),
-        "3M": subMonths(latestDate, 3),
-        "6M": subMonths(latestDate, 6),
-        "1Y": subYears(latestDate, 1),
-      };
+    const cutoffs: Record<string, Date> = {
+      "1M": subMonths(latestDate, 1),
+      "3M": subMonths(latestDate, 3),
+      "6M": subMonths(latestDate, 6),
+      "1Y": subYears(latestDate, 1),
+    };
 
-      // Start from the last trading day ON OR BEFORE the cutoff so the first
-      // return in the window captures the weekend/holiday gap correctly.
-      const sliceFor = (cutoff: Date) => {
-        const idx = lastIdxOnOrBefore(allHistory, cutoff);
-        return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
-      };
+    // Start from the last trading day ON OR BEFORE the cutoff so the first
+    // return in the window captures the weekend/holiday gap correctly.
+    const sliceFor = (cutoff: Date) => {
+      const idx = lastIdxOnOrBefore(allHistory, cutoff);
+      return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
+    };
 
-      const sharpes: Record<PeriodKey, number | null> = {
-        "1M": computeSharpe(sliceFor(cutoffs["1M"])),
-        "3M": computeSharpe(sliceFor(cutoffs["3M"])),
-        "6M": computeSharpe(sliceFor(cutoffs["6M"])),
-        "1Y": computeSharpe(sliceFor(cutoffs["1Y"])),
-        "SI": computeSharpe(allHistory),
-      };
+    const sharpes: Record<PeriodKey, number | null> = {
+      "1M": computeSharpe(sliceFor(cutoffs["1M"])),
+      "3M": computeSharpe(sliceFor(cutoffs["3M"])),
+      "6M": computeSharpe(sliceFor(cutoffs["6M"])),
+      "1Y": computeSharpe(sliceFor(cutoffs["1Y"])),
+      "SI": computeSharpe(allHistory),
+    };
 
-      const drawdowns: Record<PeriodKey, number | null> = {
-        "1M": computeMaxDrawdown(sliceFor(cutoffs["1M"])),
-        "3M": computeMaxDrawdown(sliceFor(cutoffs["3M"])),
-        "6M": computeMaxDrawdown(sliceFor(cutoffs["6M"])),
-        "1Y": computeMaxDrawdown(sliceFor(cutoffs["1Y"])),
-        "SI": computeMaxDrawdown(allHistory),
-      };
+    const drawdowns: Record<PeriodKey, number | null> = {
+      "1M": computeMaxDrawdown(sliceFor(cutoffs["1M"])),
+      "3M": computeMaxDrawdown(sliceFor(cutoffs["3M"])),
+      "6M": computeMaxDrawdown(sliceFor(cutoffs["6M"])),
+      "1Y": computeMaxDrawdown(sliceFor(cutoffs["1Y"])),
+      "SI": computeMaxDrawdown(allHistory),
+    };
 
-      const sparklines = {
-        "1M": sliceFor(cutoffs["1M"]).map((r) => r.nav),
-        "3M": sliceFor(cutoffs["3M"]).map((r) => r.nav),
-        "6M": sliceFor(cutoffs["6M"]).map((r) => r.nav),
-        "1Y": sliceFor(cutoffs["1Y"]).map((r) => r.nav),
-        "SI": allHistory.map((r) => r.nav),
-      } as Record<PeriodKey, number[]>;
+    const sparklines = {
+      "1M": sliceFor(cutoffs["1M"]).map((r) => r.nav),
+      "3M": sliceFor(cutoffs["3M"]).map((r) => r.nav),
+      "6M": sliceFor(cutoffs["6M"]).map((r) => r.nav),
+      "1Y": sliceFor(cutoffs["1Y"]).map((r) => r.nav),
+      "SI": allHistory.map((r) => r.nav),
+    } as Record<PeriodKey, number[]>;
 
-      const sparklineDates = {
-        "1M": sliceFor(cutoffs["1M"]).map((r) => formatDate(r.navDate)),
-        "3M": sliceFor(cutoffs["3M"]).map((r) => formatDate(r.navDate)),
-        "6M": sliceFor(cutoffs["6M"]).map((r) => formatDate(r.navDate)),
-        "1Y": sliceFor(cutoffs["1Y"]).map((r) => formatDate(r.navDate)),
-        "SI": allHistory.map((r) => formatDate(r.navDate)),
-      } as Record<PeriodKey, string[]>;
+    const sparklineDates = {
+      "1M": sliceFor(cutoffs["1M"]).map((r) => formatDate(r.navDate)),
+      "3M": sliceFor(cutoffs["3M"]).map((r) => formatDate(r.navDate)),
+      "6M": sliceFor(cutoffs["6M"]).map((r) => formatDate(r.navDate)),
+      "1Y": sliceFor(cutoffs["1Y"]).map((r) => formatDate(r.navDate)),
+      "SI": allHistory.map((r) => formatDate(r.navDate)),
+    } as Record<PeriodKey, string[]>;
 
-      return {
-        schemeCode: s.schemeCode,
-        name: s.name,
-        fundName: s.fundName,
-        amc: s.amc,
-        companyName: s.companyName,
-        strategy: s.strategy,
-        category: strategyToCategory(s.strategy),
-        plan: s.plan,
-        nav: parseFloat(s.nav),
-        navDate: s.navDate,
-        isin: s.isin,
-        aum: aumByName.get(s.fundName) ?? (s as any).aum ?? null,
-        returns: {
-          "1M": s.return1m ? parseFloat(s.return1m) : null,
-          "3M": s.return3m ? parseFloat(s.return3m) : null,
-          "6M": s.return6m ? parseFloat(s.return6m) : null,
-          "1Y": s.return1y ? parseFloat(s.return1y) : null,
-          "SI": allHistory.length > 1
-            ? annualizedReturn(
-                allHistory[allHistory.length - 1].nav,
-                allHistory[0].nav,
-                allHistory[0].navDate,
-                allHistory[allHistory.length - 1].navDate
-              )
-            : null,
-        },
-        sharpes,
-        drawdowns,
-        sparklines,
-        sparklineDates,
-        riskBand: riskBandByName.get(s.fundName) ?? null,
-      };
-    });
+    return {
+      schemeCode: s.schemeCode,
+      name: s.name,
+      fundName: s.fundName,
+      amc: s.amc,
+      companyName: s.companyName,
+      strategy: s.strategy,
+      category: strategyToCategory(s.strategy),
+      plan: s.plan,
+      nav: parseFloat(s.nav),
+      navDate: s.navDate,
+      isin: s.isin,
+      aum: aumByName.get(s.fundName) ?? (s as any).aum ?? null,
+      returns: {
+        "1M": s.return1m ? parseFloat(s.return1m) : null,
+        "3M": s.return3m ? parseFloat(s.return3m) : null,
+        "6M": s.return6m ? parseFloat(s.return6m) : null,
+        "1Y": s.return1y ? parseFloat(s.return1y) : null,
+        "SI": allHistory.length > 1
+          ? annualizedReturn(
+            allHistory[allHistory.length - 1].nav,
+            allHistory[0].nav,
+            allHistory[0].navDate,
+            allHistory[allHistory.length - 1].navDate
+          )
+          : null,
+      },
+      sharpes,
+      drawdowns,
+      sparklines,
+      sparklineDates,
+      riskBand: riskBandByName.get(s.fundName) ?? null,
+    };
+  });
 
   return funds;
 }
