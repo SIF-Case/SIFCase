@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X, Bookmark, Check, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { AuthModal } from "@/components/auth/AuthModal";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -327,24 +329,26 @@ export function CompareLab({ funds, initialPicked, controlled, onPeriodChange }:
         </div>
       )}
 
-      {/* ── Legend + source ──────────────────────────────────────────────── */}
-      {series.length > 0 && (
-        <div className="px-6 pb-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
-            {series.map((s) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <span className="inline-block w-6 h-[2.5px] rounded-full" style={{ background: s.color }} />
-                <span className="text-[12px] text-body">{s.name}</span>
-              </div>
-            ))}
-            <SaveCompareBtn picked={picked} period={period} />
-          </div>
-          <p className="text-[10px] font-mono uppercase tracking-widest text-muted">{viewLabel} · AMFI NAV data</p>
+      {/* ── Legend + Save Button ──────────────────────────────────────────── */}
+      <div className="px-6 pb-5 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {series.length > 0 && series.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <span className="inline-block w-6 h-[2.5px] rounded-full" style={{ background: s.color }} />
+              <span className="text-[12px] text-body">{s.name}</span>
+            </div>
+          ))}
+          <SaveCompareBtn picked={picked} period={period} />
         </div>
-      )}
+        {series.length > 0 && (
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted">{viewLabel} · AMFI NAV data</p>
+        )}
+      </div>
     </div>
   );
 }
+
+const PENDING_COMPARE_KEY = "sif:pendingCompareToSave";
 
 function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }) {
   const { data: session } = useSession();
@@ -352,10 +356,59 @@ function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }
   const [saved, setSaved] = useState(false);
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!session?.user || picked.length === 0) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Check for pending comparison after login
+  useEffect(() => {
+    if (!session?.user) return;
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_COMPARE_KEY);
+    } catch {}
+    if (pending) {
+      try {
+        const data = JSON.parse(pending);
+        // If the pending comparison matches current selection, show save dialog
+        if (JSON.stringify(data.schemeCodes.sort()) === JSON.stringify(picked.sort()) && data.period === period) {
+          setName(data.name || "");
+          setOpen(true);
+          sessionStorage.removeItem(PENDING_COMPARE_KEY);
+        }
+      } catch {}
+    }
+  }, [session, picked, period]);
+
+  // Clear pending comparison when auth modal is closed without login
+  useEffect(() => {
+    if (!authOpen && !session?.user) {
+      try {
+        sessionStorage.removeItem(PENDING_COMPARE_KEY);
+      } catch {}
+    }
+  }, [authOpen, session]);
+
+  if (picked.length === 0) return null;
 
   async function save() {
+    if (!session?.user) {
+      // Store the comparison data for after login
+      try {
+        sessionStorage.setItem(PENDING_COMPARE_KEY, JSON.stringify({
+          name: name.trim() || "My Comparison",
+          schemeCodes: picked,
+          period,
+        }));
+      } catch {}
+      setOpen(false);
+      setAuthOpen(true);
+      return;
+    }
+
     if (!name.trim()) return;
     setSaving(true);
     await fetch("/api/user/compares", {
@@ -367,30 +420,49 @@ function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }
     setTimeout(() => setSaved(false), 2000);
   }
 
+  function handleButtonClick() {
+    if (!session?.user) {
+      setAuthOpen(true);
+      return;
+    }
+    setOpen((o) => !o);
+  }
+
   return (
-    <div className="relative">
-      <button onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-[12px] text-muted hover:text-primary transition-colors">
-        {saved ? <Check className="size-3.5 text-gain" /> : <Bookmark className="size-3.5" />}
-        {saved ? "Saved!" : "Save comparison"}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full mb-2 left-0 z-20 bg-white border border-rule rounded-[12px] shadow-premium p-3 w-64">
-            <p className="text-[12px] font-semibold text-heading mb-2">Save this comparison</p>
-            <input value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Top Hybrid Funds"
-              className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary mb-2"
-              onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />
-            <button onClick={save} disabled={saving || !name.trim()}
-              className="w-full h-9 rounded-[8px] bg-primary text-white text-[12.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2">
-              {saving && <Loader2 className="size-3.5 animate-spin" />} Save
-            </button>
-          </div>
-        </>
+    <>
+      <div className="relative">
+        <button onClick={handleButtonClick}
+          className="flex items-center gap-1.5 text-[12px] text-muted hover:text-primary transition-colors">
+          {saved ? <Check className="size-3.5 text-gain" /> : <Bookmark className="size-3.5" />}
+          {saved ? "Saved!" : "Save comparison"}
+        </button>
+        {open && session?.user && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="absolute bottom-full mb-2 left-0 z-20 bg-white border border-rule rounded-[12px] shadow-premium p-3 w-64">
+              <p className="text-[12px] font-semibold text-heading mb-2">Save this comparison</p>
+              <input value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Top Hybrid Funds"
+                className="w-full h-9 px-3 rounded-[8px] border border-rule text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary mb-2"
+                onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />
+              <button onClick={save} disabled={saving || !name.trim()}
+                className="w-full h-9 rounded-[8px] bg-primary text-white text-[12.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2">
+                {saving && <Loader2 className="size-3.5 animate-spin" />} Save
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {mounted && createPortal(
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          reason="save your comparison"
+        />,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 

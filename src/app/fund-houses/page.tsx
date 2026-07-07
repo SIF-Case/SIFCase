@@ -94,13 +94,14 @@ function FundLogo({
 }) {
   if (logoUrl) {
     return (
-      <div className="size-12 rounded-[12px] bg-white border border-rule flex items-center justify-center overflow-hidden shrink-0">
+      <div className="size-12 rounded-[12px] bg-white border border-rule flex items-center justify-center overflow-hidden shrink-0 p-1">
         <Image
           src={logoUrl}
           alt={brandName}
           width={48}
           height={48}
-          className="object-contain p-1"
+          className="object-contain max-w-full max-h-full"
+          style={{ width: 'auto', height: 'auto' }}
         />
       </div>
     );

@@ -109,6 +109,15 @@ export function PerformanceReportBanner({
     }
   }, [session, report]);
 
+  // Clear pending download when modal is closed without login
+  useEffect(() => {
+    if (!authOpen && !session?.user) {
+      try {
+        sessionStorage.removeItem(PENDING_KEY);
+      } catch {}
+    }
+  }, [authOpen, session]);
+
   // Fade-in on scroll into view
   useEffect(() => {
     const el = sectionRef.current;

@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { TrendingUp, TrendingDown, BarChart3, Activity, ArrowRight, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart3, Activity, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { DownloadReportButton } from "@/components/sections/DownloadReportButton";
 import { connectDB } from "@/lib/mongodb";
 import PerformanceReport from "@/models/PerformanceReport";
 import { getMonthlyPerformanceData } from "@/lib/sifData";
@@ -74,13 +75,7 @@ export default async function PerformanceReportPage({ params }: Props) {
             <span className="text-faint">•</span>
             <span><span className="font-semibold text-gain nums">{topGainers}</span> positive / <span className="font-semibold text-loss nums">{data.funds.length - topGainers}</span> negative</span>
           </div>
-          <a
-            href={`/api/reports/${report.slug}/download`}
-            className="inline-flex items-center gap-2 mt-7 px-6 py-2.5 rounded-full bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover shadow-btn"
-          >
-            <Download className="w-4 h-4" strokeWidth={2} />
-            Download Full Report (PDF)
-          </a>
+          <DownloadReportButton slug={report.slug} />
         </div>
       </section>
 

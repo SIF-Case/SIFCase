@@ -2,6 +2,7 @@ export const revalidate = 3600;
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Info, FileText, Users } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -38,6 +39,37 @@ function initialsFor(brandName: string): string {
   const words = brandName.trim().split(/\s+/);
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
   return brandName.slice(0, 2).toUpperCase();
+}
+
+// ── Logo/Avatar component for fund house hero
+function FundHouseLogo({
+  logoUrl,
+  brandName,
+}: {
+  logoUrl?: string;
+  brandName: string;
+}) {
+  if (logoUrl) {
+    return (
+      <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)] overflow-hidden p-1.5">
+        <Image
+          src={logoUrl}
+          alt={brandName}
+          width={52}
+          height={52}
+          className="object-contain max-w-full max-h-full"
+          style={{ width: 'auto', height: 'auto' }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
+      <span className="text-[17px] font-extrabold tracking-tight text-[#0F2137]">
+        {initialsFor(brandName)}
+      </span>
+    </div>
+  );
 }
 
 export default async function FundHousePage({ params }: Props) {
@@ -97,9 +129,7 @@ export default async function FundHousePage({ params }: Props) {
         <div style={{ background: "#004C61" }} className="text-white">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-[50px] pt-7 sm:pt-9 pb-7">
             <div className="flex items-center gap-3 mb-2">
-              <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
-                <span className="text-[17px] font-extrabold tracking-tight text-[#0F2137]">{initialsFor(fundHouse.brandName)}</span>
-              </div>
+              <FundHouseLogo logoUrl={fundHouse.logoUrl} brandName={fundHouse.brandName} />
               <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-white/45">{fundHouse.companyName}</span>
                 <span className="text-[11px] text-white/35">SEBI-registered AMC</span>
@@ -154,14 +184,20 @@ export default async function FundHousePage({ params }: Props) {
                   <span className="text-[12px] text-faint">{fundHouse.companyName}</span>
                 </div>
                 <div className="px-5 py-4 flex flex-col gap-4 text-[15px] leading-[1.7] text-body">
-                  <p>
-                    {fundHouse.brandName} is {fundHouse.companyName}&apos;s Specialized Investment Fund platform, offering
-                    institutional-grade strategies to eligible investors at a ₹10 lakh entry point. It operates{" "}
-                    {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"} across{" "}
-                    {categories.length > 0 ? categories.join(" and ") : "equity and hybrid"} asset classes — designed to
-                    generate alpha and manage downside risk in all market conditions.
-                  </p>
-                  <p>{managerLine}</p>
+                  {fundHouse.overview ? (
+                    <p>{fundHouse.overview}</p>
+                  ) : (
+                    <>
+                      <p>
+                        {fundHouse.brandName} is {fundHouse.companyName}&apos;s Specialized Investment Fund platform, offering
+                        institutional-grade strategies to eligible investors at a ₹10 lakh entry point. It operates{" "}
+                        {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"} across{" "}
+                        {categories.length > 0 ? categories.join(" and ") : "equity and hybrid"} asset classes — designed to
+                        generate alpha and manage downside risk in all market conditions.
+                      </p>
+                      <p>{managerLine}</p>
+                    </>
+                  )}
                 </div>
               </div>
 

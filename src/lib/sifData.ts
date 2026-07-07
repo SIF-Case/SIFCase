@@ -1,6 +1,7 @@
 import { connectDB } from "./mongodb";
 import mongoose from "mongoose";
 import PerformanceReport from "@/models/PerformanceReport";
+import FundHouse from "@/models/FundHouse";
 import { unstable_cache } from "next/cache";
 
 // ── Cache config ─────────────────────────────────────────────────────────────
@@ -323,10 +324,13 @@ export interface FundHouseInfo {
   brandName: string;
   companyName: string;
   schemeCount: number;
+  logoUrl?: string;
+  overview?: string;
 }
 
 // Resolve a URL slug (e.g. "abc-mutual-fund") back to its brandName (e.g. "ABC Mutual Fund")
 async function _getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> {
+  await connectDB();
   const { schemes } = await getCollections();
   const rows = await schemes.aggregate([
     { $match: { brandName: { $exists: true, $ne: "" } } },
@@ -336,10 +340,15 @@ async function _getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> 
   for (const r of rows) {
     const brandName = r._id as string;
     if (brandNameToSlug(brandName) === slug) {
+      // Fetch logo and overview from FundHouse model
+      const branding = await FundHouse.findOne({ brandName }).lean();
+      
       return {
         brandName,
         companyName: (r.companyName as string) || brandName,
         schemeCount: r.schemeCount as number,
+        logoUrl: branding?.logoUrl || "",
+        overview: branding?.overview || "",
       };
     }
   }

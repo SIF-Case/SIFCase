@@ -3,6 +3,7 @@ import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import FundHouse from "@/models/FundHouse";
 import mongoose from "mongoose";
+import { revalidatePath } from "next/cache";
 
 // GET /api/admin/fund-houses
 // Returns all unique brandNames from sifschemes, merged with any saved branding
@@ -61,6 +62,9 @@ export async function PUT(req: NextRequest) {
     { $set: update },
     { upsert: true, new: true, runValidators: true },
   ).lean();
+
+  // Revalidate the fund houses listing page so changes appear immediately
+  revalidatePath("/fund-houses");
 
   return NextResponse.json({ ok: true, doc });
 }
