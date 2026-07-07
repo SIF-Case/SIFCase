@@ -63,8 +63,12 @@ export async function PUT(req: NextRequest) {
     { upsert: true, new: true, runValidators: true },
   ).lean();
 
-  // Revalidate the fund houses listing page so changes appear immediately
+  // Revalidate the fund houses listing page
   revalidatePath("/fund-houses");
+  
+  // Revalidate individual fund house detail page
+  const slug = brandName.toLowerCase().replace(/\s+/g, "-");
+  revalidatePath(`/fund-house/${slug}`);
 
   return NextResponse.json({ ok: true, doc });
 }
