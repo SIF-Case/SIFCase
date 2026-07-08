@@ -64,12 +64,26 @@ export function QuizClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers }),
       });
+      
+      if (res.status === 401) {
+        const data = await res.json();
+        if (data.requiresAuth) {
+          alert("Please log in to take the quiz and save your progress.");
+          window.location.href = "/?login=true";
+          return;
+        }
+      }
+      
+      if (!res.ok) {
+        throw new Error("Failed to submit");
+      }
+      
       const data = await res.json();
       setResults(data);
       setSubmitted(true);
       setCurrentIndex(0);
-    } catch {
-      alert("Failed to submit quiz");
+    } catch (error) {
+      alert("Failed to submit quiz. Please try again.");
     } finally {
       setSubmitting(false);
     }

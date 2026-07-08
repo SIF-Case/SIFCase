@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 
 type Option = { text: string; isCorrect: boolean; _id?: string };
@@ -288,6 +289,22 @@ export default function AdminKnowledgeQuiz() {
 
   return (
     <div className="p-8">
+      {/* Navigation tabs */}
+      <div className="flex items-center gap-2 mb-6 pb-4 border-b border-rule">
+        <Link
+          href="/admin/suitability"
+          className="px-4 py-2 rounded-[8px] border border-rule text-[13px] font-semibold text-muted hover:bg-surface"
+        >
+          Suitability Quiz
+        </Link>
+        <Link
+          href="/admin/knowledge-quiz"
+          className="px-4 py-2 rounded-[8px] bg-primary text-white text-[13px] font-semibold"
+        >
+          Knowledge Quiz (SIF-101)
+        </Link>
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[28px] font-bold text-heading tracking-[-0.3px]">SIF-101 Knowledge Quiz</h1>

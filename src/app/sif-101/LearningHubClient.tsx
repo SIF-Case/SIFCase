@@ -248,12 +248,12 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
           <div className="hub-cta-banner">
             <div className="hub-cta-text">
               <span className="hub-cta-eyebrow">Ready to invest?</span>
-              <h2 className="hub-cta-heading">Test your knowledge first</h2>
-              <p className="hub-cta-sub">Take our quiz to see how much you&apos;ve learned about SIFs.</p>
+              <h2 className="hub-cta-heading">Feeling ready? Dive into the funds.</h2>
+              <p className="hub-cta-sub">You&apos;ve covered the basics — explore strategies that fit your goals.</p>
             </div>
             <div className="hub-cta-actions">
-              <Link href="/sif-101/quiz" className="hub-cta-primary">Take the Quiz →</Link>
-              <Link href="/sifs" className="hub-cta-secondary">Explore Funds</Link>
+              <Link href="/sifs" className="hub-cta-primary">Explore Funds →</Link>
+              <Link href="/sifs" className="hub-cta-secondary">Find my Ideal SIF</Link>
             </div>
           </div>
         </div>

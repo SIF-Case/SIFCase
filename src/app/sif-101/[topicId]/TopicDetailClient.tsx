@@ -431,7 +431,7 @@ export function TopicDetailClient({
               A quick 5-question check tells you whether you&apos;re ready to start exploring
               funds — or which topics to revisit.
             </p>
-            <button className="quiz-card-btn">Take the quiz</button>
+            <Link href="/sif-101/quiz" className="quiz-card-btn">Take the quiz</Link>
           </div>
 
           {/* Related articles */}
@@ -924,6 +924,7 @@ export function TopicDetailClient({
           margin: 0;
         }
         .quiz-card-btn {
+          display: block;
           width: 100%;
           padding: 9px;
           border-radius: 7px;
@@ -934,6 +935,7 @@ export function TopicDetailClient({
           font-family: Arial, sans-serif;
           font-size: 13.5px;
           text-align: center;
+          text-decoration: none;
           transition: background 0.15s;
         }
         .quiz-card-btn:hover {
