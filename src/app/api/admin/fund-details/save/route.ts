@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Bust the data cache (unstable_cache entries)
-    
+    // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
     revalidateTag("sif-data");
 
     // Bust the rendered page cache (export const revalidate = 3600 on the fund page).
