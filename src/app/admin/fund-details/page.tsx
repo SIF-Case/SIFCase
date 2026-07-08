@@ -378,23 +378,89 @@ export default function FundDetailsPage() {
     }
   };
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const ALLOWED_TYPES = new Set([
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+    ]);
+    if (!ALLOWED_TYPES.has(file.type) && !file.name.match(/\.(pdf|xlsx|xls)$/i)) {
+      alert("PDF or Excel files only (.pdf, .xlsx, .xls)");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      alert("Max 20MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setUploadingPdf(true);
+    setUploadProgress(0);
+
     try {
+      const sigRes = await fetch("/api/admin/fund-details/cloudinary-signature", { method: "POST" });
+      if (!sigRes.ok) {
+        const errBody = await sigRes.json().catch(() => ({}));
+        throw new Error(errBody.error || "Failed to get upload signature");
+      }
+      const { signature, timestamp, apiKey, cloudName, folder, useFilename, uniqueFilename } = await sigRes.json();
+
       const fd = new FormData();
       fd.append("file", file);
-      const r = await fetch("/api/admin/fund-details/upload-pdf", { method: "POST", body: fd });
-      const d = await r.json();
-      if (d.url) {
-        setForm(prev => ({
-          ...prev,
-          factsheets: [...prev.factsheets, { url: d.url, filename: d.filename, documentType: "", uploadedAt: new Date().toISOString() }],
-        }));
-      }
+      fd.append("api_key", apiKey);
+      fd.append("timestamp", String(timestamp));
+      fd.append("signature", signature);
+      fd.append("folder", folder);
+      fd.append("use_filename", String(useFilename));
+      fd.append("unique_filename", String(uniqueFilename));
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+
+      const result = await new Promise<{ secure_url: string; original_filename: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", uploadUrl);
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) setUploadProgress(Math.round((evt.loaded / evt.total) * 100));
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            const errBody = JSON.parse(xhr.responseText || "{}");
+            reject(new Error(errBody?.error?.message || `Cloudinary upload failed: ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+
+        xhr.send(fd);
+      });
+
+      setForm(prev => ({
+        ...prev,
+        factsheets: [
+          ...prev.factsheets,
+          {
+            url: result.secure_url,
+            filename: file.name || result.original_filename, // matches your old route's fallback order
+            documentType: "",
+            uploadedAt: new Date().toISOString(),
+          },
+        ],
+      }));
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploadingPdf(false);
+      setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -1258,7 +1324,7 @@ export default function FundDetailsPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-[8px] border border-[#E2E8F0] text-[13px] font-medium text-[#475569] hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
             >
               {uploadingPdf ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-              Upload PDF / Excel
+              {uploadingPdf ? `Uploading… ${uploadProgress}%` : "Upload PDF / Excel"}
             </button>
             {!selectedFund && <p className="text-[11.5px] text-[#94A3B8] mt-1.5">Select a fund first</p>}
 
