@@ -51,7 +51,7 @@ const KnowledgeQuizResponseSchema = new Schema<IKnowledgeQuizResponse>(
     passed: { type: Boolean, required: true },
     completedAt: { type: Date, required: true },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 const SuitabilityQuizResponseSchema = new Schema<ISuitabilityQuizResponse>(
@@ -69,7 +69,7 @@ const SuitabilityQuizResponseSchema = new Schema<ISuitabilityQuizResponse>(
     recommendation: { type: String },
     completedAt: { type: Date, required: true },
   },
-  { timestamps: true }
+  { timestamps: true, strict: false }
 );
 
 // Indexes

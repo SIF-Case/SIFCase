@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     if (quizType === "knowledge") {
       const responses = await KnowledgeQuizResponse.find({
-        userId: session.user.id,
+        userId: session.user.id as any,
       })
         .sort({ completedAt: -1 })
         .limit(limit)
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       });
     } else if (quizType === "suitability") {
       const responses = await SuitabilityQuizResponse.find({
-        userId: session.user.id,
+        userId: session.user.id as any,
       })
         .sort({ completedAt: -1 })
         .limit(limit)
@@ -61,11 +61,11 @@ export async function GET(req: NextRequest) {
     } else {
       // Get both types
       const [knowledgeResponses, suitabilityResponses] = await Promise.all([
-        KnowledgeQuizResponse.find({ userId: session.user.id })
+        KnowledgeQuizResponse.find({ userId: session.user.id as any })
           .sort({ completedAt: -1 })
           .limit(5)
           .lean(),
-        SuitabilityQuizResponse.find({ userId: session.user.id })
+        SuitabilityQuizResponse.find({ userId: session.user.id as any })
           .sort({ completedAt: -1 })
           .limit(5)
           .lean(),

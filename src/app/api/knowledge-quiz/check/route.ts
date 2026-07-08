@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { auth } from "@/auth";
+import mongoose from "mongoose";
 import KnowledgeQuiz from "@/models/KnowledgeQuiz";
 import { KnowledgeQuizResponse } from "@/models/QuizResponse";
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
   // Save quiz response to database
   try {
     await KnowledgeQuizResponse.create({
-      userId: session.user.id,
+      userId: new mongoose.Types.ObjectId(session.user.id),
       quizType: "knowledge",
       answers: answerDetails,
       totalScore,

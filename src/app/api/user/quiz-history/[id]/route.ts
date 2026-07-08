@@ -24,7 +24,7 @@ export async function GET(
     // Try to find in knowledge quiz responses first
     let response = await KnowledgeQuizResponse.findOne({
       _id: id,
-      userId: session.user.id,
+      userId: session.user.id as any,
     })
       .populate("answers.questionId", "question options context points")
       .lean();
@@ -39,7 +39,7 @@ export async function GET(
     // Try suitability quiz responses
     response = await SuitabilityQuizResponse.findOne({
       _id: id,
-      userId: session.user.id,
+      userId: session.user.id as any,
     })
       .populate("answers.questionId", "question options context")
       .lean();
