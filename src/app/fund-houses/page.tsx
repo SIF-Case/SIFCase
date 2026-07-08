@@ -94,12 +94,12 @@ function FundLogo({
 }) {
   if (logoUrl) {
     return (
-      <div className="size-12 rounded-[12px] bg-white border border-rule flex items-center justify-center overflow-hidden shrink-0 p-1">
+      <div className="size-20 rounded-[14px] bg-white border border-rule flex items-center justify-center overflow-hidden shrink-0 p-2">
         <Image
           src={logoUrl}
           alt={brandName}
-          width={48}
-          height={48}
+          width={80}
+          height={80}
           className="object-contain max-w-full max-h-full"
           style={{ width: 'auto', height: 'auto' }}
         />
@@ -107,8 +107,8 @@ function FundLogo({
     );
   }
   return (
-    <div className="size-12 rounded-[12px] bg-[#0C3B54] flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E] transition-colors">
-      <span className="text-[14px] font-extrabold text-white">
+    <div className="size-20 rounded-[14px] bg-[#0C3B54] flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E] transition-colors">
+      <span className="text-[18px] font-extrabold text-white">
         {initialsFor(brandName)}
       </span>
     </div>
@@ -162,41 +162,43 @@ export default async function FundHousesPage() {
                 <Link
                   key={fh.brandName}
                   href={`/fund-house/${encodeURIComponent(slug)}`}
-                  className="group flex flex-col bg-white rounded-[18px] border border-rule p-5 shadow-card hover:shadow-premium hover:border-rule-strong transition-all"
+                  className="group flex flex-col bg-white rounded-[18px] border border-rule p-6 shadow-card hover:shadow-premium hover:border-rule-strong transition-all"
                 >
-                  {/* Logo avatar + name */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <FundLogo logoUrl={fh.logoUrl} brandName={fh.brandName} />
-                    <div className="min-w-0">
-                      <div className="text-[14px] font-bold text-heading leading-tight truncate group-hover:text-primary transition-colors">
-                        {fh.brandName}
+                  {/* Logo + Info + Scheme Count */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    {/* Left: Logo + Name + Company */}
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
+                      <FundLogo logoUrl={fh.logoUrl} brandName={fh.brandName} />
+                      <div className="min-w-0 flex-1 pt-1">
+                        <div className="text-[16px] font-bold text-heading leading-tight group-hover:text-primary transition-colors mb-1">
+                          {fh.brandName}
+                        </div>
+                        <div className="text-[12px] text-muted leading-snug">
+                          {fh.companyName}
+                        </div>
+                        <div className="text-[11px] text-muted mt-0.5">
+                          SEBI-registered AMC
+                        </div>
                       </div>
-                      <div className="text-[11px] text-muted mt-0.5 truncate">
-                        {fh.companyName}
+                    </div>
+                    
+                    {/* Right: Scheme Count */}
+                    <div className="text-right shrink-0">
+                      <div className="text-[24px] font-extrabold text-primary nums leading-none">
+                        {fh.schemeCount}
+                      </div>
+                      <div className="text-[11px] text-muted mt-1 uppercase tracking-wide font-semibold">
+                        Scheme{fh.schemeCount !== 1 ? "s" : ""}
                       </div>
                     </div>
                   </div>
 
                   {/* Overview text (if set) */}
                   {fh.overview && (
-                    <p className="text-[12px] text-body leading-relaxed mb-4 line-clamp-3">
+                    <p className="text-[13px] text-body leading-relaxed line-clamp-2">
                       {fh.overview}
                     </p>
                   )}
-
-                  {/* Stats row */}
-                  <div className="flex items-center gap-3 flex-wrap text-[12px] text-muted border-t border-rule pt-3 mt-auto">
-                    <span className="font-semibold text-heading">
-                      {fh.schemeCount} scheme{fh.schemeCount !== 1 ? "s" : ""}
-                    </span>
-                    <span className="text-rule">·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="size-1.5 rounded-full bg-[#1A9E5F]" />
-                      Active
-                    </span>
-                    <span className="text-rule">·</span>
-                    <span>Min ₹10L</span>
-                  </div>
                 </Link>
               );
             })}

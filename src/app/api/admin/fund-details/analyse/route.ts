@@ -35,9 +35,7 @@ const HoldingSchema = z.object({
 // ─── Factsheet — best-source fields ────────────────────────────────────────────
 
 export const FactsheetExtractionSchema = z.object({
-  riskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5: 1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High"),
   schemeType: z.string().nullable().describe("Strategy/fund type from header, e.g. 'Hybrid Long-Short Fund'"),
-  exitLoad: z.string().nullable().describe("Exact text under Exit Load label, e.g. 'Nil'"),
   aumCurrent: z.number().nullable().describe("Month end AUM in ₹ Crore as a number"),
   aumAggregate: z.number().nullable().describe("Monthly Average AUM (AAUM) if stated separately from month-end AUM, otherwise null"),
   minInvestment: z.number().nullable().describe("Initial minimum investment in ₹ as a number"),
@@ -102,6 +100,8 @@ export type PptExtraction = z.infer<typeof PptExtractionSchema>;
 // ─── Excel / XLS Summary Doc — best-source fields ──────────────────────────────
 
 export const ExcelExtractionSchema = z.object({
+  riskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5 extracted from 'Riskometer (as on Date)' row: 1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High. Look for text like 'Risk Level 1', 'Risk Level 2', etc. and extract the numeric value."),
+  exitLoad: z.string().nullable().describe("Exit load information extracted from 'Exit Load (if applicable)' row. Extract the exact text value, e.g. 'Nil', '1% if redeemed within 30 days', etc."),
   sipDetails: z.array(z.object({ frequency: z.string(), minAmount: z.number(), minInstallments: z.number() })).describe("SIP (Systematic Investment Plan) options — one row per distinct SIP option, each with its frequency, minimum amount, and minimum number of installments. The same frequency may appear in multiple rows with different minimum-installment counts. Empty array if not present in this document."),
 });
 
@@ -121,11 +121,7 @@ const EXTRACTION_PROMPT = `You are a precise financial extraction engine for Ind
 
 === FIELD RULES ===
 
-riskBand: Read the RISK LEVELS section. The line "Fund risk: Risk Level X" or "Fund risk: RISK-LEVEL X" tells you the fund's level. SEBI mandates levels 1–5 only (1=Low … 5=High). Return the integer directly. Example: "Fund risk: Risk Level 3" → return 3. Do NOT infer from strategy name or from any spreadsheet data.
-
 schemeType: Strategy/fund type. Look in the header/subtitle near the fund name. E.g. "Hybrid Long-Short Fund", "Equity Long-Short Fund".
-
-exitLoad: Exact text under "Exit Load:" label. Usually "Nil" or a percentage description.
 
 aumCurrent: "Month end AUM" value in ₹ Crore as a number (e.g. 38.41). NOT monthly average.
 
@@ -164,7 +160,7 @@ mfEquivalent: 1 sentence naming the closest mutual fund category (e.g. "Balanced
 portfolioFit: 2–3 sentences on where this SIF fits in a diversified portfolio — satellite, alternative sleeve, hedge, etc.
 
 === JSON SCHEMA ===
-{"riskBand":string|null,"schemeType":string|null,"exitLoad":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"portfolioByRatingClass":[{"ratingClass":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}],"suitableFor":string|null,"notSuitableFor":string|null,"bullMarket":string|null,"bearMarket":string|null,"sidewaysMarket":string|null,"howItWorks":string|null,"mfEquivalent":string|null,"portfolioFit":string|null}
+{"schemeType":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"portfolioByRatingClass":[{"ratingClass":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}],"suitableFor":string|null,"notSuitableFor":string|null,"bullMarket":string|null,"bearMarket":string|null,"sidewaysMarket":string|null,"howItWorks":string|null,"mfEquivalent":string|null,"portfolioFit":string|null}
 
 === FACTSHEET TEXT ===
 `;
@@ -221,10 +217,7 @@ async function callOpenRouter(text: string, model: string, apiKey: string) {
 const FACTSHEET_PROMPT = `You are extracting data from an Indian SIF/AIF fund factsheet. Be exhaustive — do not skip any row or section.
 
 === SCALAR FIELDS ===
-riskBand: Read ONLY from the PDF's FUND/STRATEGY riskometer — the LEFT dial in the "RISK BAND" section. SEBI mandates levels 1–5 only (1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High). Return the integer directly — do NOT convert to English. NEVER infer from the fund name, strategy, or Excel data. Return null if unclear.
-benchmarkRiskBand: Read ONLY from the PDF's BENCHMARK riskometer — the RIGHT dial in the "RISK BAND" section. Return the integer level (1–5) directly. Do NOT copy riskBand here; the fund and benchmark levels are often different.
 schemeType: Fund strategy type from the header/subtitle (e.g. "Hybrid Long-Short Fund").
-exitLoad: Exact text under "Exit Load" label.
 aumCurrent: Month-end AUM in ₹ Crore as a plain number (e.g. 803.02). Look for "Month End AUM" or "AUM as on" — NOT the monthly average.
 aumAggregate: Monthly Average AUM (also called AAUM or Average AUM) in ₹ Crore if stated separately — else null.
 minInvestment: Initial minimum investment in ₹ as a plain integer (Rs.10,00,000 = 10000000).
@@ -326,6 +319,23 @@ alphaGenerationApproach: 2-4 sentences describing how the fund seeks to generate
 Return null for alphaGenerationApproach if not discernible, and an empty array for derivativeStrategies if none are named.`;
 
 const EXCEL_PROMPT = `You are extracting data from a "Scheme Summary Document" spreadsheet for an Indian SIF (Specialized Investment Fund). The data is a flat list of label/value rows (tab-separated), one fact per row — not a multi-page report.
+
+=== RISK BAND ===
+Look for a row labelled "Riskometer (as on Date)" or similar riskometer-related label. The value will contain risk level text like "Risk Level 1", "Risk Level 2", "Risk Level 3", "Risk Level 4", or "Risk Level 5".
+Extract the numeric risk band value (1–5) as an integer:
+- Risk Level 1 or "Low Risk" → 1
+- Risk Level 2 or "Low to Moderate Risk" → 2  
+- Risk Level 3 or "Moderate Risk" → 3
+- Risk Level 4 or "Moderately High Risk" → 4
+- Risk Level 5 or "High Risk" → 5
+Return null if not found or unclear.
+
+=== EXIT LOAD ===
+Look for a row labelled "Exit Load (if applicable)" or "Exit Load". Extract the exact value text, such as:
+- "Nil"
+- "1% if redeemed within 30 days"
+- "0.25% if redeemed before 15 days"
+Return null if not found.
 
 === SIP DETAILS ===
 Look for a row labelled "SIP SWP & STP Details: Frequency" alongside parallel rows "...Minimum amount", "...In multiple of", and "...Minimum Instalments".

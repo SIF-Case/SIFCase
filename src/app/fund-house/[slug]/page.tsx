@@ -51,12 +51,12 @@ function FundHouseLogo({
 }) {
   if (logoUrl) {
     return (
-      <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)] overflow-hidden p-1.5">
+      <div className="size-[80px] rounded-[16px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.18)] overflow-hidden p-2.5">
         <Image
           src={logoUrl}
           alt={brandName}
-          width={52}
-          height={52}
+          width={80}
+          height={80}
           className="object-contain max-w-full max-h-full"
           style={{ width: 'auto', height: 'auto' }}
         />
@@ -64,8 +64,8 @@ function FundHouseLogo({
     );
   }
   return (
-    <div className="size-[52px] rounded-[14px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.15)]">
-      <span className="text-[17px] font-extrabold tracking-tight text-[#0F2137]">
+    <div className="size-[80px] rounded-[16px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.18)]">
+      <span className="text-[24px] font-extrabold tracking-tight text-[#0F2137]">
         {initialsFor(brandName)}
       </span>
     </div>
@@ -128,19 +128,18 @@ export default async function FundHousePage({ params }: Props) {
         {/* HERO */}
         <div style={{ background: "#004C61" }} className="text-white">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-[50px] pt-7 sm:pt-9 pb-7">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-start gap-4 mb-4">
               <FundHouseLogo logoUrl={fundHouse.logoUrl} brandName={fundHouse.brandName} />
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/45">{fundHouse.companyName}</span>
-                <span className="text-[11px] text-white/35">SEBI-registered AMC</span>
+              <div className="flex flex-col gap-1 pt-1">
+                <h1 className="text-[26px] sm:text-[32px] lg:text-[38px] font-extrabold text-white leading-[1.1] tracking-tight">
+                  {fundHouse.brandName}
+                </h1>
+                <span className="text-[13px] text-white/60">{fundHouse.companyName}</span>
+                <span className="text-[12px] text-white/45">SEBI-registered AMC</span>
               </div>
             </div>
 
-            <h1 className="text-[26px] sm:text-[32px] lg:text-[38px] font-extrabold text-white leading-[1.1] tracking-tight pt-2">
-              {fundHouse.brandName}
-            </h1>
-
-            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-2 pt-4">
+            <div className="flex items-center flex-wrap gap-x-2.5 gap-y-2 pt-2">
               <span className="text-[13px] text-white/45">
                 {fundHouse.schemeCount} scheme{fundHouse.schemeCount === 1 ? "" : "s"}
               </span>
