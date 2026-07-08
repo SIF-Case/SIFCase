@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   // Save quiz response to database
   try {
     await KnowledgeQuizResponse.create({
-      userId: new mongoose.Types.ObjectId(session.user.id),
+      userId: session.user.id as any,
       quizType: "knowledge",
       answers: answerDetails,
       totalScore,
