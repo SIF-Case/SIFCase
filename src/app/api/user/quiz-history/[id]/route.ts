@@ -22,32 +22,32 @@ export async function GET(
   
   try {
     // Try to find in knowledge quiz responses first
-    let response = await KnowledgeQuizResponse.findOne({
+    const knowledgeResponse = await KnowledgeQuizResponse.findOne({
       _id: id,
       userId: session.user.id as any,
     })
       .populate("answers.questionId", "question options context points")
       .lean();
     
-    if (response) {
+    if (knowledgeResponse) {
       return NextResponse.json({
         type: "knowledge",
-        response,
+        response: knowledgeResponse,
       });
     }
     
     // Try suitability quiz responses
-    response = await SuitabilityQuizResponse.findOne({
+    const suitabilityResponse = await SuitabilityQuizResponse.findOne({
       _id: id,
       userId: session.user.id as any,
     })
       .populate("answers.questionId", "question options context")
       .lean();
     
-    if (response) {
+    if (suitabilityResponse) {
       return NextResponse.json({
         type: "suitability",
-        response,
+        response: suitabilityResponse,
       });
     }
     
