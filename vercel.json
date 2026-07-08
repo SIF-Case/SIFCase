@@ -4,6 +4,12 @@
     { "path": "/api/cron/fetch-nav",  "schedule": "30 23 * * *" },
     { "path": "/api/cron/fetch-nav",  "schedule": "30 3 * * *"  },
     { "path": "/api/cron/fetch-news", "schedule": "0 2 * * *"   }
-  ]
+  ],
+  "functions": {
+    "api/admin/fund-details/upload-pdf.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
 }
 
