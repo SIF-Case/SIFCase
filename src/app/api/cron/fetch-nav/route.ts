@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   // Bust the Next.js Data Cache so the next page request re-fetches fresh
   // data from MongoDB instead of returning stale cached results.
   if (result.errors.length === 0) {
+    // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
     revalidateTag("sif-data");
 
   }

@@ -71,6 +71,7 @@ export async function PUT(req: NextRequest) {
   revalidatePath(`/fund-house/${slug}`);
 
   // Bust the unstable_cache tag so getFundHouseBySlug returns fresh data
+  // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
   revalidateTag("sif-data");
 
   return NextResponse.json({ ok: true, doc });

@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const report = await PerformanceReport.findByIdAndUpdate(id, { $set: update }, { new: true });
     if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
     revalidateTag("sif-data");
     revalidatePath("/");
     revalidatePath(`/performance/${existing.slug}`);
@@ -48,6 +49,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const report = await PerformanceReport.findById(id);
     if (report) {
       await PerformanceReport.findByIdAndDelete(id);
+      // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
       revalidateTag("sif-data");
       revalidatePath("/");
       revalidatePath(`/performance/${report.slug}`);

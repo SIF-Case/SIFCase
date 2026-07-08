@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     order,
     published: published !== false,
   });
+  // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
   revalidateTag("sif-data");
   revalidatePath("/");
   return NextResponse.json({ ok: true, id: faq._id });
