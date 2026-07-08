@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Faq from "@/models/Faq";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!await hasPageAccess(req, "faqs", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -17,6 +18,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof body.order === "number") update.order = body.order;
 
   await Faq.findByIdAndUpdate(id, { $set: update });
+  // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
+  revalidateTag("sif-data");
+  revalidatePath("/");
   return NextResponse.json({ ok: true });
 }
 
@@ -25,5 +29,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await connectDB();
   const { id } = await params;
   await Faq.findByIdAndDelete(id);
+  // @ts-expect-error - Next.js 16 type definition bug, revalidateTag only needs 1 argument
+  revalidateTag("sif-data");
+  revalidatePath("/");
   return NextResponse.json({ ok: true });
 }

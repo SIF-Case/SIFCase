@@ -3,6 +3,7 @@ import { isAdminRequest } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import PerformanceReport from "@/models/PerformanceReport";
 import { monthKeyToLabel, monthKeyToSlug } from "@/lib/sifData";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function GET(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
       published: !!published,
     });
 
+    revalidateTag("sif-data");
+    revalidatePath("/");
+    revalidatePath(`/performance/${report.slug}`);
     return NextResponse.json({ ok: true, id: report._id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

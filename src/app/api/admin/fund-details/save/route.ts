@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import FundDetails from "@/models/FundDetails";
+import { revalidateTag, revalidatePath } from "next/cache";
+import SIFScheme from "@/models/SIFScheme";
 
 export async function POST(req: NextRequest) {
   if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -29,6 +31,21 @@ export async function POST(req: NextRequest) {
       { $set: setPayload },
       { upsert: true, returnDocument: "after" },
     );
+
+    // Bust the data cache (unstable_cache entries)
+    revalidateTag("sif-data");
+
+    // Bust the rendered page cache (export const revalidate = 3600 on the fund page).
+    // Look up all scheme codes that belong to this fundName so we can purge each URL.
+    const schemes = await SIFScheme.find({ fundName }, { schemeCode: 1, _id: 0 }).lean();
+    for (const s of schemes) {
+      revalidatePath(`/sifs/${(s.schemeCode as string).toLowerCase()}`);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/sifs");
+    revalidatePath("/compare");
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[FundDetails save error]", err);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import Faq from "@/models/Faq";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function GET(req: NextRequest) {
   if (!await hasPageAccess(req, "faqs", "view")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -28,5 +29,7 @@ export async function POST(req: NextRequest) {
     order,
     published: published !== false,
   });
+  revalidateTag("sif-data");
+  revalidatePath("/");
   return NextResponse.json({ ok: true, id: faq._id });
 }

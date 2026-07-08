@@ -3,7 +3,7 @@ import { hasPageAccess } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import FundHouse from "@/models/FundHouse";
 import mongoose from "mongoose";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // GET /api/admin/fund-houses
 // Returns all unique brandNames from sifschemes, merged with any saved branding
@@ -69,6 +69,9 @@ export async function PUT(req: NextRequest) {
   // Revalidate individual fund house detail page
   const slug = brandName.toLowerCase().replace(/\s+/g, "-");
   revalidatePath(`/fund-house/${slug}`);
+
+  // Bust the unstable_cache tag so getFundHouseBySlug returns fresh data
+  revalidateTag("sif-data");
 
   return NextResponse.json({ ok: true, doc });
 }

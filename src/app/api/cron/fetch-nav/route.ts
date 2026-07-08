@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   // Bust the Next.js Data Cache so the next page request re-fetches fresh
   // data from MongoDB instead of returning stale cached results.
   if (result.errors.length === 0) {
-    revalidateTag("sif-data", "default");
+    revalidateTag("sif-data");
 
   }
 
