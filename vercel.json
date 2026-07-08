@@ -4,5 +4,5 @@
     { "path": "/api/cron/fetch-nav",  "schedule": "30 23 * * *" },
     { "path": "/api/cron/fetch-nav",  "schedule": "30 3 * * *"  },
     { "path": "/api/cron/fetch-news", "schedule": "0 2 * * *"   }
-  ],
-
+  ]
+}
