@@ -11,6 +11,7 @@ import {
   HelpCircle,
   ClipboardCheck,
   Building2,
+  BarChart2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ export const ADMIN_PAGES: AdminPageDef[] = [
   { key: "users", label: "Users", href: "/admin/users", icon: Users, editable: true },
   { key: "clients", label: "Clients", href: "/admin/clients", icon: UserSquare2, editable: true },
   { key: "funds", label: "Funds & NAV", href: "/admin/funds", icon: Database, editable: true },
+  { key: "navRecords", label: "NAV Records", href: "/admin/nav-records", icon: BarChart2, editable: false },
   { key: "schemes", label: "Funds", href: "/admin/schemes", icon: Table2, editable: true },
   { key: "fundDetails", label: "Fund Details", href: "/admin/fund-details", icon: ClipboardList, editable: true },
   { key: "fundHouses", label: "Fund Houses", href: "/admin/fund-houses", icon: Building2, editable: true },

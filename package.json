@@ -6,7 +6,8 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "import:historical": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/importHistorical.ts"
+    "import:historical": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/importHistorical.ts",
+    "generate:may-report": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/generate_may_2026_report_data.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",

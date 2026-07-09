@@ -57,14 +57,15 @@ export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topF
                 Explore Funds
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-              <Link
+              {/* TODO: Uncomment when ready to use in future */}
+              {/* <Link
                 href="/suitability"
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-[15px] font-medium text-white transition-opacity hover:opacity-90 sm:w-[208px]"
                 style={{ background: "#3b8bb1", textDecoration: "none" }}
               >
                 <Sparkles className="w-5 h-5" />
                 Find my Ideal SIF
-              </Link>
+              </Link> */}
             </div>
           </div>
 
