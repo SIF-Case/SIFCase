@@ -25,7 +25,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
           fontWeight: 500,
           lineHeight: "16px",
           textTransform: "uppercase",
-          fontFamily: "'Satoshi Variable', sans-serif",
+          fontFamily: "var(--font-dm-sans), sans-serif",
         }}
       >
         {value}
@@ -37,7 +37,7 @@ function StatCard({ value, label }: { value: string; label: string }) {
           fontWeight: 500,
           lineHeight: "16px",
           textTransform: "capitalize",
-          fontFamily: "'Satoshi Variable', sans-serif",
+          fontFamily: "var(--font-dm-sans), sans-serif",
           whiteSpace: "nowrap",
         }}
       >
@@ -72,7 +72,7 @@ export function MarketSnapshot({ stats }: { stats: SnapshotStats }) {
         style={{
           color: "#fff",
           textAlign: "center",
-          fontFamily: "'Satoshi Variable', sans-serif",
+          fontFamily: "var(--font-dm-sans), sans-serif",
           fontSize: 15,
           fontWeight: 700,
           lineHeight: "30px",

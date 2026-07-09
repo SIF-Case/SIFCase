@@ -93,7 +93,7 @@ function AssetDonutChart({ data }: { data: { assetClass: string; percentage: num
     <div className="flex flex-col items-center gap-4">
       {/* Relative wrapper so the centre overlay can be absolutely positioned */}
       <div className="relative w-full" style={{ height: 340 }}>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={340} minWidth={0}>
           <PieChart margin={{ top: 30, right: 80, bottom: 30, left: 80 }}>
             <Pie
               data={positive}
@@ -142,7 +142,7 @@ function AssetDonutChart({ data }: { data: { assetClass: string; percentage: num
 function AssetAllocationChart({ data }: { data: { assetClass: string; percentage: number }[] }) {
   const sorted = [...data].sort((a, b) => b.percentage - a.percentage);
   return (
-    <ResponsiveContainer width="100%" height={Math.max(180, sorted.length * 36)}>
+    <ResponsiveContainer width="100%" height={Math.max(180, sorted.length * 36)} minWidth={0}>
       <BarChart data={sorted} layout="vertical" margin={{ left: 0, right: 24, top: 4, bottom: 4 }}>
         <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#64748B" }} axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="assetClass" width={160} tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
@@ -425,7 +425,7 @@ function VoronoiSectorChart({
 function IndustryChart({ data }: { data: { industry: string; percentage: number }[] }) {
   const sorted = [...data].sort((a, b) => b.percentage - a.percentage).slice(0, 20);
   return (
-    <ResponsiveContainer width="100%" height={sorted.length * 36 + 32}>
+    <ResponsiveContainer width="100%" height={sorted.length * 36 + 32} minWidth={0}>
       <BarChart data={sorted} layout="vertical" margin={{ left: 0, right: 44, top: 4, bottom: 4 }}
         tabIndex={-1} style={{ outline: "none", userSelect: "none" }}>
         <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#94A3B8" }}
@@ -461,7 +461,7 @@ function IndustryChart({ data }: { data: { industry: string; percentage: number 
 
 function RatingPieChart({ data }: { data: { ratingClass: string; percentage: number }[] }) {
   return (
-    <ResponsiveContainer width="100%" height={260}>
+    <ResponsiveContainer width="100%" height={260} minWidth={0}>
       <PieChart>
         <Pie data={data} dataKey="percentage" nameKey="ratingClass" cx="50%" cy="50%" outerRadius={90}
           label={({ name, value }) => `${name} ${Number(value).toFixed(1)}%`}

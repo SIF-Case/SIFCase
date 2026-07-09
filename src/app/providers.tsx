@@ -1,9 +1,8 @@
 'use client';
 
-import { CompareTrayProvider } from "@/components/ui/CompareTray";
-import type { FundRow } from "@/lib/sifData";
+import { CompareTrayProvider, type CompareFund } from "@/components/ui/CompareTray";
 import type { ReactNode } from "react";
 
-export function Providers({ children, funds }: { children: ReactNode; funds: FundRow[] }) {
+export function Providers({ children, funds }: { children: ReactNode; funds: CompareFund[] }) {
   return <CompareTrayProvider funds={funds}>{children}</CompareTrayProvider>;
 }

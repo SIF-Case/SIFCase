@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, DM_Sans } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { UserTracker } from "@/components/UserTracker";
 import { CallbackPopup } from "@/components/ui/CallbackPopup";
@@ -8,6 +8,15 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+// Self-hosted replacement for the old cdnfonts.com (Nohemi, 500-erroring)
+// and fonts.googleapis.com (Satoshi Variable, wrong host) render-blocking
+// external font requests — next/font inlines and preloads this at build time.
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -33,13 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
-      <head>
-        {/* Nohemi font - geometric display font used in hero heading */}
-        <link rel="preconnect" href="https://fonts.cdnfonts.com" />
-        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/nohemi" />
-      </head>
-      {/* Satoshi Variable font loaded via CSS @import in globals.css */}
+    <html lang="en" className={`${inter.variable} ${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
         <SessionProvider>
           <UserTracker />

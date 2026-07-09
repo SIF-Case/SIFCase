@@ -32,14 +32,14 @@ export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topF
             <div className="flex flex-col gap-4">
               <h1
                 className="text-white max-w-[515px] text-[28px] leading-[36px] sm:text-[34px] sm:leading-[44px] lg:text-[40px] lg:leading-[58px]"
-                style={{ fontFamily: "Nohemi, 'Satoshi Variable', sans-serif", fontWeight: 400 }}
+                style={{ fontFamily: "var(--font-dm-sans), sans-serif", fontWeight: 400 }}
               >
                 Research, Compare &amp; Invest in{" "}
                 <span style={{ color: "#14b7a3" }}>Specialised</span> Investment Funds
               </h1>
               <p
                 className="max-w-[522px] text-[15px] leading-[24px] sm:text-[17px] sm:leading-[27px] lg:text-[20px] lg:leading-[30px]"
-                style={{ color: "#FFF", fontFamily: "'Satoshi Variable', sans-serif", fontWeight: 400 }}
+                style={{ color: "#FFF", fontFamily: "var(--font-dm-sans), sans-serif", fontWeight: 400 }}
               >
                 Every SEBI-registered SIF — tracked, rated and explained. From first read to final
                 investment, SIFcase is your complete guide to India&apos;s newest investment

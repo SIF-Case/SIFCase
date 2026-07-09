@@ -5,6 +5,10 @@ import Link from "next/link";
 import { X, GitCompare } from "lucide-react";
 import type { FundRow } from "@/lib/sifData";
 
+// Tray only ever displays schemeCode + name — avoid shipping full FundRow
+// (sparklines/returns/etc.) into this client boundary twice.
+export type CompareFund = Pick<FundRow, "schemeCode" | "name">;
+
 type Ctx = {
   ids: string[];
   toggle: (id: string) => void;
@@ -14,7 +18,7 @@ type Ctx = {
 
 const CompareCtx = createContext<Ctx | null>(null);
 
-export function CompareTrayProvider({ children, funds }: { children: ReactNode; funds: FundRow[] }) {
+export function CompareTrayProvider({ children, funds }: { children: ReactNode; funds: CompareFund[] }) {
   const [ids, setIds] = useState<string[]>([]);
   const toggle = useCallback((id: string) => {
     setIds((prev) =>
@@ -42,12 +46,12 @@ function Tray({
   ids, funds, toggle, clear,
 }: {
   ids: string[];
-  funds: FundRow[];
+  funds: CompareFund[];
   toggle: (id: string) => void;
   clear: () => void;
 }) {
   if (ids.length === 0) return null;
-  const items = ids.map((id) => funds.find((f) => f.schemeCode === id)).filter(Boolean) as FundRow[];
+  const items = ids.map((id) => funds.find((f) => f.schemeCode === id)).filter(Boolean) as CompareFund[];
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-24px)] sm:w-fit sm:max-w-[min(96vw,1000px)]">
       <div className="bg-white/95 backdrop-blur border border-rule-strong rounded-2xl shadow-premium px-3 py-2 flex items-center gap-2">

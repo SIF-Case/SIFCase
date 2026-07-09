@@ -51,7 +51,7 @@ export function NotReadyToInvest() {
           height: 36px;
           box-sizing: border-box;
           border-radius: 8px;
-          font-family: "Satoshi Variable", -apple-system, Roboto, Helvetica, sans-serif;
+          font-family: var(--font-dm-sans), -apple-system, Roboto, Helvetica, sans-serif;
           font-size: 13px;
           font-weight: 500;
           line-height: 20px;

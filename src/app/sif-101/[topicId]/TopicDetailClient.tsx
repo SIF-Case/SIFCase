@@ -493,7 +493,7 @@ export function TopicDetailClient({
         }
         .topic-sidebar-heading {
           color: #6B7685;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12px;
           font-weight: 700;
           letter-spacing: 1px;
@@ -501,7 +501,7 @@ export function TopicDetailClient({
         }
         .topic-sidebar-progress {
           color: #004C61;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 600;
         }
@@ -550,7 +550,7 @@ export function TopicDetailClient({
           background: transparent;
         }
         .topic-sidebar-label {
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 500;
           line-height: 20.8px;
@@ -587,7 +587,7 @@ export function TopicDetailClient({
         }
         .breadcrumb-link {
           color: #2E9E94;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 600;
           letter-spacing: 1px;
@@ -603,14 +603,14 @@ export function TopicDetailClient({
         }
         .breadcrumb-current {
           color: #6B7685;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.5px;
         }
         .article-title {
           color: #0F2D3D;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 32px;
           font-weight: 700;
           line-height: 40px;
@@ -650,7 +650,7 @@ export function TopicDetailClient({
         }
         .article-body-wrap.prose {
           color: #3D4B5C;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 15px;
           line-height: 1.7;
         }

@@ -283,7 +283,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-breadcrumb-link {
           color: #2E9E94;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 600;
           letter-spacing: 1px;
@@ -297,7 +297,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-heading {
           color: #fff;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 28px;
           font-weight: 500;
           line-height: 32.2px;
@@ -306,7 +306,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-subheading {
           color: rgba(255,255,255,0.55);
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 14px;
           font-weight: 500;
           line-height: 22.4px;
@@ -349,7 +349,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-sidebar-title {
           color: #6B7685;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12px;
           font-weight: 700;
           letter-spacing: 1px;
@@ -357,7 +357,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-sidebar-count {
           color: #004C61;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 600;
         }
@@ -399,7 +399,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         .bullet-pending { border: 1px solid #DDE3EA; }
 
         .hub-sidebar-label {
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 500;
           line-height: 20.8px;
@@ -443,14 +443,14 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         .hub-progress-title {
           display: block;
           color: #1B2A3B;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 700;
           line-height: 20.8px;
         }
         .hub-progress-sub {
           color: #6B7685;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12px;
           font-weight: 500;
           line-height: 19.2px;
@@ -471,7 +471,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         .hub-progress-stat-label,
         .hub-progress-stat-value {
           color: #2E9E94;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 700;
         }
@@ -490,7 +490,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-progress-pct {
           color: #2E9E94;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 11px;
           font-weight: 500;
           align-self: flex-end;
@@ -555,7 +555,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-topic-title {
           color: #1B2A3B;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 14px;
           font-weight: 700;
           line-height: 18.9px;
@@ -575,7 +575,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-topic-desc {
           color: #6B7685;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 12px;
           font-weight: 500;
           line-height: 18.6px;
@@ -606,7 +606,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         .hub-topic-level {
           padding: 3px 9px;
           border-radius: 4px;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.3px;
@@ -631,7 +631,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-cta-eyebrow {
           color: rgba(255,255,255,0.50);
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 1.2px;
@@ -639,7 +639,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-cta-heading {
           color: #fff;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 18px;
           font-weight: 700;
           line-height: 23.4px;
@@ -647,7 +647,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
         }
         .hub-cta-sub {
           color: rgba(255,255,255,0.80);
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 500;
           line-height: 19.5px;
@@ -665,7 +665,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
           border-radius: 12px;
           background: #fff;
           color: #004C61;
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 700;
           text-decoration: none;
@@ -680,7 +680,7 @@ export function LearningHubClient({ sifEducationArticles = [] }: { sifEducationA
           border: 1px solid rgba(255,255,255,0.20);
           background: rgba(255,255,255,0.10);
           color: rgba(255,255,255,0.85);
-          font-family: 'Satoshi Variable', sans-serif;
+          font-family: var(--font-dm-sans), sans-serif;
           font-size: 13px;
           font-weight: 700;
           text-decoration: none;

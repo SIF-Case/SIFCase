@@ -348,7 +348,7 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
                 fontWeight: 700,
                 lineHeight: "24px",
                 textTransform: "capitalize",
-                fontFamily: "'Satoshi Variable', sans-serif",
+                fontFamily: "var(--font-dm-sans), sans-serif",
               }}
             >
               Best Performing SIFs

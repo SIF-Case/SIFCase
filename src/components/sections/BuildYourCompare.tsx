@@ -277,7 +277,7 @@ export function BuildYourCompare({ funds }: Props) {
         {series.length > 0 && chartData.length > 1 ? (
           <div className="relative z-[1] flex items-stretch p-[16px_12px_0] sm:p-[16px_22px_0] gap-0 flex-1 min-h-[280px] sm:min-h-[350px]">
             <div className="flex-1 w-full h-[260px] sm:h-[320px] touch-none select-none overflow-hidden">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <AreaChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
                   <defs>
                     {series.map((s) => (

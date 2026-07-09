@@ -1,9 +1,7 @@
 // Re-fetch from MongoDB every hour; cron updates NAV nightly
 export const revalidate = 3600;
 
-import { auth } from "@/auth";
-import { getEffectiveAccess } from "@/lib/adminAuth";
-import { redirect } from "next/navigation";
+import dynamic from "next/dynamic";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -15,7 +13,6 @@ import { MarketSnapshot } from "@/components/sections/MarketSnapshot";
 import { WhySIFcase } from "@/components/sections/WhySIFcase";
 import { FAQSection } from "@/components/sections/FAQSection";
 import { CTABand } from "@/components/sections/CTABand";
-import { BuildYourCompare } from "@/components/sections/BuildYourCompare";
 import { NotReadyToInvest } from "@/components/sections/NotReadyToInvest";
 import { Providers } from "@/app/providers";
 import {
@@ -26,15 +23,15 @@ import {
   getPublishedFaqs,
 } from "@/lib/sifData";
 
-export default async function HomePage() {
-  const session = await auth();
-  if (session?.user?.id) {
-    const access = await getEffectiveAccess(session.user.id);
-    if (access && (access.isSuperAdmin || access.permissions.size > 0)) {
-      redirect("/admin");
-    }
-  }
+// recharts is heavy — split out of the initial homepage bundle, load on demand.
+const BuildYourCompare = dynamic(
+  () => import("@/components/sections/BuildYourCompare").then((m) => m.BuildYourCompare),
+  { loading: () => <div className="h-[600px]" /> },
+);
 
+// Admin sign-in redirect now happens in middleware.ts (matcher: "/") — keeping
+// auth()/cookies() out of this component lets it stay statically cached (ISR).
+export default async function HomePage() {
   const [stats, topFunds, tickerNavs, latestReport, faqGroups] = await Promise.all([
     getSnapshotStats(),
     getTopFunds(),
@@ -43,8 +40,10 @@ export default async function HomePage() {
     getPublishedFaqs(),
   ]);
 
+  const compareFunds = topFunds.map(({ schemeCode, name }) => ({ schemeCode, name }));
+
   return (
-    <Providers funds={topFunds}>
+    <Providers funds={compareFunds}>
       <main className="flex flex-col min-h-screen">
         <TickerRibbon navItems={tickerNavs} />
         <Navbar />
