@@ -131,7 +131,7 @@ export function AuthModal({ open, onClose, reason }: Props) {
         const res = await fetch("/api/auth/link-email/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email }),
+          body: JSON.stringify({ name, email, phone: fullPhone }),
         });
         const data = await res.json();
         if (!res.ok) { setError(data.error ?? "Couldn't resend the code"); }
@@ -200,7 +200,11 @@ export function AuthModal({ open, onClose, reason }: Props) {
       const res = await fetch("/api/auth/link-email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+        body: JSON.stringify({ 
+          name: name.trim(), 
+          email: email.trim(),
+          phone: fullPhone, // Pass phone number
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Couldn't send the code"); return; }
@@ -219,21 +223,31 @@ export function AuthModal({ open, onClose, reason }: Props) {
     if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
     setLoading(true);
     try {
+      // Step 1: Verify email OTP and create/update user account
       const res = await fetch("/api/auth/link-email/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp }),
+        body: JSON.stringify({ 
+          otp,
+          phone: fullPhone,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Verification failed"); return; }
       
-      // Email verified and linked! Now log the user in with phone-otp
-      const loginRes = await signIn("phone-otp", { phone: fullPhone, otp: "verified", redirect: false });
+      // Step 2: Email verified! Use the returned loginToken to create a session
+      const loginRes = await signIn("phone-post-link", { 
+        phone: fullPhone, 
+        loginToken: data.loginToken,
+        redirect: false,
+      });
+      
       if (loginRes?.error) {
-        // If phone-otp login fails, user is already registered, just refresh session
-        await updateSession({});
+        setError("Login failed — please try again");
+        return;
       }
       
+      // Step 3: Get fresh session
       const freshSession = await getSession();
       if (freshSession?.user?.isAdmin) {
         window.location.href = "/admin";
@@ -253,20 +267,31 @@ export function AuthModal({ open, onClose, reason }: Props) {
     stage === "verify-phone" ? verifyPhoneOtp :
       stage === "verify-email" ? verifyEmailLoginOtp :
         verifyLinkEmailOtp;
+  
+  // Prevent closing during mandatory email collection stages
+  const canClose = stage !== "link" && stage !== "link-email-form" && stage !== "link-email-otp";
+  
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current && canClose) {
+      handleClose();
+    }
+  };
 
   return (
     <div
       ref={overlayRef}
       className={`fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm ${open ? "" : "hidden"}`}
-      onClick={(e) => { if (e.target === overlayRef.current) handleClose(); }}
+      onClick={handleOverlayClick}
     >
       <div className="w-full max-w-[400px] bg-white rounded-[20px] shadow-premium p-6 relative">
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-muted hover:text-heading hover:bg-surface transition-colors"
-        >
-          <X className="size-4" />
-        </button>
+        {canClose && (
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 p-1.5 rounded-full text-muted hover:text-heading hover:bg-surface transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        )}
 
         <div className="mb-6">
           <div className="w-8 h-8 rounded-[8px] bg-brand-navy flex items-center justify-center text-white text-xs font-bold mb-3">S</div>
@@ -404,7 +429,11 @@ export function AuthModal({ open, onClose, reason }: Props) {
           <div className="space-y-3">
             <button
               onClick={async () => {
-                await fetch("/api/auth/link-google-init", { method: "POST" });
+                await fetch("/api/auth/link-google-init", { 
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ phone: fullPhone }),
+                });
                 signIn("google");
               }}
               className="w-full h-11 rounded-[10px] border border-rule bg-white hover:bg-surface text-[13.5px] font-semibold text-heading flex items-center justify-center gap-3 transition-colors shadow-sm"

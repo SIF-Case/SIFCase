@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const body = await req.json();
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  
+  if (!phone) {
+    return NextResponse.json({ error: "Phone number required" }, { status: 400 });
   }
-  void req;
+  
   const res = NextResponse.json({ ok: true });
-  // Short-lived cookie — read in the Google signIn callback to link accounts
-  res.cookies.set("linking_user_id", session.user.id, {
+  // Store phone number in cookie for Google OAuth callback to link account
+  res.cookies.set("linking_phone", phone, {
     httpOnly: true,
     path: "/",
     maxAge: 300, // 5 minutes

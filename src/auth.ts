@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
-import { consumeEmailOtp, consumePhoneOtp } from "@/lib/otp";
+import { consumeEmailOtp, consumePhoneOtp, consumeLoginToken } from "@/lib/otp";
 import { logClientActivity } from "@/lib/activityLogger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -96,18 +96,59 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    Credentials({
+      id: "phone-post-link",
+      credentials: {
+        phone: { label: "Phone" },
+        loginToken: { label: "Login Token" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.phone || !credentials?.loginToken) return null;
+        const phone = credentials.phone as string;
+        const result = await consumeLoginToken(phone, credentials.loginToken as string);
+        if (!result.ok) return null;
+        await connectDB();
+        const user = await User.findOne({ phone });
+        if (!user) return null;
+        return {
+          id: user._id.toString(),
+          name: user.name ?? phone,
+          email: user.email ?? null,
+          image: user.image ?? null,
+          phone,
+        };
+      },
+    }),
   ],
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider === "google" && profile?.email) {
         await connectDB();
         const cookieStore = await cookies();
-        const linkUserId = cookieStore.get("linking_user_id")?.value;
+        const linkingPhone = cookieStore.get("linking_phone")?.value;
 
-        if (linkUserId) {
-          // Link Google to an existing phone-only account
-          const phoneUser = await User.findById(linkUserId);
-          if (phoneUser && !phoneUser.email) {
+        if (linkingPhone) {
+          // Link Google to phone number (for new user registration flow)
+          let phoneUser = await User.findOne({ phone: linkingPhone });
+          
+          if (!phoneUser) {
+            // Create new user with phone + Google email
+            phoneUser = await User.create({
+              phone: linkingPhone,
+              email: profile.email,
+              googleId: profile.sub as string | undefined,
+              image: (profile as { picture?: string }).picture ?? undefined,
+              emailVerified: new Date(),
+              name: profile.name ?? undefined,
+            });
+            
+            try {
+              await logClientActivity(phoneUser._id.toString(), "Create User", "Registered user account via Phone + Google");
+            } catch (err) {
+              console.error("Google link sign up client logger error:", err);
+            }
+          } else if (!phoneUser.email) {
+            // Update existing phone-only user with Google email
             phoneUser.email = profile.email;
             phoneUser.googleId = profile.sub as string | undefined;
             phoneUser.image = (profile as { picture?: string }).picture ?? phoneUser.image;
@@ -116,12 +157,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               phoneUser.name = profile.name ?? phoneUser.name;
             }
             await phoneUser.save();
-            cookieStore.delete("linking_user_id");
-            return true;
           }
+          
+          cookieStore.delete("linking_phone");
+          return true;
         }
 
-        // Normal Google sign-in flow
+        // Normal Google sign-in flow (for returning users)
         const existing = await User.findOne({ email: profile.email });
         if (!existing) {
           const newUser = await User.create({
