@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { consumeEmailOtp, consumePhoneOtp, consumeLoginToken } from "@/lib/otp";
@@ -186,7 +187,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user, account, profile, trigger }) {
-      if (trigger === "update" && token.id) {
+      if (trigger === "update" && token.id && mongoose.isValidObjectId(token.id)) {
         await connectDB();
         const dbUser = await User.findById(token.id as string).lean();
         if (dbUser) {
@@ -202,11 +203,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.phone = (user as { phone?: string }).phone;
         if (user.name) token.name = user.name;
-        await connectDB();
-        const dbUser = await User.findById(user.id).lean();
-        if (dbUser) {
-          token.isAdmin = !!dbUser.isAdmin;
-          token.role = dbUser.role ? String(dbUser.role) : undefined;
+        if (mongoose.isValidObjectId(user.id)) {
+          await connectDB();
+          const dbUser = await User.findById(user.id).lean();
+          if (dbUser) {
+            token.isAdmin = !!dbUser.isAdmin;
+            token.role = dbUser.role ? String(dbUser.role) : undefined;
+          }
         }
       }
       if (account?.provider === "google" && profile?.email) {
