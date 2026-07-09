@@ -67,11 +67,11 @@ export function Navbar() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 flex flex-col items-center px-6 py-[14px] bg-white ${
+        className={`sticky top-0 z-50 flex flex-col items-center bg-white ${
           mobileOpen ? "rounded-b-[20px]" : ""
         } border-b border-[#e5e7eb] w-full transition-[border-radius] duration-300 ease-in-out`}
       >
-        <div className="flex items-center justify-between w-full max-w-[1280px] gap-x-8" style={{ height: 36 }}>
+        <div className="flex items-center justify-between w-full px-6 py-[14px] gap-x-8" style={{ height: 64, maxWidth: '100%' }}>
           {/* Logo */}
           <Link
             href="/"
@@ -84,7 +84,7 @@ export function Navbar() {
 
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+          <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
             {NAV_LINKS.map((link) =>
               link.label === "Fund Houses" ? (
                 <div
@@ -172,7 +172,7 @@ export function Navbar() {
           </nav>
 
           {/* Desktop right — search + auth */}
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
             {/* Search box */}
             <button
               onClick={() => setSearchOpen(true)}
@@ -249,7 +249,7 @@ export function Navbar() {
           </div>
 
           {/* Mobile search + hamburger */}
-          <div className="flex md:hidden items-center gap-1.5">
+          <div className="flex lg:hidden items-center gap-1.5">
             <button
               className="p-2 rounded-full text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
               onClick={() => setSearchOpen(true)}
@@ -269,7 +269,7 @@ export function Navbar() {
 
         {/* Mobile menu */}
         <div
-          className={`md:hidden flex flex-col items-center w-full transition-all ease-in-out duration-300 overflow-hidden ${
+          className={`lg:hidden flex flex-col items-center w-full transition-all ease-in-out duration-300 overflow-hidden ${
             mobileOpen
               ? "max-h-[1000px] opacity-100 pt-4 border-t border-[#e5e7eb] mt-3"
               : "max-h-0 opacity-0 pt-0 pointer-events-none"
