@@ -686,6 +686,8 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                     <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Instrument</th>
                     <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Sector</th>
                     <th className="text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Rating</th>
+                    <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Market Value</th>
+                    <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">1M Change</th>
                     <th className="text-right px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">% of NAV</th>
                   </tr>
                 </thead>
@@ -699,6 +701,10 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                           <span className="text-[10px] font-mono bg-surface border border-rule px-2 py-0.5 rounded-full text-muted">{h.rating}</span>
                         ) : "—"}
                       </td>
+                      <td className="px-4 py-3 text-right tabular text-muted">{h.marketValue != null ? `₹${h.marketValue.toFixed(2)} Cr` : "—"}</td>
+                      <td className={`px-4 py-3 text-right tabular ${h.change1M != null && h.change1M < 0 ? "text-loss" : h.change1M != null && h.change1M > 0 ? "text-gain" : "text-muted"}`}>
+                        {h.change1M != null ? `${h.change1M >= 0 ? "+" : ""}${h.change1M.toFixed(2)}%` : "—"}
+                      </td>
                       <td className={`px-5 py-3 text-right tabular font-bold ${h.percentage < 0 ? "text-loss" : "text-heading"}`}>
                         {h.percentage >= 0 ? "+" : ""}{h.percentage.toFixed(2)}%
                       </td>
@@ -706,12 +712,208 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                   ))}
                   {filteredHoldings.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-5 py-8 text-center text-muted text-[13px]">No holdings match your search.</td>
+                      <td colSpan={6} className="px-5 py-8 text-center text-muted text-[13px]">No holdings match your search.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── FUNDAMENTALS ──────────────────────────────────────────────── */}
+      {details.fundamentals && (
+        <SectionCard label="Portfolio" title="Fundamentals vs category">
+          <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
+            <table className="w-full text-[12px]">
+              <thead className="bg-surface border-b border-rule">
+                <tr>
+                  <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Metric</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Fund</th>
+                  <th className="text-right px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Category Avg</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {[
+                  { label: "P/E", v: details.fundamentals.pe, avg: details.fundamentals.categoryAveragePe },
+                  { label: "P/B", v: details.fundamentals.pb, avg: details.fundamentals.categoryAveragePb },
+                  { label: "Price/Sales", v: details.fundamentals.priceToSale, avg: details.fundamentals.categoryAveragePriceToSale },
+                  { label: "Price/Cash Flow", v: details.fundamentals.priceToCashFlow, avg: details.fundamentals.categoryAveragePriceToCashFlow },
+                  { label: "Dividend Yield", v: details.fundamentals.dividendYield, avg: details.fundamentals.categoryAverageDividendYield, suffix: "%" },
+                  { label: "ROE", v: details.fundamentals.roe, avg: details.fundamentals.categoryAverageRoe, suffix: "%" },
+                ].filter(r => r.v != null).map((r, i) => (
+                  <tr key={i}>
+                    <td className="px-5 py-3 text-body">{r.label}</td>
+                    <td className="px-4 py-3 text-right tabular font-bold text-heading">{r.v}{r.suffix ?? ""}</td>
+                    <td className="px-5 py-3 text-right tabular text-muted">{r.avg != null ? `${r.avg}${r.suffix ?? ""}` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── CONCENTRATION & MARKET CAP ───────────────────────────────────── */}
+      {(details.concentration || details.marketCapWeightage) && (
+        <SectionCard label="Portfolio" title="Concentration &amp; market cap">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {details.concentration && (
+              <div className="bg-white border border-rule rounded-[18px] shadow-card p-5">
+                {details.concentration.numberOfHoldings != null && <StatRow label="Number of Holdings" value={String(details.concentration.numberOfHoldings)} />}
+                {details.concentration.averageMarketCap && <StatRow label="Average Market Cap" value={details.concentration.averageMarketCap} />}
+                {details.concentration.top3SectorWeight != null && <StatRow label="Top 3 Sector Weight" value={`${details.concentration.top3SectorWeight}%`} />}
+                {details.concentration.top5StocksWeight != null && <StatRow label="Top 5 Stocks Weight" value={`${details.concentration.top5StocksWeight}%`} />}
+                {details.concentration.top10StocksWeight != null && <StatRow label="Top 10 Stocks Weight" value={`${details.concentration.top10StocksWeight}%`} />}
+              </div>
+            )}
+            {details.marketCapWeightage && (
+              <div className="bg-white border border-rule rounded-[18px] shadow-card p-5">
+                {[
+                  { label: "Large Cap", v: details.marketCapWeightage.largeCap },
+                  { label: "Mid Cap", v: details.marketCapWeightage.midCap },
+                  { label: "Small Cap", v: details.marketCapWeightage.smallCap },
+                  { label: "Others", v: details.marketCapWeightage.others },
+                ].filter(r => r.v != null).map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 py-2">
+                    <span className="text-[12px] text-muted w-[80px] shrink-0">{r.label}</span>
+                    <div className="flex-1 h-[6px] bg-surface rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, r.v ?? 0))}%` }} />
+                    </div>
+                    <span className="text-[12px] font-bold tabular text-heading w-[48px] text-right">{r.v}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── ROLLING RETURNS ───────────────────────────────────────────────── */}
+      {details.rollingReturns?.length > 0 && (
+        <SectionCard label="Performance" title="Rolling returns">
+          <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="bg-surface border-b border-rule">
+                <tr>
+                  <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Period</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Avg Return</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Min</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Max</th>
+                  <th className="text-right px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Positive %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {details.rollingReturns.map((r, i) => (
+                  <tr key={i}>
+                    <td className="px-5 py-3 font-medium text-body">{r.timeframe}</td>
+                    <td className="px-4 py-3 text-right tabular font-bold text-heading">{r.averageReturn != null ? `${r.averageReturn.toFixed(2)}%` : "—"}</td>
+                    <td className="px-4 py-3 text-right tabular text-loss">{r.minReturn != null ? `${r.minReturn.toFixed(2)}%` : "—"}</td>
+                    <td className="px-4 py-3 text-right tabular text-gain">{r.maxReturn != null ? `${r.maxReturn.toFixed(2)}%` : "—"}</td>
+                    <td className="px-5 py-3 text-right tabular text-muted">{r.positiveRatio != null ? `${r.positiveRatio.toFixed(1)}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── CATEGORY RANKS ───────────────────────────────────────────────── */}
+      {details.categoryRanks?.length > 0 && (
+        <SectionCard label="Performance" title="Category rank">
+          <div className="flex flex-wrap gap-3">
+            {details.categoryRanks.map((r, i) => (
+              <div key={i} className="bg-white border border-rule rounded-[14px] px-4 py-3 flex flex-col gap-1 min-w-[110px]">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-muted">{r.timeframe}</span>
+                <span className="text-[18px] font-bold text-heading tabular">#{r.rankInCategory}</span>
+                {r.annualizedReturn != null && (
+                  <span className="text-[11px] text-muted tabular">
+                    {r.annualizedReturn.toFixed(2)}% vs {r.categoryAverage != null ? `${r.categoryAverage.toFixed(2)}%` : "—"} cat avg
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── RISK METRIC CONCLUSIONS ──────────────────────────────────────── */}
+      {details.riskMetricsConclusions && (
+        <SectionCard label="Risk" title="Risk metric conclusions">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {([
+              ["Returns", details.riskMetricsConclusions.returns],
+              ["Standard Deviation", details.riskMetricsConclusions.riskStandardDeviation],
+              ["Sharpe Ratio", details.riskMetricsConclusions.sharpRatio],
+              ["Sortino Ratio", details.riskMetricsConclusions.sortinoRatio],
+              ["Beta", details.riskMetricsConclusions.beta],
+            ] as const).filter(([, g]) => g.info || g.timeframes?.length > 0).map(([label, group]) => (
+              <div key={label} className="bg-white border border-rule rounded-[18px] shadow-card p-5">
+                <p className="text-[13px] font-bold text-heading mb-1.5">{label}</p>
+                {group.info && <p className="text-[11.5px] text-muted leading-relaxed mb-3">{group.info}</p>}
+                {group.timeframes?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {group.timeframes.map((t, i) => (
+                      <span key={i} className="text-[11px] bg-surface border border-rule rounded-full px-2.5 py-1">
+                        <span className="font-mono uppercase text-muted mr-1">{t.timeframe}</span>
+                        <span className="font-semibold text-heading">{t.conclusion}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── PEERS ─────────────────────────────────────────────────────────── */}
+      {details.peers?.length > 0 && (
+        <SectionCard label="Comparison" title="Peer funds">
+          <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="bg-surface border-b border-rule">
+                <tr>
+                  <th className="text-left px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">Fund</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">AUM</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">P/E</th>
+                  <th className="text-right px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">P/B</th>
+                  <th className="text-right px-5 py-3 font-mono text-[10px] uppercase tracking-widest text-muted">TER</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {details.peers.map((p, i) => (
+                  <tr key={i}>
+                    <td className="px-5 py-3 font-medium text-body">{p.schemeNameShort || p.schemeName}</td>
+                    <td className="px-4 py-3 text-right tabular text-muted">{p.aum || "—"}</td>
+                    <td className="px-4 py-3 text-right tabular text-muted">{p.pe || "—"}</td>
+                    <td className="px-4 py-3 text-right tabular text-muted">{p.pb || "—"}</td>
+                    <td className="px-5 py-3 text-right tabular text-muted">{p.expenseRatio ? `${p.expenseRatio}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* ── MORE FUNDS FROM THIS AMC ─────────────────────────────────────── */}
+      {details.amcOtherFunds && details.amcOtherFunds.schemeList?.length > 0 && (
+        <SectionCard label="AMC" title={`More funds from ${details.amcOtherFunds.companyName}`}>
+          <div className="bg-white border border-rule rounded-[18px] shadow-card divide-y divide-rule">
+            {details.amcOtherFunds.schemeList.slice(0, 12).map((s, i) => (
+              <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
+                <span className="text-[12.5px] text-body truncate">{s.schemeShortName || s.schemeName}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {["1y", "3y", "7y", "10y"].filter(p => s.returns?.[p]).map(p => (
+                    <span key={p} className="text-[11px] tabular text-muted">{p}: <span className="font-semibold text-heading">{s.returns[p]}%</span></span>
+                  ))}
+                  <span className="text-[11px] text-muted tabular">{s.aum ? `${s.aum} Cr` : ""}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </SectionCard>
       )}
