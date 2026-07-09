@@ -4,10 +4,9 @@ import { getEffectiveAccess } from "@/lib/adminAuth";
 
 // Runs only for "/" so the homepage route itself never has to call
 // cookies()/auth() — that's what was forcing it out of static/ISR caching.
-// Node runtime (not Edge) because auth.ts pulls in otp.ts -> crypto.
+// Proxy always runs on Node.js runtime, so no runtime config needed here.
 export const config = {
   matcher: ["/"],
-  runtime: "nodejs",
 };
 
 export async function proxy(req: NextRequest) {
