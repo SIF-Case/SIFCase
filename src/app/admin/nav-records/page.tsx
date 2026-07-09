@@ -6,45 +6,52 @@ import {
   Download,
   Loader2,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   TrendingUp,
+  TrendingDown,
   X,
+  Trophy,
+  AlertTriangle,
 } from "lucide-react";
 
 // ── types ──────────────────────────────────────────────────────────────────
-type NavRecord = {
+type Returns = {
+  "1m": number | null;
+  "3m": number | null;
+  "6m": number | null;
+  "1y": number | null;
+  si: number | null;
+};
+
+type SchemeRow = {
   schemeCode: string;
   schemeName: string;
   amc: string;
-  nav: number;
-  repurchasePrice: number | null;
-  salePrice: number | null;
-  navDate: string;
-  source: string;
-  fetchedAt: string;
+  strategy: string;
+  plan: string;
+  option: string;
+  currentNav: number | null;
+  currentNavDate: string | null;
+  inceptionDate: string | null;
+  returns: Returns;
 };
 
 type ApiResponse = {
-  records: NavRecord[];
+  schemes: SchemeRow[];
+  categoryAverages: Record<string, Record<string, number | null>>;
+  top3: SchemeRow[];
+  bottom3: SchemeRow[];
   total: number;
-  page: number;
-  pages: number;
-  fromDate: string | null;
   toDate: string;
 };
 
-const PERIODS = [
-  { label: "1M", value: "1m" },
-  { label: "3M", value: "3m" },
-  { label: "6M", value: "6m" },
-  { label: "1Y", value: "1y" },
-] as const;
+// ── helpers ────────────────────────────────────────────────────────────────
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-type PeriodValue = (typeof PERIODS)[number]["value"] | "";
-
-function fmtDate(iso: string) {
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -52,112 +59,206 @@ function fmtDate(iso: string) {
   });
 }
 
-function fmtNum(n: number) {
-  return n.toLocaleString("en-IN");
+function fmtSince(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-IN", {
+    month: "short",
+    year: "2-digit",
+  });
 }
 
-// Format today's date as YYYY-MM-DD for the date input default value
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+function fmtPct(val: number | null): string {
+  if (val === null) return "N/A";
+  const sign = val >= 0 ? "+" : "";
+  return `${sign}${val.toFixed(2)}%`;
 }
 
-// ── component ──────────────────────────────────────────────────────────────
+// Color class for a return value (matches the legend)
+function retColor(val: number | null): string {
+  if (val === null) return "text-faint";
+  if (val > 3)   return "text-[#15803d]";   // strong green
+  if (val >= 0)  return "text-[#16a34a]";   // positive green
+  if (val >= -2) return "text-[#d97706]";   // mild negative amber
+  return "text-[#dc2626]";                   // negative red
+}
+
+// Background for table cell (subtle tint)
+function retBg(val: number | null): string {
+  if (val === null) return "";
+  if (val > 3)   return "bg-[#f0fdf4]";
+  if (val >= 0)  return "bg-[#f0fdf4]/60";
+  if (val >= -2) return "bg-[#fffbeb]/80";
+  return "bg-[#fef2f2]/80";
+}
+
+// ── sub-components ─────────────────────────────────────────────────────────
+
+function RetCell({ val }: { val: number | null }) {
+  return (
+    <td className={`px-3 py-2.5 text-center text-[12.5px] font-bold nums ${retColor(val)} ${retBg(val)}`}>
+      {fmtPct(val)}
+    </td>
+  );
+}
+
+function PerformerTable({
+  title,
+  schemes,
+  catAvg,
+  type,
+}: {
+  title: string;
+  schemes: SchemeRow[];
+  catAvg: Record<string, Record<string, number | null>>;
+  type: "top" | "bottom";
+}) {
+  const isTop = type === "top";
+  const headerBg = isTop ? "bg-[#15803d]" : "bg-[#dc2626]";
+  const rowBg = isTop ? "bg-[#f0fdf4]" : "bg-[#fef2f2]";
+  const Icon = isTop ? Trophy : AlertTriangle;
+
+  return (
+    <div className="flex-1 min-w-[300px]">
+      <div className={`flex items-center gap-2 mb-3`}>
+        <Icon className={`size-4 ${isTop ? "text-[#15803d]" : "text-[#dc2626]"}`} />
+        <h3 className={`text-[14px] font-bold ${isTop ? "text-[#15803d]" : "text-[#dc2626]"}`}>
+          {title}
+        </h3>
+      </div>
+      <div className="rounded-[12px] overflow-hidden border border-rule shadow-card">
+        <table className="w-full border-collapse text-[12px]">
+          <thead>
+            <tr className={headerBg}>
+              <th className="text-left px-4 py-2.5 text-white font-semibold">Scheme Name</th>
+              <th className="text-left px-3 py-2.5 text-white font-semibold">Category</th>
+              <th className="text-left px-3 py-2.5 text-white font-semibold">AMC</th>
+              <th className="text-center px-3 py-2.5 text-white font-semibold">1M Return</th>
+              <th className="text-center px-3 py-2.5 text-white font-semibold">Since Inception</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schemes.map((s, i) => {
+              const catAvgVal = catAvg[s.strategy]?.["1m"] ?? null;
+              return (
+                <tr key={s.schemeCode} className={`${rowBg} border-t border-rule`}>
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium text-heading truncate max-w-[180px]">{s.schemeName}</p>
+                    <p className="text-[10px] text-faint font-mono">{s.schemeCode}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-muted text-[11px]">
+                    {s.strategy?.replace(" Long-Short", "") ?? "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-muted text-[11px] truncate max-w-[100px]">{s.amc}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <p className={`font-bold text-[13px] nums ${retColor(s.returns["1m"])}`}>
+                      {fmtPct(s.returns["1m"])}
+                    </p>
+                    {catAvgVal !== null && (
+                      <p className="text-[9.5px] text-muted mt-0.5">
+                        cat avg {fmtPct(catAvgVal)}
+                      </p>
+                    )}
+                  </td>
+                  <td className={`px-3 py-2.5 text-center font-bold text-[13px] nums ${retColor(s.returns.si)}`}>
+                    {fmtPct(s.returns.si)}
+                    {s.inceptionDate && (
+                      <p className="text-[9.5px] text-muted font-normal mt-0.5">
+                        since {fmtSince(s.inceptionDate)}
+                      </p>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {schemes.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-muted text-[12px]">
+                  Insufficient data
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── main page ──────────────────────────────────────────────────────────────
 export default function NavRecordsPage() {
-  const [toDate, setToDate] = useState(todayStr());
-  const [period, setPeriod] = useState<PeriodValue>("1m");
-  const [search, setSearch] = useState("");
+  const [toDate, setToDate]         = useState(todayStr());
+  const [search, setSearch]         = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<ApiResponse | null>(null);
-  const [exporting, setExporting] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [data, setData]             = useState<ApiResponse | null>(null);
+  const [exporting, setExporting]   = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── fetch ───────────────────────────────────────────────────────────────
-  const fetchRecords = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        toDate,
-        page: String(page),
-        limit: "100",
-      });
-      if (period) params.set("period", period);
+      const params = new URLSearchParams({ toDate });
       if (search) params.set("q", search);
-
       const res = await fetch(`/api/admin/nav-records?${params}`);
       if (!res.ok) throw new Error("Failed");
-      const json: ApiResponse = await res.json();
-      setData(json);
+      setData(await res.json());
     } finally {
       setLoading(false);
     }
-  }, [toDate, period, search, page]);
+  }, [toDate, search]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [toDate, period, search]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
-
-  // Debounce search input
   function handleSearchInput(val: string) {
     setSearchInput(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 400);
   }
 
-  function clearSearch() {
-    setSearchInput("");
-    setSearch("");
-  }
-
   // ── CSV export ─────────────────────────────────────────────────────────
   async function downloadCSV() {
     setExporting(true);
     try {
-      const params = new URLSearchParams({ toDate, export: "1" });
-      if (period) params.set("period", period);
+      const params = new URLSearchParams({ toDate });
       if (search) params.set("q", search);
-
-      const res = await fetch(`/api/admin/nav-records?${params}`);
+      const res  = await fetch(`/api/admin/nav-records?${params}`);
       if (!res.ok) throw new Error("Export failed");
       const json: ApiResponse = await res.json();
-      const rows = json.records;
 
       const headers = [
-        "Scheme Code",
-        "Scheme Name",
-        "AMC",
-        "NAV Date",
-        "NAV (₹)",
-        "Repurchase Price",
-        "Sale Price",
-        "Source",
-        "Fetched At",
+        "Scheme Code", "Scheme Name", "AMC", "Strategy", "Plan", "Option",
+        "Current NAV", "As Of Date", "Inception Date",
+        "1M %", "3M %", "6M %", "1Y %", "SI %",
+        "Cat Avg 1M %",
       ];
-      const csvRows = rows.map((r) => [
-        r.schemeCode,
-        `"${r.schemeName.replace(/"/g, '""')}"`,
-        `"${r.amc.replace(/"/g, '""')}"`,
-        fmtDate(r.navDate),
-        r.nav.toFixed(4),
-        r.repurchasePrice !== null ? r.repurchasePrice.toFixed(4) : "",
-        r.salePrice !== null ? r.salePrice.toFixed(4) : "",
-        r.source,
-        new Date(r.fetchedAt).toISOString(),
+
+      const catAvg = json.categoryAverages;
+      const rows = json.schemes.map((s) => [
+        s.schemeCode,
+        `"${s.schemeName.replace(/"/g, '""')}"`,
+        `"${s.amc.replace(/"/g, '""')}"`,
+        `"${(s.strategy ?? "").replace(/"/g, '""')}"`,
+        s.plan, s.option,
+        s.currentNav !== null ? s.currentNav.toFixed(4) : "",
+        s.currentNavDate ? fmtDate(s.currentNavDate) : "",
+        s.inceptionDate  ? fmtDate(s.inceptionDate)  : "",
+        s.returns["1m"] !== null ? s.returns["1m"]!.toFixed(2) : "N/A",
+        s.returns["3m"] !== null ? s.returns["3m"]!.toFixed(2) : "N/A",
+        s.returns["6m"] !== null ? s.returns["6m"]!.toFixed(2) : "N/A",
+        s.returns["1y"] !== null ? s.returns["1y"]!.toFixed(2) : "N/A",
+        s.returns.si    !== null ? s.returns.si!.toFixed(2)    : "N/A",
+        catAvg[s.strategy]?.["1m"] !== null && catAvg[s.strategy]?.["1m"] !== undefined
+          ? (catAvg[s.strategy]["1m"]! as number).toFixed(2)
+          : "N/A",
       ]);
 
-      const csv = [headers.join(","), ...csvRows.map((r) => r.join(","))].join("\n");
+      const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-
-      const periodLabel = period ? `-${period}` : "";
-      a.download = `sifcase-nav-records-${toDate}${periodLabel}.csv`;
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `sifcase-nav-performance-${toDate}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -166,19 +267,10 @@ export default function NavRecordsPage() {
   }
 
   // ── render ─────────────────────────────────────────────────────────────
-  const records = data?.records ?? [];
-  const total   = data?.total ?? 0;
-  const pages   = data?.pages ?? 1;
-
-  // Human-readable range label
-  const rangeLabel = (() => {
-    if (!data) return null;
-    const to = fmtDate(data.toDate);
-    if (data.fromDate) {
-      return `${fmtDate(data.fromDate)} — ${to}`;
-    }
-    return `Up to ${to}`;
-  })();
+  const schemes  = data?.schemes ?? [];
+  const catAvg   = data?.categoryAverages ?? {};
+  const top3     = data?.top3 ?? [];
+  const bottom3  = data?.bottom3 ?? [];
 
   return (
     <div className="p-8">
@@ -187,15 +279,16 @@ export default function NavRecordsPage() {
         <div>
           <h1 className="text-[28px] font-bold text-heading tracking-[-0.3px] flex items-center gap-2.5">
             <TrendingUp className="size-6 text-primary" />
-            NAV Records
+            NAV Performance
           </h1>
           <p className="text-[14px] text-muted mt-1">
-            Browse and export historical NAV data with date &amp; period filters
+            Scheme-level % returns for 1M · 3M · 6M · 1Y · Since Inception · as of{" "}
+            <span className="font-semibold text-body">{fmtDate(toDate)}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchRecords}
+            onClick={fetchData}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body disabled:opacity-60 transition-colors"
           >
@@ -207,22 +300,18 @@ export default function NavRecordsPage() {
             disabled={exporting || loading}
             className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-primary text-white text-[13px] font-semibold hover:bg-primary-hover disabled:opacity-60 shadow-btn transition-colors"
           >
-            {exporting ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Download className="size-3.5" />
-            )}
+            {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
             {exporting ? "Exporting…" : "Download CSV"}
           </button>
         </div>
       </div>
 
-      {/* Filters bar */}
-      <div className="bg-white rounded-[14px] border border-rule shadow-card p-5 mb-5 flex flex-wrap items-end gap-5">
-        {/* Date picker */}
+      {/* Filter bar */}
+      <div className="bg-white rounded-[14px] border border-rule shadow-card p-5 mb-6 flex flex-wrap items-end gap-5">
+        {/* To Date */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] font-mono uppercase tracking-widest text-muted">
-            To Date
+            As Of Date
           </label>
           <div className="flex items-center gap-2 h-10 px-3 rounded-[10px] border border-rule bg-surface">
             <CalendarDays className="size-3.5 text-muted shrink-0" />
@@ -234,43 +323,13 @@ export default function NavRecordsPage() {
               className="text-[13px] bg-transparent outline-none text-body w-[130px]"
             />
           </div>
-        </div>
-
-        {/* Period chips */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-mono uppercase tracking-widest text-muted">
-            Period (from date)
-          </label>
-          <div className="flex items-center gap-2">
-            {PERIODS.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setPeriod(period === p.value ? "" : p.value)}
-                className={`h-10 px-4 rounded-[10px] text-[13px] font-semibold border transition-all ${
-                  period === p.value
-                    ? "bg-primary text-white border-primary shadow-btn"
-                    : "border-rule text-muted hover:border-primary hover:text-primary bg-white"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-            {period && (
-              <button
-                onClick={() => setPeriod("")}
-                className="h-10 px-3 rounded-[10px] border border-rule text-[11px] text-muted hover:text-body bg-white transition-colors"
-                title="Clear period"
-              >
-                All time
-              </button>
-            )}
-          </div>
+          <p className="text-[10px] text-faint">Returns computed relative to this date</p>
         </div>
 
         {/* Search */}
-        <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-[220px]">
           <label className="text-[10px] font-mono uppercase tracking-widest text-muted">
-            Search Scheme
+            Filter Schemes
           </label>
           <div className="flex items-center gap-2 h-10 px-3 rounded-[10px] border border-rule bg-surface">
             <Search className="size-3.5 text-muted shrink-0" />
@@ -278,154 +337,243 @@ export default function NavRecordsPage() {
               type="text"
               value={searchInput}
               onChange={(e) => handleSearchInput(e.target.value)}
-              placeholder="Scheme name, code, AMC, ISIN…"
+              placeholder="Name, code, AMC, ISIN…"
               className="flex-1 text-[13px] bg-transparent outline-none"
             />
             {searchInput && (
-              <button onClick={clearSearch} className="text-muted hover:text-body transition-colors">
+              <button onClick={() => { setSearchInput(""); setSearch(""); }} className="text-muted hover:text-body transition-colors">
                 <X className="size-3.5" />
               </button>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Summary row */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          {rangeLabel && (
-            <span className="text-[12px] text-muted font-mono bg-white border border-rule rounded-full px-3 py-1">
-              📅 {rangeLabel}
-            </span>
-          )}
-          {!loading && (
-            <span className="text-[12px] text-muted">
-              {fmtNum(total)} record{total !== 1 ? "s" : ""} found
-            </span>
-          )}
-        </div>
-        {pages > 1 && (
-          <span className="text-[12px] text-muted">
-            Page {page} of {pages}
-          </span>
-        )}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">
-        {/* Column headers */}
-        <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(0,2.2fr)_110px_90px_90px_90px_120px] gap-3 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted border-b border-rule">
-          <div>Scheme Code</div>
-          <div>Scheme Name</div>
-          <div className="text-right">NAV Date</div>
-          <div className="text-right">NAV (₹)</div>
-          <div className="text-right">Repurchase</div>
-          <div className="text-right">Sale</div>
-          <div className="text-right">Source</div>
-        </div>
-
-        {/* Rows */}
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-muted text-[13px]">
-            <Loader2 className="size-6 animate-spin" />
-            Loading NAV records…
-          </div>
-        ) : records.length === 0 ? (
-          <div className="py-20 text-center text-muted text-[13px]">
-            No NAV records found for the selected filters.
-          </div>
-        ) : (
-          <div className="divide-y divide-rule">
-            {records.map((r, i) => (
-              <div
-                key={`${r.schemeCode}-${r.navDate}-${i}`}
-                className="grid grid-cols-[minmax(0,1.8fr)_minmax(0,2.2fr)_110px_90px_90px_90px_120px] gap-3 px-5 py-3 items-center hover:bg-surface/60 transition-colors"
-              >
-                {/* Scheme code + AMC */}
-                <div className="min-w-0">
-                  <p className="text-[12px] font-mono font-semibold text-primary truncate">
-                    {r.schemeCode}
-                  </p>
-                  <p className="text-[10.5px] text-faint truncate mt-0.5">{r.amc}</p>
-                </div>
-
-                {/* Scheme name */}
-                <div className="min-w-0">
-                  <p className="text-[12.5px] text-body truncate">{r.schemeName}</p>
-                </div>
-
-                {/* NAV date */}
-                <div className="text-right text-[12px] text-muted font-mono">
-                  {fmtDate(r.navDate)}
-                </div>
-
-                {/* NAV */}
-                <div className="text-right text-[13px] font-bold text-heading nums">
-                  ₹{r.nav.toFixed(4)}
-                </div>
-
-                {/* Repurchase */}
-                <div className="text-right text-[12px] text-muted nums">
-                  {r.repurchasePrice !== null ? `₹${r.repurchasePrice.toFixed(4)}` : "—"}
-                </div>
-
-                {/* Sale */}
-                <div className="text-right text-[12px] text-muted nums">
-                  {r.salePrice !== null ? `₹${r.salePrice.toFixed(4)}` : "—"}
-                </div>
-
-                {/* Source */}
-                <div className="text-right">
-                  <span className="text-[10px] font-mono text-faint bg-mist border border-rule px-2 py-0.5 rounded-full truncate block max-w-full">
-                    {r.source?.replace(/_/g, " ") ?? "—"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination footer */}
-        {pages > 1 && !loading && (
-          <div className="px-5 py-3 border-t border-rule flex items-center justify-between bg-mist/40">
-            <span className="text-[12px] text-muted">
-              Showing {(page - 1) * 100 + 1}–{Math.min(page * 100, total)} of {fmtNum(total)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="size-8 inline-flex items-center justify-center rounded-[8px] border border-rule text-muted hover:text-body disabled:opacity-40 transition-colors"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              {/* Page number pills — show at most 5 around current */}
-              {Array.from({ length: pages }, (_, i) => i + 1)
-                .filter((p) => Math.abs(p - page) <= 2)
-                .map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`size-8 inline-flex items-center justify-center rounded-[8px] text-[12px] font-semibold border transition-colors ${
-                      p === page
-                        ? "bg-primary text-white border-primary"
-                        : "border-rule text-muted hover:text-body"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              <button
-                onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                disabled={page === pages}
-                className="size-8 inline-flex items-center justify-center rounded-[8px] border border-rule text-muted hover:text-body disabled:opacity-40 transition-colors"
-              >
-                <ChevronRight className="size-4" />
-              </button>
+        {/* Stats pills */}
+        {data && !loading && (
+          <div className="flex items-end gap-3">
+            <div className="flex flex-col gap-1 items-center bg-surface border border-rule rounded-[10px] px-4 py-2">
+              <p className="text-[22px] font-bold text-heading nums">{data.total}</p>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Schemes</p>
+            </div>
+            <div className="flex flex-col gap-1 items-center bg-surface border border-rule rounded-[10px] px-4 py-2">
+              <p className="text-[22px] font-bold text-[#15803d] nums">
+                {schemes.filter((s) => (s.returns["1m"] ?? -Infinity) > 0).length}
+              </p>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Positive 1M</p>
+            </div>
+            <div className="flex flex-col gap-1 items-center bg-surface border border-rule rounded-[10px] px-4 py-2">
+              <p className="text-[22px] font-bold text-[#dc2626] nums">
+                {schemes.filter((s) => s.returns["1m"] !== null && s.returns["1m"]! < 0).length}
+              </p>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted">Negative 1M</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-muted text-[13px]">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p>Computing performance returns…</p>
+        </div>
+      )}
+
+      {!loading && data && (
+        <>
+          {/* ── Top / Bottom 3 ─────────────────────────────────────────── */}
+          {(top3.length > 0 || bottom3.length > 0) && (
+            <div className="flex gap-6 mb-8 flex-wrap">
+              <PerformerTable
+                title="Top 3 Performers — 1-Month Return"
+                schemes={top3}
+                catAvg={catAvg}
+                type="top"
+              />
+              <PerformerTable
+                title="Bottom 3 Performers — 1-Month Return"
+                schemes={bottom3}
+                catAvg={catAvg}
+                type="bottom"
+              />
+            </div>
+          )}
+
+          {/* ── Comprehensive Performance Table ───────────────────────── */}
+          <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden mb-4">
+            <div className="px-5 py-4 border-b border-rule flex items-center justify-between">
+              <div>
+                <h2 className="text-[15px] font-bold text-heading">
+                  Comprehensive Performance Table — All Schemes
+                </h2>
+                <p className="text-[11px] text-muted mt-0.5">
+                  Returns: Absolute. N/A = insufficient history. As of{" "}
+                  <span className="font-semibold">{fmtDate(toDate)}</span>
+                </p>
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 text-[10.5px] shrink-0">
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#16a34a] inline-block" />
+                  <span className="text-muted">Positive (0–+3%)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#15803d] inline-block" />
+                  <span className="text-muted">Strong (&gt;+3%)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#d97706] inline-block" />
+                  <span className="text-muted">Mild neg (−2% to 0)</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#dc2626] inline-block" />
+                  <span className="text-muted">Negative (&lt;−2%)</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] min-w-[900px]">
+                <thead>
+                  <tr className="bg-[#1e3a5f] text-white">
+                    <th className="text-left px-4 py-3 font-semibold text-[11.5px]">Scheme Name</th>
+                    <th className="text-left px-3 py-3 font-semibold text-[11.5px]">Category</th>
+                    <th className="text-left px-3 py-3 font-semibold text-[11.5px]">AMC</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">1M %</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">3M %</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">6M %</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">1Y %</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">SI %</th>
+                    <th className="text-center px-3 py-3 font-semibold text-[11.5px]">Since</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-rule">
+                  {schemes.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-16 text-center text-muted text-[13px]">
+                        No schemes found.
+                      </td>
+                    </tr>
+                  ) : (
+                    schemes.map((s, i) => {
+                      const catA = catAvg[s.strategy] ?? {};
+                      return (
+                        <tr
+                          key={s.schemeCode}
+                          className={`transition-colors hover:bg-surface/60 ${i % 2 === 1 ? "bg-[#fafbfc]" : "bg-white"}`}
+                        >
+                          {/* Scheme name */}
+                          <td className="px-4 py-2.5">
+                            <p className="font-semibold text-heading text-[12.5px] leading-tight">
+                              {s.schemeName}
+                            </p>
+                            <p className="text-[10px] font-mono text-faint mt-0.5">
+                              {s.schemeCode} · {s.plan} · {s.option}
+                            </p>
+                          </td>
+
+                          {/* Category */}
+                          <td className="px-3 py-2.5 text-muted text-[11px]">
+                            {s.strategy?.replace(" Long-Short", "") ?? "—"}
+                          </td>
+
+                          {/* AMC */}
+                          <td className="px-3 py-2.5 text-muted text-[11px] max-w-[130px] truncate">
+                            {s.amc}
+                          </td>
+
+                          {/* 1M */}
+                          <td className={`px-3 py-2.5 text-center ${retBg(s.returns["1m"])}`}>
+                            <p className={`font-bold text-[13px] nums ${retColor(s.returns["1m"])}`}>
+                              {fmtPct(s.returns["1m"])}
+                            </p>
+                            {catA["1m"] !== null && catA["1m"] !== undefined && (
+                              <p className="text-[9px] text-muted mt-0.5 whitespace-nowrap">
+                                vs cat avg {fmtPct(catA["1m"] as number)}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 3M */}
+                          <td className={`px-3 py-2.5 text-center ${retBg(s.returns["3m"])}`}>
+                            <p className={`font-bold text-[13px] nums ${retColor(s.returns["3m"])}`}>
+                              {fmtPct(s.returns["3m"])}
+                            </p>
+                            {catA["3m"] !== null && catA["3m"] !== undefined && (
+                              <p className="text-[9px] text-muted mt-0.5 whitespace-nowrap">
+                                vs cat avg {fmtPct(catA["3m"] as number)}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 6M */}
+                          <td className={`px-3 py-2.5 text-center ${retBg(s.returns["6m"])}`}>
+                            <p className={`font-bold text-[13px] nums ${retColor(s.returns["6m"])}`}>
+                              {fmtPct(s.returns["6m"])}
+                            </p>
+                            {catA["6m"] !== null && catA["6m"] !== undefined && (
+                              <p className="text-[9px] text-muted mt-0.5 whitespace-nowrap">
+                                vs cat avg {fmtPct(catA["6m"] as number)}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* 1Y */}
+                          <td className={`px-3 py-2.5 text-center ${retBg(s.returns["1y"])}`}>
+                            <p className={`font-bold text-[13px] nums ${retColor(s.returns["1y"])}`}>
+                              {fmtPct(s.returns["1y"])}
+                            </p>
+                            {catA["1y"] !== null && catA["1y"] !== undefined && (
+                              <p className="text-[9px] text-muted mt-0.5 whitespace-nowrap">
+                                vs cat avg {fmtPct(catA["1y"] as number)}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* SI */}
+                          <td className={`px-3 py-2.5 text-center ${retBg(s.returns.si)}`}>
+                            <p className={`font-bold text-[13px] nums ${retColor(s.returns.si)}`}>
+                              {fmtPct(s.returns.si)}
+                            </p>
+                          </td>
+
+                          {/* Since (inception date) */}
+                          <td className="px-3 py-2.5 text-center text-[11px] text-muted font-mono">
+                            {fmtSince(s.inceptionDate)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table legend footer */}
+            <div className="px-5 py-3 border-t border-rule bg-mist/40 flex flex-wrap items-center gap-5 text-[10.5px] text-muted">
+              <span>
+                <span className="inline-block size-2.5 rounded-full bg-[#16a34a] mr-1.5 align-middle" />
+                Positive (0 to +3%)
+              </span>
+              <span>
+                <span className="inline-block size-2.5 rounded-full bg-[#15803d] mr-1.5 align-middle" />
+                Strong (&gt;+3%)
+              </span>
+              <span>
+                <span className="inline-block size-2.5 rounded-full bg-[#d97706] mr-1.5 align-middle" />
+                Mild negative (−2% to 0)
+              </span>
+              <span>
+                <span className="inline-block size-2.5 rounded-full bg-[#dc2626] mr-1.5 align-middle" />
+                Negative (&lt;−2%)
+              </span>
+              <span className="ml-auto">
+                N/A = insufficient history for that period
+              </span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
