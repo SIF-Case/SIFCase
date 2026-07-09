@@ -149,19 +149,21 @@ export function AuthModal({ open, onClose, reason }: Props) {
     if (otp.length !== 6) { setError("Enter the 6-digit code"); return; }
     setLoading(true);
     try {
-      const res = await signIn("phone-otp", { phone: fullPhone, otp, redirect: false });
-      if (res?.error) throw new Error("Invalid code");
-      const freshSession = await getSession();
-      if (freshSession?.user?.isAdmin) {
-        window.location.href = "/admin";
-        return;
+      // Step 1: Verify OTP WITHOUT logging in
+      const verifyRes = await fetch("/api/auth/verify-phone-only", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone, otp }),
+      });
+      
+      if (!verifyRes.ok) {
+        const data = await verifyRes.json();
+        throw new Error(data.error || "Invalid code");
       }
-      if (freshSession?.user?.email) {
-        handleClose();
-      } else {
-        setOtp(""); setError("");
-        setStage("link");
-      }
+      
+      // Step 2: OTP is valid, now FORCE email collection before login
+      setOtp(""); setError("");
+      setStage("link");
     } catch (e: unknown) {
       setError((e as Error).message ?? "Invalid code");
     } finally {
@@ -224,7 +226,20 @@ export function AuthModal({ open, onClose, reason }: Props) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Verification failed"); return; }
-      await updateSession({});
+      
+      // Email verified and linked! Now log the user in with phone-otp
+      const loginRes = await signIn("phone-otp", { phone: fullPhone, otp: "verified", redirect: false });
+      if (loginRes?.error) {
+        // If phone-otp login fails, user is already registered, just refresh session
+        await updateSession({});
+      }
+      
+      const freshSession = await getSession();
+      if (freshSession?.user?.isAdmin) {
+        window.location.href = "/admin";
+        return;
+      }
+      
       handleClose();
     } catch (e: unknown) {
       setError((e as Error).message ?? "Verification failed");
