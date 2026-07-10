@@ -40,15 +40,15 @@ export function CTABand() {
 
         <div className="flex flex-col sm:flex-row justify-center items-center gap-6 w-full">
           <Link
-            href="/sif-101"
-            className="flex items-center justify-center gap-2 h-[48px] rounded-full border-none cursor-pointer font-sans text-[15px] font-medium leading-[20px] tracking-[0.1px] text-white py-[10px] px-4 w-[174px] bg-[#14b7a3] hover:opacity-[0.88] transition-opacity duration-150 shadow-btn"
+            href="/compare"
+            className="flex items-center justify-center gap-2 rounded-full border-none cursor-pointer font-sans text-[15px] font-medium leading-[20px] tracking-[0.1px] text-white py-[14px] px-8 bg-[#14b7a3] hover:opacity-[0.88] transition-opacity duration-150 shadow-btn whitespace-nowrap text-center"
           >
             Become SIF ready
             <ArrowRightIcon />
           </Link>
           <Link
             href="/read"
-            className="flex items-center justify-center gap-2 h-[48px] rounded-full border-none cursor-pointer font-sans text-[15px] font-medium leading-[20px] tracking-[0.1px] text-white py-[10px] px-4 w-[194px] bg-[#3b8bb1] hover:opacity-[0.88] transition-opacity duration-150"
+            className="flex items-center justify-center gap-2 rounded-full border-none cursor-pointer font-sans text-[15px] font-medium leading-[20px] tracking-[0.1px] text-white py-[14px] px-8 bg-[#3b8bb1] hover:opacity-[0.88] transition-opacity duration-150 whitespace-nowrap text-center"
           >
             <StarIcon />
             Start with the basics

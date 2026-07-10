@@ -87,7 +87,7 @@ export function WhySIFcase() {
             {FEATURE_CARDS.map(({ Icon, title, description }) => (
               <article
                 key={title}
-                className="flex flex-col gap-2"
+                className="flex flex-col items-center justify-center gap-2"
                 style={{
                   padding: 12,
                   borderRadius: 24,
@@ -97,7 +97,7 @@ export function WhySIFcase() {
                   boxShadow: "0 1px 4px 0 rgba(0,0,0,0.04)",
                 }}
               >
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center gap-1.5">
                   <Icon className="size-6 text-black" strokeWidth={1.5} />
                   <h3
                     style={{

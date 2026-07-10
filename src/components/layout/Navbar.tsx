@@ -71,7 +71,7 @@ export function Navbar() {
           mobileOpen ? "rounded-b-[20px]" : ""
         } border-b border-[#e5e7eb] w-full transition-[border-radius] duration-300 ease-in-out`}
       >
-        <div className="flex items-center justify-between w-full px-6 py-[14px] gap-x-8" style={{ height: 64, maxWidth: '100%' }}>
+        <div className="flex items-center justify-between w-full px-6 py-[14px] gap-x-4 xl:gap-x-8" style={{ height: 64, maxWidth: '100%' }}>
           {/* Logo */}
           <Link
             href="/"
@@ -84,13 +84,13 @@ export function Navbar() {
 
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+          <nav className="hidden xl:flex items-center gap-1 flex-1 justify-center">
             {NAV_LINKS.map((link) =>
               link.label === "Fund Houses" ? (
                 <div
                   key={link.label}
                   ref={fundHousesRef}
-                  className="relative px-[14px] py-[6px] rounded-[8px] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
+                  className="relative px-[10px] 2xl:px-[14px] py-[6px] rounded-[8px] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
                   role="button"
                   tabIndex={0}
                   onMouseEnter={() => {
@@ -159,7 +159,7 @@ export function Navbar() {
                 <Link
                   key={link.label}
                   href={link.href}
-                  className={`px-[14px] py-[6px] rounded-[8px] text-[14px] transition-colors whitespace-nowrap ${
+                  className={`px-[10px] 2xl:px-[14px] py-[6px] rounded-[8px] text-[14px] transition-colors whitespace-nowrap ${
                     isActiveLink(link.href)
                       ? "bg-[#14b7a3] text-white font-[500] hover:bg-[#10a090]"
                       : "text-[#374151] hover:bg-[#f3f4f6]"
@@ -172,11 +172,11 @@ export function Navbar() {
           </nav>
 
           {/* Desktop right — search + auth */}
-          <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
+          <div className="hidden xl:flex items-center gap-3 flex-shrink-0">
             {/* Search box */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center justify-between gap-4 px-[14px] py-[6px] border border-[#e5e7eb] rounded-[8px] bg-[#f9fafb] min-w-[220px] cursor-pointer hover:bg-[#f3f4f6] text-left transition-colors"
+              className="flex items-center justify-between gap-4 px-[14px] py-[6px] border border-[#e5e7eb] rounded-[8px] bg-[#f9fafb] min-w-[150px] 2xl:min-w-[220px] cursor-pointer hover:bg-[#f3f4f6] text-left transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Search className="w-3.5 h-3.5 text-[#9ca3af] flex-shrink-0" strokeWidth={2} />
@@ -184,7 +184,7 @@ export function Navbar() {
                   Search funds, topics etc
                 </span>
               </div>
-              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#E2E8F0] bg-white text-[9px] font-semibold text-[#64748B] tracking-wide select-none">
+              <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-[#E2E8F0] bg-white text-[9px] font-semibold text-[#64748B] tracking-wide select-none">
                 ⌘K
               </kbd>
             </button>
@@ -249,7 +249,7 @@ export function Navbar() {
           </div>
 
           {/* Mobile search + hamburger */}
-          <div className="flex lg:hidden items-center gap-1.5">
+          <div className="flex xl:hidden items-center gap-1.5">
             <button
               className="p-2 rounded-full text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors cursor-pointer"
               onClick={() => setSearchOpen(true)}
@@ -269,7 +269,7 @@ export function Navbar() {
 
         {/* Mobile menu */}
         <div
-          className={`lg:hidden flex flex-col items-center w-full transition-all ease-in-out duration-300 overflow-hidden ${
+          className={`xl:hidden flex flex-col items-center w-full transition-all ease-in-out duration-300 overflow-hidden ${
             mobileOpen
               ? "max-h-[1000px] opacity-100 pt-4 border-t border-[#e5e7eb] mt-3"
               : "max-h-0 opacity-0 pt-0 pointer-events-none"
