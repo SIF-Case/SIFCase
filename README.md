@@ -10,4 +10,4 @@ Object fix
 speed loading
 fixes
 10/07
-ui fix
+minor ui fix
