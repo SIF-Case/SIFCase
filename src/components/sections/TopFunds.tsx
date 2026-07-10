@@ -48,7 +48,14 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
     setTooltip({ x: px, y: py, idx });
   }, [data]);
 
-  if (data.length < 2) return <div style={{ height: H }} />;
+  if (data.length < 2) return (
+    <div
+      className="flex items-center justify-center text-[11px] text-[#90a5ba] font-medium"
+      style={{ height: H, borderRadius: 8, background: "#f0f0f0" }}
+    >
+      No chart data available
+    </div>
+  );
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 0.01;

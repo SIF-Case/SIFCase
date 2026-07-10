@@ -142,17 +142,11 @@ function MetricCard({
   label,
   value,
   catAvg,
-  rank,
-  rankTotal,
-  barFill,
   valueColor,
 }: {
   label: string;
   value: string | null;
   catAvg: string | null;
-  rank?: number | null;
-  rankTotal?: number;
-  barFill?: number;
   valueColor?: string;
 }) {
   return (
@@ -163,18 +157,6 @@ function MetricCard({
       </div>
       {catAvg && (
         <div className="text-[11px] text-[#6B8299]">Cat avg: {catAvg}</div>
-      )}
-      {/* Bar */}
-      <div className="h-[4px] bg-[#E2E8EE] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[#0E9F8E]"
-          style={{ width: `${Math.min(100, Math.max(0, barFill ?? 50))}%` }}
-        />
-      </div>
-      {rank != null && rankTotal && (
-        <div className="text-[11px] text-[#6B8299]">
-          Rank {rank}/{rankTotal}
-        </div>
       )}
     </div>
   );
@@ -279,16 +261,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const cat1MAvg = safeAvg(catFunds.map((f) => f.returns["1M"]));
   const catSharpeAvg = safeAvg(catFunds.map((f) => f.sharpes["SI"]));
   const catDrawdownAvg = safeAvg(catFunds.map((f) => f.drawdowns["SI"]));
-
-  // Ranks (higher is better for return & sharpe; less negative is better for drawdown)
-  const sorted1M = [...catFunds].filter((f) => f.returns["1M"] !== null).sort((a, b) => b.returns["1M"]! - a.returns["1M"]!);
-  const rank1M = sorted1M.findIndex((f) => f.schemeCode === fund.schemeCode) + 1 || null;
-
-  const sortedSharpe = [...catFunds].filter((f) => f.sharpes["SI"] !== null).sort((a, b) => b.sharpes["SI"]! - a.sharpes["SI"]!);
-  const rankSharpe = sortedSharpe.findIndex((f) => f.schemeCode === fund.schemeCode) + 1 || null;
-
-  const sortedDrawdown = [...catFunds].filter((f) => f.drawdowns["SI"] !== null).sort((a, b) => b.drawdowns["SI"]! - a.drawdowns["SI"]!);
-  const rankDrawdown = sortedDrawdown.findIndex((f) => f.schemeCode === fund.schemeCode) + 1 || null;
 
   // ── Category comparison bars ────────────────────────────────────────────────
   const catFundsWith1M = catFunds
@@ -529,33 +501,23 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                     label="1M Return"
                     value={fmtPct(fund.returns["1M"])}
                     catAvg={cat1MAvg !== null ? `${cat1MAvg >= 0 ? "+" : ""}${cat1MAvg.toFixed(1)}%` : null}
-                    rank={rank1M || undefined}
-                    rankTotal={catCount}
-                    barFill={rank1M && catCount ? ((catCount - rank1M) / catCount) * 100 : 50}
                     valueColor={fund.returns["1M"] !== null ? (fund.returns["1M"] >= 0 ? "text-[#1A9E5F]" : "text-[#F87171]") : undefined}
                   />
                   <MetricCard
                     label="Sharpe Ratio"
                     value={fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : null}
                     catAvg={catSharpeAvg !== null ? catSharpeAvg.toFixed(1) : null}
-                    rank={rankSharpe || undefined}
-                    rankTotal={catCount}
-                    barFill={rankSharpe && catCount ? ((catCount - rankSharpe) / catCount) * 100 : 50}
                   />
                   <MetricCard
                     label="Max Drawdown"
                     value={fund.drawdowns["SI"] !== null ? `${fund.drawdowns["SI"]!.toFixed(2)}%` : null}
                     catAvg={catDrawdownAvg !== null ? `${catDrawdownAvg.toFixed(1)}%` : null}
-                    rank={rankDrawdown || undefined}
-                    rankTotal={catCount}
-                    barFill={rankDrawdown && catCount ? ((catCount - rankDrawdown) / catCount) * 100 : 50}
                     valueColor={fund.drawdowns["SI"] !== null ? (fund.drawdowns["SI"]! < 0 ? "text-[#F87171]" : "text-[#1A9E5F]") : undefined}
                   />
                   <MetricCard
                     label="Volatility"
                     value={fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : null}
                     catAvg={null}
-                    barFill={50}
                   />
                 </div>
               </section>
