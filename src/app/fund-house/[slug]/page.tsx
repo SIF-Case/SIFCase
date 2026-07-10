@@ -303,7 +303,7 @@ export default async function FundHousePage({ params }: Props) {
                   </div>
                   <h2 className="text-[21px] font-extrabold text-heading tracking-tight">News &amp; Insights</h2>
                 </div>
-                <Link href="/news" className="inline-flex items-center gap-1 text-[14px] font-semibold text-primary hover:text-primary-hover">
+                <Link href={`/news?brand=${encodeURIComponent(fundHouse.brandName)}`} className="inline-flex items-center gap-1 text-[14px] font-semibold text-primary hover:text-primary-hover">
                   View all news →
                 </Link>
               </div>

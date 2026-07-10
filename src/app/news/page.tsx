@@ -14,33 +14,38 @@ export const metadata = {
   description: "Stay updated with the latest news and developments in the Social Impact Fund industry.",
 };
 
-async function getPublishedNews() {
+async function getPublishedNews(brand?: string) {
   await connectDB();
-  
+
   // Get General News articles - fetch all, no limit
-  const generalNews = await Article.find({ 
-    status: "published", 
-    category: "General News"
+  const generalNews = await Article.find({
+    status: "published",
+    category: "General News",
+    ...(brand ? { subcategory: brand } : {}),
   })
     .sort({ publishedAt: -1 })
     .select("title slug excerpt subcategory publishedAt readTime category")
     .lean();
-  
+
   // Get Fund Houses articles - fetch all, no limit
-  const fundHousesNews = await Article.find({ 
-    status: "published", 
-    category: "Fund Houses"
+  const fundHousesNews = await Article.find({
+    status: "published",
+    category: "Fund Houses",
+    ...(brand ? { subcategory: brand } : {}),
   })
     .sort({ publishedAt: -1 })
     .select("title slug excerpt subcategory publishedAt readTime category")
     .lean();
-  
+
   return { generalNews, fundHousesNews };
 }
 
-export default async function NewsPage() {
+type Props = { searchParams: Promise<{ brand?: string }> };
+
+export default async function NewsPage({ searchParams }: Props) {
+  const { brand } = await searchParams;
   const [newsData, tickerNavs] = await Promise.all([
-    getPublishedNews(),
+    getPublishedNews(brand),
     getTickerNavs(),
   ]);
 
@@ -55,13 +60,29 @@ export default async function NewsPage() {
         {/* Header */}
         <div className="mb-12">
           <p className="text-[11px] font-mono font-semibold uppercase tracking-[0.15em] text-primary mb-2">Latest Updates</p>
-          <h1 className="text-[42px] font-bold text-[#0B1F3A] tracking-[-1px] leading-none mb-3">SIF News</h1>
-          <p className="text-[16px] text-[#64748B]">Stay updated with the latest news and developments in the Social Impact Fund industry.</p>
+          <h1 className="text-[42px] font-bold text-[#0B1F3A] tracking-[-1px] leading-none mb-3">
+            {brand ? `${brand} News` : "SIF News"}
+          </h1>
+          <p className="text-[16px] text-[#64748B]">
+            {brand
+              ? `Latest news and developments for ${brand}.`
+              : "Stay updated with the latest news and developments in the Social Impact Fund industry."}
+          </p>
+          {brand && (
+            <Link
+              href="/news"
+              className="inline-flex items-center gap-1.5 mt-3 text-[13px] font-medium text-primary hover:text-primary-hover"
+            >
+              ← View all news
+            </Link>
+          )}
         </div>
 
         {/* News Grid */}
         {generalNews.length === 0 && fundHousesNews.length === 0 ? (
-          <div className="py-24 text-center text-[#64748B] text-[15px]">No news articles available at the moment.</div>
+          <div className="py-24 text-center text-[#64748B] text-[15px]">
+            {brand ? `No news articles found for ${brand}.` : "No news articles available at the moment."}
+          </div>
         ) : (
           <>
             {/* General News Section */}

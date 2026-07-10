@@ -713,6 +713,7 @@ export interface FundDetailsData {
   exitLoad: string;
   aumCurrent: number | null;
   aumAggregate: number | null;
+  terMax: string;
   minInvestment: number | null;
   additionalInvestment: number | null;
   fundManagers: { name: string; designation?: string }[];

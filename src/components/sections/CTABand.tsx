@@ -33,7 +33,7 @@ export function CTABand() {
           <h2 className="color-white text-center font-sans text-[24px] font-bold tracking-[-0.67px] leading-[25px] text-white">
             Understand SIFs before you invest.
           </h2>
-          <p className="max-w-[382px] text-white text-center font-sans text-[15px] font-normal leading-normal tracking-[0.2px]">
+          <p className="max-w-[480px] text-white text-center font-sans text-[15px] font-normal leading-normal tracking-[0.2px]">
             Compare official data, read simplified strategy notes, and check if SIFs are suitable for your investment profile.
           </p>
         </div>

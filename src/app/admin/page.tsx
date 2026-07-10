@@ -6,6 +6,7 @@ import NewsItem from "@/models/NewsItem";
 import mongoose from "mongoose";
 import Link from "next/link";
 import { Users, Database, Activity, Clock, CheckCircle, XCircle, AlertTriangle, Newspaper } from "lucide-react";
+import { DataQualityPanel, runDataQualityChecks } from "@/components/admin/DataQualityPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -15,16 +16,21 @@ export default async function AdminDashboard() {
   const db = mongoose.connection.db!;
 
   const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const CRITICAL_FIELDS = ["amc", "isinGrowth", "companyName", "companyName_short", "brandName"];
+  // isinGrowth/isinReinvestment are checked separately below — an IDCW Reinvestment
+  // row only ever carries an isinReinvestment value, so isinGrowth being blank there
+  // is correct, not a red flag.
+  const CRITICAL_FIELDS = ["amc", "companyName", "companyName_short", "brandName"];
   const FIELD_LABELS: Record<string, string> = {
     amc: "AMC",
     isinGrowth: "ISIN Growth",
+    isinReinvestment: "ISIN Reinvest",
     companyName: "Company",
     companyName_short: "Co Short",
     brandName: "Brand",
   };
+  const isReinvestmentOption = (option: unknown) => /reinvest/i.test(String(option ?? ""));
 
-  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, latestNews, incompleteSchemes] = await Promise.all([
+  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, latestNews, incompleteSchemes, dataQuality] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: last7Days } }),
     User.countDocuments({ isAdmin: true }),
@@ -33,16 +39,26 @@ export default async function AdminDashboard() {
     CronLog.find().sort({ createdAt: -1 }).limit(8).lean(),
     NewsItem.find({ isVisible: true }).sort({ fetchedAt: -1 }).limit(5).lean(),
     db.collection("sifschemes").find({
-      $or: CRITICAL_FIELDS.map(f => ({ [f]: { $in: ["", null] } })),
-    }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, isinGrowth: 1, companyName: 1, companyName_short: 1, brandName: 1 } })
+      $or: [
+        ...CRITICAL_FIELDS.map(f => ({ [f]: { $in: ["", null] } })),
+        { option: { $not: /reinvest/i }, isinGrowth: { $in: ["", null, "-"] } },
+        { option: /reinvest/i, isinReinvestment: { $in: ["", null, "-"] } },
+      ],
+    }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, isinGrowth: 1, isinReinvestment: 1, option: 1, companyName: 1, companyName_short: 1, brandName: 1 } })
       .sort({ schemeCode: 1 }).toArray(),
+    runDataQualityChecks(db),
   ]);
 
   type FlaggedScheme = { schemeCode: string; schemeName: string; missing: string[] };
   const redFlags: FlaggedScheme[] = incompleteSchemes.map((s) => ({
     schemeCode: s.schemeCode as string,
     schemeName: s.schemeName as string,
-    missing: CRITICAL_FIELDS.filter(f => !s[f]),
+    missing: [
+      ...CRITICAL_FIELDS.filter(f => !s[f]),
+      ...(isReinvestmentOption(s.option)
+        ? (!s.isinReinvestment || s.isinReinvestment === "-" ? ["isinReinvestment"] : [])
+        : (!s.isinGrowth || s.isinGrowth === "-" ? ["isinGrowth"] : [])),
+    ],
   }));
 
   const stats = [
@@ -72,6 +88,9 @@ export default async function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Data Quality */}
+      <DataQualityPanel result={dataQuality} />
 
       {/* Red Flags */}
       {redFlags.length > 0 && (

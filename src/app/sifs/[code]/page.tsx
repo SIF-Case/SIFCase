@@ -67,10 +67,10 @@ function NavActionCard({
       {/* Sidebar stats */}
       <div className="mt-4 space-y-0 border-t border-white/[0.07] pt-2">
         {[
-          { label: "AUM", value: fmtCr(fund.aum) },
+          { label: "AUM", value: fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null) },
           { label: "Min investment", value: fmtInr(fundDetails?.minInvestment ?? null) },
           { label: "Exit load", value: fundDetails?.exitLoad ?? "—" },
-          { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : "—" },
+          { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—") },
           { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.07] last:border-0">
@@ -86,7 +86,7 @@ function NavActionCard({
           Invest Online
         </button>
         <Link
-          href="/compare"
+          href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
           className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
         >
           <Plus className="size-3.5" />
@@ -741,11 +741,11 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 </div>
                 <div className="px-4">
                   <InfoRow label="Min. investment" value={fmtInr(fundDetails?.minInvestment ?? null)} />
-                  <InfoRow label="Expense ratio" value={fund.expenseRatio !== null ? `${fund.expenseRatio}%` : "—"} />
-                  <InfoRow label="AUM" value={fmtCr(fund.aum)} />
+                  <InfoRow label="Expense ratio" value={fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—")} />
+                  <InfoRow label="AUM" value={fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null)} />
                   <InfoRow label="Inception date" value={formatLaunchMonth(fund.launchDate)} />
                   <InfoRow label="Exit load" value={fundDetails?.exitLoad ?? "—"} />
-                  <InfoRow label="Benchmark" value={fund.benchmark ?? "—"} />
+                  <InfoRow label="Benchmark" value={fund.benchmark ?? fundDetails?.benchmarkName ?? "—"} />
                 </div>
               </div>
 
@@ -983,7 +983,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   <InfoRow label="Plan" value={fund.plan} />
                   <InfoRow label="Option" value={fund.option} />
                   <InfoRow label="Launch date" value={formatLaunchMonth(fund.launchDate)} />
-                  <InfoRow label="Benchmark" value={fund.benchmark ?? "—"} />
+                  <InfoRow label="Benchmark" value={fund.benchmark ?? fundDetails?.benchmarkName ?? "—"} />
                 </div>
               </div>
 
@@ -997,7 +997,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 </div>
                 <div>
                   {[
-                    { label: "Compare with other funds →", href: "/compare" },
+                    { label: "Compare with other funds →", href: `/compare?funds=${encodeURIComponent(fund.schemeCode)}` },
                     { label: "Learn how SIFs work →", href: "/sif-101" },
                     { label: "View open NFOs →", href: "/sifs?filter=nfo" },
                     { label: "Speak to a specialist →", href: "#" },

@@ -132,7 +132,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
       aria-label="SIF market performance snapshot"
     >
       <FloatingStatCard
-        className="left-[16%] top-[0%] h-[40%] w-[62%] hero-card hero-card-1 z-[1]"
+        className="left-[30%] top-[-10%] h-[38%] w-[60%] hero-card hero-card-1 z-[1]"
         eyebrow="TOP PERFORMER - 1M"
         title={topFund?.fundName || topFund?.name || "WM Equity Long-Short"}
         metric={formatCurrency(topFund?.nav)}
@@ -143,7 +143,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
       />
 
       <FloatingStatCard
-        className="left-[0%] top-[35%] h-[40%] w-[62%] hero-card hero-card-2 z-[2]"
+        className="left-[0%] top-[30%] h-[38%] w-[60%] hero-card hero-card-2 z-[2]"
         eyebrow="MARKET SNAPSHOT"
         title={marketTitle}
         detail={`${amcCount} AMCs\nRegistered`}
@@ -152,7 +152,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
       />
 
       <FloatingStatCard
-        className="left-[8%] top-[70%] h-[40%] w-[62%] hero-card hero-card-3 z-[3]"
+        className="left-[18%] top-[68%] h-[38%] w-[60%] hero-card hero-card-3 z-[3]"
         eyebrow="NFO OPEN"
         title="Kotak Infinity Hybrid L'S"
         detail="Closes 29 jun"
