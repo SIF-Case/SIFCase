@@ -569,14 +569,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                         fund={fund}
                         categoryAvg={categoryAvg}
                         categoryLabel={fund.strategy}
-                        header={
-                          <div className="flex items-center gap-2">
-                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                              <path d="M13.75 7.5h-2.5l-1.875 5.625L5.625 1.875 3.75 7.5H1.25" stroke="#0E2A47" strokeWidth="1.25" />
-                            </svg>
-                            <span className="text-[14px] font-bold text-[#0E2A47]">NAV Performance</span>
-                          </div>
-                        }
                       />
                     </div>
                   }

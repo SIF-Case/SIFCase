@@ -57,12 +57,10 @@ type CategoryAvgSeries = Record<PeriodKey, { data: number[]; dates: string[] } |
 
 export function FundDetailPanel({
   fund,
-  header,
   categoryAvg,
   categoryLabel,
 }: {
   fund: FundDetail;
-  header?: React.ReactNode;
   categoryAvg?: CategoryAvgSeries;
   categoryLabel?: string;
 }) {
@@ -185,7 +183,12 @@ export function FundDetailPanel({
     <div className="space-y-6">
       {/* Header + period selector */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        {header}
+        <div className="flex items-center gap-2">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M13.75 7.5h-2.5l-1.875 5.625L5.625 1.875 3.75 7.5H1.25" stroke="#0E2A47" strokeWidth="1.25" />
+          </svg>
+          <span className="text-[14px] font-bold text-[#0E2A47]">NAV Performance</span>
+        </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap sm:justify-end">
           {avgSeries && (
             <button
