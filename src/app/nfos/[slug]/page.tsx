@@ -3,20 +3,19 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { getTickerNavs } from "@/lib/sifData";
-import { NFOS_DATA } from "@/lib/nfoData";
+import { getNfoBySlug, getOpenNfoSlugs } from "@/lib/nfoQueries";
 import { NFODetailClient } from "./NFODetailClient";
 
 type Params = Promise<{ slug: string }>;
 
 export async function generateStaticParams() {
-  return NFOS_DATA.map((nfo) => ({
-    slug: nfo.slug,
-  }));
+  const slugs = await getOpenNfoSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata(props: { params: Params }) {
   const { slug } = await props.params;
-  const nfo = NFOS_DATA.find((x) => x.slug === slug);
+  const nfo = await getNfoBySlug(slug);
   if (!nfo) {
     return {
       title: "NFO Not Found — SIFcase",
@@ -30,7 +29,7 @@ export async function generateMetadata(props: { params: Params }) {
 
 export default async function NFODetailsPage(props: { params: Params }) {
   const { slug } = await props.params;
-  const nfo = NFOS_DATA.find((x) => x.slug === slug);
+  const nfo = await getNfoBySlug(slug);
 
   if (!nfo) {
     notFound();

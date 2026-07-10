@@ -3,6 +3,7 @@ import { isAdminRequest } from "@/lib/adminAuth";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import Role from "@/models/Role";
+import Client from "@/models/Client";
 
 export async function GET(req: NextRequest) {
   if (!await isAdminRequest(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -12,10 +13,19 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = 50;
   const search = searchParams.get("q") ?? "";
+  const showAll = searchParams.get("all") === "1";
 
-  const query = search
-    ? { $or: [{ email: { $regex: search, $options: "i" } }, { name: { $regex: search, $options: "i" } }, { phone: { $regex: search, $options: "i" } }] }
-    : {};
+  const filters: Record<string, unknown>[] = [];
+  if (search) {
+    filters.push({ $or: [{ email: { $regex: search, $options: "i" } }, { name: { $regex: search, $options: "i" } }, { phone: { $regex: search, $options: "i" } }] });
+  }
+  // Default view is internal staff only (isAdmin or an assigned role). No-role accounts are
+  // customers, not team members — but they must still surface when searching, so a staff
+  // member can find and promote one via "Move to Internal User".
+  if (!showAll && !search) {
+    filters.push({ $or: [{ isAdmin: true }, { role: { $ne: null } }] });
+  }
+  const query = filters.length ? { $and: filters } : {};
 
   const [users, total, roles] = await Promise.all([
     User.find(query, "-passwordHash").populate("role", "name").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -67,5 +77,8 @@ export async function DELETE(req: NextRequest) {
 
   await connectDB();
   await User.findByIdAndDelete(id);
+  // Deleting a User frees up their phone/email for reuse by a new signup, which would
+  // otherwise create a second CRM Client sharing that phone with this now-orphaned one.
+  await Client.deleteMany({ linkedUserId: id });
   return NextResponse.json({ ok: true });
 }

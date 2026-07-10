@@ -2,16 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { NFOS_DATA, NFOData } from "@/lib/nfoData";
+import { NFOData } from "@/lib/nfoData";
 
-export function NFOListClient() {
+export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue: number })[] }) {
   const [activeFilter, setActiveFilter] = useState<"All" | "Equity" | "Hybrid" | "Closing soon">("All");
   const [comparedSlugs, setComparedSlugs] = useState<string[]>([]);
   const [subscribedEmail, setSubscribedEmail] = useState("");
   const [subscriptionSuccess, setSubscriptionSuccess] = useState(false);
 
+  const closingSoonNfos = nfos.filter((n) => n.isClosingSoon);
+  const amcCount = new Set(nfos.map((n) => n.amc)).size;
+  const minInvestmentAcrossAll = nfos.length
+    ? Math.min(...nfos.map((n) => n.minInvestmentValue))
+    : 0;
+
   // Filter logic
-  const filteredNfos = NFOS_DATA.filter((nfo) => {
+  const filteredNfos = nfos.filter((nfo) => {
     if (activeFilter === "All") return true;
     if (activeFilter === "Equity") return nfo.category === "Equity";
     if (activeFilter === "Hybrid") return nfo.category === "Hybrid";
@@ -252,19 +258,21 @@ export function NFOListClient() {
           <p className="nfo-hero-sub">Every active New Fund Offer across SEBI-registered SIFs — subscription windows, allotment dates, and full scheme terms in one place.</p>
           <div className="nfo-hero-stats-row" role="list" aria-label="NFO summary stats">
             <div className="nfo-hero-stat" role="listitem">
-              <span className="nfo-hero-stat-val accent">4</span>
+              <span className="nfo-hero-stat-val accent">{nfos.length}</span>
               <span className="nfo-hero-stat-label">NFOs open now</span>
             </div>
             <div className="nfo-hero-stat" role="listitem">
-              <span className="nfo-hero-stat-val">2</span>
+              <span className="nfo-hero-stat-val">{closingSoonNfos.length}</span>
               <span className="nfo-hero-stat-label">Closing this week</span>
             </div>
             <div className="nfo-hero-stat" role="listitem">
-              <span className="nfo-hero-stat-val">3</span>
+              <span className="nfo-hero-stat-val">{amcCount}</span>
               <span className="nfo-hero-stat-label">AMCs represented</span>
             </div>
             <div className="nfo-hero-stat" role="listitem">
-              <span className="nfo-hero-stat-val">₹10L</span>
+              <span className="nfo-hero-stat-val">
+                {minInvestmentAcrossAll >= 100000 ? `₹${(minInvestmentAcrossAll / 100000).toLocaleString("en-IN")}L` : `₹${minInvestmentAcrossAll.toLocaleString("en-IN")}`}
+              </span>
               <span className="nfo-hero-stat-label">Minimum across all</span>
             </div>
           </div>
@@ -294,13 +302,15 @@ export function NFOListClient() {
             </div>
           </div>
 
-          <div className="nfo-alert-strip" role="status">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-            2 NFOs close within 5 days — Kotak Infinity Hybrid L/S (29 Jun) and SBI Magnum Ex-Top 100 L/S (2 Jul)
-          </div>
+          {closingSoonNfos.length > 0 && (
+            <div className="nfo-alert-strip" role="status">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              {closingSoonNfos.length} NFO{closingSoonNfos.length > 1 ? "s" : ""} close{closingSoonNfos.length > 1 ? "" : "s"} soon — {closingSoonNfos.map((n) => `${n.name} (${n.closeDate})`).join(", ")}
+            </div>
+          )}
 
           <div className="nfo-grid" role="list" aria-label="Open NFO listings">
             {filteredNfos.map((nfo) => (
@@ -378,13 +388,6 @@ export function NFOListClient() {
                   <Link href={`/nfos/${nfo.slug}`} className="nfo-btn-primary">
                     View full details
                   </Link>
-                  <button
-                    className={`nfo-btn-secondary ${comparedSlugs.includes(nfo.slug) ? "active" : ""}`}
-                    aria-label={`Add ${nfo.name} to compare`}
-                    onClick={() => toggleCompare(nfo.slug)}
-                  >
-                    {comparedSlugs.includes(nfo.slug) ? "✓ Added" : "+ Compare"}
-                  </button>
                 </div>
               </article>
             ))}

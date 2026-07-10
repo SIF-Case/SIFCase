@@ -40,7 +40,7 @@ export function CTABand() {
 
         <div className="flex flex-col sm:flex-row justify-center items-center gap-6 w-full">
           <Link
-            href="/compare"
+            href="/sif-101"
             className="flex items-center justify-center gap-2 h-[48px] rounded-full border-none cursor-pointer font-sans text-[15px] font-medium leading-[20px] tracking-[0.1px] text-white py-[10px] px-4 w-[174px] bg-[#14b7a3] hover:opacity-[0.88] transition-opacity duration-150 shadow-btn"
           >
             Become SIF ready

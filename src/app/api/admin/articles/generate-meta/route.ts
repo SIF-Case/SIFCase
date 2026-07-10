@@ -77,7 +77,7 @@ async function callDeepSeek(prompt: string, model: string, apiKey: string): Prom
         { role: "user", content: prompt },
       ],
       temperature: 0.4,
-      max_tokens: 800,
+      max_tokens: 4000,
       response_format: { type: "json_object" },
     }),
   });
@@ -101,7 +101,7 @@ async function callOpenRouter(prompt: string, model: string, apiKey: string): Pr
       model,
       messages: [{ role: "user", content: `${prompt}\n\nReturn ONLY a single compact minified JSON object on one line: {"title":"...","excerpt":"...","tags":[...],"seoTitle":"...","metaDescription":"...","focusKeyphrase":"...","primaryKeyword":"..."}` }],
       temperature: 0.4,
-      max_tokens: 800,
+      max_tokens: 4000,
     }),
   });
   const d = await res.json();

@@ -12,6 +12,7 @@ import {
   ClipboardCheck,
   Building2,
   BarChart2,
+  Rocket,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ export const ADMIN_PAGES: AdminPageDef[] = [
   { key: "schemes", label: "Funds", href: "/admin/schemes", icon: Table2, editable: true },
   { key: "fundDetails", label: "Fund Details", href: "/admin/fund-details", icon: ClipboardList, editable: true },
   { key: "fundHouses", label: "Fund Houses", href: "/admin/fund-houses", icon: Building2, editable: true },
+  { key: "nfos", label: "NFOs", href: "/admin/nfos", icon: Rocket, editable: true },
   { key: "articles", label: "Articles", href: "/admin/articles", icon: BookOpen, editable: true },
   { key: "news", label: "SIF News", href: "/admin/news", icon: Newspaper, editable: true },
   { key: "faqs", label: "FAQs", href: "/admin/faqs", icon: HelpCircle, editable: true },

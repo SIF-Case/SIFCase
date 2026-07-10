@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Shield, ShieldOff, Ban, CircleCheck, Trash2, RefreshCw, KeyRound, Plus, Pencil, X } from "lucide-react";
 import { ADMIN_PAGES } from "@/lib/adminPages";
 
@@ -53,13 +54,19 @@ function badge(user: User) {
   return methods.join(" · ") || "Unknown";
 }
 
-export default function AdminUsers() {
+export default function AdminUsersPage() {
+  return <Suspense><AdminUsers /></Suspense>;
+}
+
+function AdminUsers() {
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [showAll, setShowAll] = useState(() => searchParams.get("all") === "1");
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -74,14 +81,14 @@ export default function AdminUsers() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/users?page=${page}&q=${encodeURIComponent(search)}`);
+    const res = await fetch(`/api/admin/users?page=${page}&q=${encodeURIComponent(search)}&all=${showAll ? "1" : "0"}`);
     const data = await res.json();
     setUsers(data.users ?? []);
     setRoleOptions(data.roles ?? []);
     setTotal(data.total ?? 0);
     setPages(data.pages ?? 1);
     setLoading(false);
-  }, [page, search]);
+  }, [page, search, showAll]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -183,7 +190,9 @@ export default function AdminUsers() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[28px] font-bold text-heading tracking-[-0.3px]">Users</h1>
-          <p className="text-[14px] text-muted mt-1">{total} user{total === 1 ? "" : "s"} registered</p>
+          <p className="text-[14px] text-muted mt-1">
+            {total} user{total === 1 ? "" : "s"} {showAll || search ? "registered" : "with staff access"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={openRoles} className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-rule text-[13px] text-muted hover:text-body">
@@ -196,11 +205,22 @@ export default function AdminUsers() {
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-2 bg-white border border-rule rounded-[10px] px-3 h-10 mb-4 max-w-sm shadow-card">
-        <Search className="size-3.5 text-muted shrink-0" />
-        <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search name, email, phone…"
-          className="flex-1 text-[13px] bg-transparent outline-none" />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 bg-white border border-rule rounded-[10px] px-3 h-10 max-w-sm shadow-card flex-1">
+          <Search className="size-3.5 text-muted shrink-0" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search name, email, phone…"
+            className="flex-1 text-[13px] bg-transparent outline-none" />
+        </div>
+        <label className="flex items-center gap-1.5 text-[12px] text-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => { setShowAll(e.target.checked); setPage(1); }}
+            className="size-3.5 accent-primary"
+          />
+          Show all users
+        </label>
       </div>
 
       <div className="bg-white rounded-[14px] border border-rule shadow-card overflow-hidden">

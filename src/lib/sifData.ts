@@ -363,7 +363,7 @@ export const getFundHouseBySlug = unstable_cache(
 
 const RISK_BAND_STRING_MAP_EARLY: Record<string, 1 | 2 | 3 | 4 | 5> = {
   "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
-  "Moderately High Risk": 4, "High Risk": 5,
+  "Moderately High Risk": 4, "High Risk": 5, "Very High Risk": 5,
 };
 
 function normaliseRiskBandEarly(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
@@ -775,9 +775,7 @@ export interface FundDetailsData {
 
 const RISK_BAND_STRING_MAP: Record<string, 1 | 2 | 3 | 4 | 5> = {
   "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
-  "Moderately High Risk": 4, "High Risk": 5,
-  // SIF riskometer only has 5 bands (unlike regular MF's 6) — clamp "Very High" into the top band.
-  "Very High Risk": 5,
+  "Moderately High Risk": 4, "High Risk": 5, "Very High Risk": 5,
 };
 
 export function normaliseRiskBand(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
