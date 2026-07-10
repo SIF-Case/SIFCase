@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bookmark, GitCompare, Clock, User, Trash2, Plus, Check, ArrowUpRight, Save, Loader2, BookmarkX } from "lucide-react";
 import type { FundRow } from "@/lib/sifData";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { fundHref } from "@/lib/slugify";
 
 type Tab = "watchlist" | "compares" | "recent" | "profile";
 
@@ -54,7 +55,7 @@ function WatchlistTab({ funds }: { funds: FundRow[] }) {
         return (
           <div key={f.schemeCode} className="flex items-center gap-4 px-5 py-4 hover:bg-surface transition-colors">
             <div className="flex-1 min-w-0">
-              <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="text-[14px] font-semibold text-heading hover:text-primary truncate block">{shortName(f.name)}</Link>
+              <Link href={fundHref(f.fundName, f.schemeCode)} className="text-[14px] font-semibold text-heading hover:text-primary truncate block">{shortName(f.name)}</Link>
               <p className="text-[11px] text-muted mt-0.5">{f.amc} · <span className="font-mono text-[10px] uppercase tracking-widest text-primary">{f.strategy.replace(" Long-Short", "")}</span></p>
             </div>
             <div className="text-right shrink-0">
@@ -64,7 +65,7 @@ function WatchlistTab({ funds }: { funds: FundRow[] }) {
             <div className="text-right shrink-0 w-20"><ReturnBadge value={si} /><p className="text-[9px] text-faint mt-0.5">SI Return</p></div>
             {spark.length > 1 && <div className="w-20 h-8 shrink-0"><Sparkline data={spark} stroke={si !== null && si >= 0 ? "var(--color-gain)" : "var(--color-loss)"} /></div>}
             <div className="flex items-center gap-2 shrink-0">
-              <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="size-8 inline-flex items-center justify-center rounded-full border border-rule text-muted hover:text-body transition"><ArrowUpRight className="size-3.5" /></Link>
+              <Link href={fundHref(f.fundName, f.schemeCode)} className="size-8 inline-flex items-center justify-center rounded-full border border-rule text-muted hover:text-body transition"><ArrowUpRight className="size-3.5" /></Link>
               <button onClick={() => remove(f.schemeCode)} className="size-8 inline-flex items-center justify-center rounded-full border border-rule text-muted hover:text-loss hover:border-red-300 transition"><Trash2 className="size-3.5" /></button>
             </div>
           </div>
@@ -148,7 +149,7 @@ function RecentTab() {
   return (
     <div className="divide-y divide-rule">
       {recent.map((r) => (
-        <Link key={r.schemeCode} href={`/sifs/${r.schemeCode.toLowerCase()}`}
+        <Link key={r.schemeCode} href={fundHref(r.schemeName, r.schemeCode)}
           className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-surface transition-colors group">
           <div className="min-w-0">
             <p className="text-[13.5px] font-semibold text-heading group-hover:text-primary truncate">{shortName(r.schemeName)}</p>

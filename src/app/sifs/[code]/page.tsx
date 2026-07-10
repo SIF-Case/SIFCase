@@ -1,13 +1,16 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { extractSchemeCode, fundSlug, fundHref } from "@/lib/slugify";
 import {
   ShieldCheck, TrendingUp, MinusCircle, ExternalLink,
   CheckCircle2, XCircle, ArrowLeftRight, Compass, BarChart2,
-  Building2, TrendingDown, Plus,
+  Building2, TrendingDown,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
+import { NavActionCard } from "@/components/sections/NavActionCard";
 import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
 import { getCategoryAverageSeries } from "@/lib/categoryAverages";
 import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
@@ -21,81 +24,18 @@ type Props = { params: Promise<{ code: string }>; searchParams: Promise<{ varian
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
-  const fund = await getFundDetail(code);
+  const schemeCode = extractSchemeCode(code);
+  if (!schemeCode) return { title: "Fund not found — SIFcase" };
+  const fund = await getFundDetail(schemeCode);
   if (!fund) return { title: "Fund not found — SIFcase" };
   return {
     title: `${fund.fundName} — SIFcase`,
     description: `${fund.strategy} SIF by ${fund.amc}. Latest NAV ₹${fund.nav.toFixed(4)} as of ${fund.navDate}. Source-verified returns and risk metrics.`,
+    alternates: { canonical: fundHref(fund.fundName, fund.schemeCode) },
   };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function NavActionCard({
-  fund,
-  navChange,
-  navChangePositive,
-  navChangePct,
-  fundDetails,
-  className,
-}: {
-  fund: any;
-  navChange: number | null;
-  navChangePositive: boolean;
-  navChangePct: number | null;
-  fundDetails: any;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-[14px] border border-white/[0.07] bg-[#0E2A47] p-5 ${className ?? ""}`}>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-white/[0.38] mb-1.5">
-        Latest NAV
-      </div>
-      <div className="text-[30px] font-bold text-white leading-none tracking-[-0.9px]">
-        ₹{fund.nav.toFixed(4)}
-      </div>
-      <div className="flex items-center gap-2 mt-2 mb-0.5">
-        {navChange !== null && (
-          <span className={`text-[14px] font-semibold ${navChangePositive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
-            {navChangePositive ? "+" : ""}₹{Math.abs(navChange).toFixed(4)}
-            {navChangePct !== null && ` (${navChangePositive ? "+" : ""}${navChangePct.toFixed(2)}%)`}
-          </span>
-        )}
-        <span className="text-[12px] text-white/[0.38]">{fund.navDate}</span>
-      </div>
-
-      {/* Sidebar stats */}
-      <div className="mt-4 space-y-0 border-t border-white/[0.07] pt-2">
-        {[
-          { label: "AUM", value: fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null) },
-          { label: "Min investment", value: fmtInr(fundDetails?.minInvestment ?? null) },
-          { label: "Exit load", value: fundDetails?.exitLoad ?? "—" },
-          { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—") },
-          { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.07] last:border-0">
-            <span className="text-[13px] text-white/[0.42]">{label}</span>
-            <span className="text-[13px] font-medium text-white">{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* CTA buttons */}
-      <div className="mt-4 space-y-2">
-        <button className="w-full h-10 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors">
-          Invest Online
-        </button>
-        <Link
-          href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
-          className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
-        >
-          <Plus className="size-3.5" />
-          Add to compare
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 
 function fmtPct(v: number | null, decimals = 2): string | null {
@@ -226,8 +166,20 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const { code } = await params;
   const { variant } = await searchParams;
   const isReinvest = variant === "reinvest";
-  const fund = await getFundDetail(code);
+  const schemeCode = extractSchemeCode(code);
+  if (!schemeCode) notFound();
+  const fund = await getFundDetail(schemeCode);
   if (!fund) notFound();
+
+  // Canonicalize old bare-code URLs (/sifs/sif-105) and any non-canonical slug
+  // to the keyword-rich fund-name-based URL for SEO — permanent (308) redirect
+  // preserves link equity from already-indexed/bookmarked old URLs.
+  const canonicalSlug = fundSlug(fund.fundName, fund.schemeCode);
+  if (code.toLowerCase() !== canonicalSlug) {
+    const qs = variant ? `?variant=${variant}` : "";
+    permanentRedirect(`/sifs/${canonicalSlug}${qs}`);
+  }
+
   const fundDetails = await getFundDetailsForName(fund.fundName).catch(() => null);
   const allFunds = await getTopFunds();
 
@@ -382,9 +334,22 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
           {/* Tags row */}
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <div className="flex items-center gap-[7px] px-3 py-1 rounded-full border border-white/[0.14] bg-white/[0.08]">
-              <div className="w-5 h-5 rounded-[4px] bg-[#0E9F8E] flex items-center justify-center shrink-0">
-                <span className="text-white text-[10px] font-bold leading-none">{amcInitial}</span>
-              </div>
+              {fund.logoUrl ? (
+                <div className="w-5 h-5 rounded-[4px] bg-white flex items-center justify-center shrink-0 overflow-hidden p-0.5">
+                  <Image
+                    src={fund.logoUrl}
+                    alt={fund.amc}
+                    width={20}
+                    height={20}
+                    className="object-contain max-w-full max-h-full"
+                    style={{ width: "auto", height: "auto" }}
+                  />
+                </div>
+              ) : (
+                <div className="w-5 h-5 rounded-[4px] bg-[#0E9F8E] flex items-center justify-center shrink-0">
+                  <span className="text-white text-[10px] font-bold leading-none">{amcInitial}</span>
+                </div>
+              )}
               <span className="text-[11px] font-medium text-white/80">{fund.amc}</span>
             </div>
             <div className="flex items-center gap-[7px] px-3 py-1 rounded-full border border-[rgba(26,158,95,0.25)] bg-[rgba(26,158,95,0.09)]">
@@ -425,8 +390,8 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                     ? isReinvest && v.schemeCode === fund.schemeCode
                     : !isReinvest && v.schemeCode === fund.schemeCode && v.option === fund.option;
                   const href = isVirtualReinvest
-                    ? `/sifs/${v.schemeCode.toLowerCase()}?variant=reinvest`
-                    : `/sifs/${v.schemeCode.toLowerCase()}`;
+                    ? `${fundHref(fund.fundName, v.schemeCode)}?variant=reinvest`
+                    : fundHref(fund.fundName, v.schemeCode);
                   return isCurrent ? (
                     <span key={key} className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#0E9F8E] text-white border border-[#0E9F8E]">
                       {v.option}

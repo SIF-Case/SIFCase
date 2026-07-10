@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { SIFRow } from "@/lib/sifData";
+import { fundHref } from "@/lib/slugify";
 
 function ReturnCell({ value }: { value: string | null }) {
   if (!value) {
@@ -92,7 +93,7 @@ export function SIFComparisonTable({ sifs }: { sifs: SIFRow[] }) {
                   </td>
                   <td className="px-4 py-4 pr-5 whitespace-nowrap">
                     <a
-                      href={`/sifs/${sif.schemeCode.toLowerCase()}`}
+                      href={fundHref(sif.fundName, sif.schemeCode)}
                       className="text-[13px] font-semibold text-primary hover:text-primary-hover"
                     >
                       View →

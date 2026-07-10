@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, X, Building2, BookOpen, Database, CornerDownLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { fundHref } from "@/lib/slugify";
 
 interface SearchResultScheme {
   schemeCode: string;
@@ -105,7 +106,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       list.push({
         type: "scheme",
         data: item,
-        url: `/sifs/${item.schemeCode.toLowerCase()}`,
+        url: fundHref(item.fundName, item.schemeCode),
       });
     });
 
@@ -292,7 +293,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       return (
                         <Link
                           key={item.schemeCode}
-                          href={`/sifs/${item.schemeCode.toLowerCase()}`}
+                          href={fundHref(item.fundName, item.schemeCode)}
                           onClick={onClose}
                           data-active={isSelected}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-[12px] transition-all duration-150 ${

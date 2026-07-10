@@ -7,6 +7,7 @@ import type { MonthlyHeatmapFund } from "@/lib/sifData";
 import type { FundRow } from "@/lib/sifData";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useCompareTray } from "@/components/ui/CompareTray";
+import { fundHref } from "@/lib/slugify";
 
 function bgFor(r: number | null): string {
   if (r === null) return "transparent";
@@ -125,7 +126,7 @@ function GroupRows({ label, rows, lastIdx }: { label: string; rows: MonthlyHeatm
       {rows.map((f) => (
         <tr key={f.schemeCode} className="hover:bg-surface transition-colors">
           <td className="px-4 py-2 sticky left-0 bg-white z-10">
-            <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="block hover:text-primary">
+            <Link href={fundHref(f.name, f.schemeCode)} className="block hover:text-primary">
               <div className="text-[12px] font-medium leading-tight truncate max-w-[200px]">
                 {f.name.replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "").replace(/\s*(SIF|Fund)\s*$/i, "").trim().split(" ").slice(0, 3).join(" ")}
               </div>
@@ -213,7 +214,7 @@ function LeaderRow({ f, val, tone }: { f: FundRow; val: number; tone: "positive"
   const spark = f.sparklines["SI"];
   return (
     <li className="group flex items-center gap-2 py-1.5 px-1 rounded-md hover:bg-surface transition-colors">
-      <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="flex items-center gap-2 min-w-0 flex-1">
+      <Link href={fundHref(f.fundName, f.schemeCode)} className="flex items-center gap-2 min-w-0 flex-1">
         <div className="min-w-0 flex-1">
           <div className="text-[12px] font-medium truncate text-body">
             {f.name.replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "").replace(/\s*(SIF|Fund)\s*$/i, "").trim().split(" ").slice(0, 3).join(" ")}

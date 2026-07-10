@@ -21,6 +21,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.sifcase.com"),
   title: "SIFcase — Compare SIFs with verified data",
   description:
     "Track NAV, NFOs, TER, strategy documents, and returns from official sources — simplified for serious investors.",

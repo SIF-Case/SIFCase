@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
       // 1. Search SIF Schemes
       SIFScheme.find({
         isActive: { $ne: false },
+        plan: { $ne: "Direct" },
         $or: [
           { schemeName: { $regex: q, $options: "i" } },
           { fundName: { $regex: q, $options: "i" } },

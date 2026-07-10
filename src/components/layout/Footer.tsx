@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 export function Footer() {
   const [email, setEmail] = useState("");
+  const [stats, setStats] = useState<{ totalFunds: number; uniqueAMCs: number } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/public/stats")
+      .then((r) => r.json())
+      .then((d) => setStats({ totalFunds: d.totalFunds, uniqueAMCs: d.uniqueAMCs }))
+      .catch(() => {});
+  }, []);
 
   return (
     <footer className="footer">
@@ -76,7 +84,8 @@ export function Footer() {
               <span className="dot dot-live"></span> NAV updated daily · AMFI source
             </div>
             <div className="status-item">
-              <span className="dot dot-teal"></span> 98 SIFs · 14 AMCs tracked
+              <span className="dot dot-teal"></span>
+              {stats ? `${stats.totalFunds} SIFs · ${stats.uniqueAMCs} AMCs tracked` : "Loading tracked SIFs…"}
             </div>
             <div className="status-item">
               <span className="dot dot-navy"></span> AMFI-registered distributor

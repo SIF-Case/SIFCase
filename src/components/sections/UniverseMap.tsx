@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { FundRow } from "@/lib/sifData";
+import { fundHref } from "@/lib/slugify";
 
 function computeVol(navs: number[]): number {
   if (navs.length < 3) return 0;
@@ -126,7 +127,7 @@ export function UniverseMap({ funds }: Props) {
               const color = CATEGORY_COLOR[c] ?? "var(--color-primary)";
               return (
                 <g key={f.schemeCode} onMouseEnter={() => setHover(f.schemeCode)} onMouseLeave={() => setHover(null)} style={{ cursor: "pointer" }}>
-                  <Link href={`/sifs/${f.schemeCode.toLowerCase()}`}>
+                  <Link href={fundHref(f.fundName, f.schemeCode)}>
                     <circle cx={xAt(x)} cy={yAt(y)} r={r} fill={color} opacity={active ? 0.5 : 0.28} />
                     <circle cx={xAt(x)} cy={yAt(y)} r={r} fill="none" stroke={color} strokeWidth={active ? 2 : 1.2} />
                     {active && (

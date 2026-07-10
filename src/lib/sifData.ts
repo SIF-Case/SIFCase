@@ -18,6 +18,7 @@ export interface SnapshotStats {
   totalSchemes: number;
   totalRegular: number;
   totalGrowthRegular: number;
+  totalFunds: number;
   uniqueAMCs: number;
   latestNavDate: string;
   totalNavRecords: number;
@@ -192,13 +193,14 @@ async function getCollections() {
 async function _getSnapshotStats(): Promise<SnapshotStats> {
   const { schemes, navs } = await getCollections();
 
-  const [totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, latestNavRecord] =
+  const [totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, fundNames, latestNavRecord] =
     await Promise.all([
       schemes.countDocuments(),
       schemes.countDocuments({ plan: "Regular" }),
       schemes.countDocuments({ plan: "Regular", option: "Growth" }),
       navs.countDocuments(),
       schemes.distinct("amc"),
+      schemes.distinct("fundName", { plan: "Regular" }),
       navs.findOne({}, { sort: { navDate: -1 } }),
     ]);
 
@@ -206,6 +208,7 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
     totalSchemes,
     totalRegular,
     totalGrowthRegular,
+    totalFunds: fundNames.filter(Boolean).length,
     uniqueAMCs: amcList.length,
     latestNavDate: latestNavRecord
       ? formatDate(latestNavRecord.navDate)
@@ -674,6 +677,8 @@ export interface FundDetail {
   isin: string | null;
   amc: string;
   companyName: string;
+  brandName: string;
+  logoUrl: string;
   strategy: string;
   category: "Equity" | "Hybrid";
   plan: "Regular" | "Direct";
@@ -913,6 +918,9 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
   // isinReinvestment is only for the virtual "IDCW Reinvestment" variant
   const isin = (scheme.isinGrowth as string) || null;
 
+  const brandName = (scheme.brandName as string) || "";
+  const fundHouseBranding = brandName ? await FundHouse.findOne({ brandName }, { logoUrl: 1 }).lean() : null;
+
   return {
     schemeCode,
     name: scheme.schemeName as string,
@@ -920,6 +928,8 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
     isin,
     amc: scheme.amc as string,
     companyName: (scheme.companyName as string) || (scheme.amc as string),
+    brandName,
+    logoUrl: fundHouseBranding?.logoUrl || "",
     strategy: scheme.strategy as string,
     category: strategyToCategory(scheme.strategy as string),
     plan: scheme.plan as "Regular" | "Direct",

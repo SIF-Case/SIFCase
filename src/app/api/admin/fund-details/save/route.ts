@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import FundDetails from "@/models/FundDetails";
 import { revalidateTag, revalidatePath } from "next/cache";
 import SIFScheme from "@/models/SIFScheme";
+import { fundHref } from "@/lib/slugify";
 
 export async function POST(req: NextRequest) {
   if (!await hasPageAccess(req, "fundDetails", "edit")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -51,7 +52,10 @@ export async function POST(req: NextRequest) {
     // Look up all scheme codes that belong to this fundName so we can purge each URL.
     const schemes = await SIFScheme.find({ fundName }, { schemeCode: 1, _id: 0 }).lean();
     for (const s of schemes) {
+      // Revalidate both the legacy bare-code path and the canonical pretty-slug
+      // path — they're separate ISR cache entries even though same route file.
       revalidatePath(`/sifs/${(s.schemeCode as string).toLowerCase()}`);
+      revalidatePath(fundHref(fundName, s.schemeCode as string));
     }
 
     revalidatePath("/");

@@ -7,6 +7,7 @@ import { SEBIRiskometer } from "@/components/ui/RiskMeter";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { trackActivity } from "@/components/UserTracker";
+import { fundHref } from "@/lib/slugify";
 
 const FILTERS = ["All", "Hybrid", "Equity"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -248,7 +249,7 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
       {/* Actions */}
       <div className="flex items-center gap-[7px] pt-1">
         <a
-          href={`/sifs/${fund.schemeCode.toLowerCase()}`}
+          href={fundHref(fund.fundName, fund.schemeCode)}
           className="flex-1 text-center text-[12px] font-[500] transition-opacity hover:opacity-80"
           style={{
             padding: "6px 10px",

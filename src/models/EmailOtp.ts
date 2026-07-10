@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type EmailOtpPurpose = "login" | "link";
+export type EmailOtpPurpose = "login" | "link" | "verify";
 
 export interface IEmailOtp extends Document {
   purpose: EmailOtpPurpose;
@@ -15,7 +15,7 @@ export interface IEmailOtp extends Document {
 
 const EmailOtpSchema = new Schema<IEmailOtp>(
   {
-    purpose: { type: String, enum: ["login", "link"], required: true },
+    purpose: { type: String, enum: ["login", "link", "verify"], required: true },
     key: { type: String, required: true },
     email: { type: String, required: true },
     name: { type: String },

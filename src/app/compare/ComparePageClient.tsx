@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { CompareLab } from "@/components/sections/CompareLab";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { fundHref } from "@/lib/slugify";
 
 
 const SECTION_ROWS: {
@@ -257,7 +258,7 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
                         <span className="size-2 rounded-full shrink-0" style={{ background: PALETTE[i] }} />
                         <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">{f.isin ?? f.schemeCode}</span>
                       </div>
-                      <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="text-[13px] font-semibold text-white leading-tight hover:text-primary-tint transition-colors block">
+                      <Link href={fundHref(f.fundName, f.schemeCode)} className="text-[13px] font-semibold text-white leading-tight hover:text-primary-tint transition-colors block">
                         {shortName(f.name)}
                       </Link>
                       <p className="text-[11px] text-white/50 mt-0.5">{f.amc}</p>

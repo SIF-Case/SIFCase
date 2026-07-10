@@ -5,6 +5,7 @@ import { Plus, Check, ArrowUpRight } from "lucide-react";
 import type { FundRow } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { fundHref } from "@/lib/slugify";
 
 function shortName(name: string) {
   return name.replace(/\s*-\s*(Regular|Direct)\s*Plan.*/i, "").replace(/\s*(SIF|Fund)\s*$/i, "").trim();
@@ -20,7 +21,7 @@ export function FundListRow({ f }: { f: FundRow }) {
   return (
     <div className="group grid grid-cols-[minmax(0,2.2fr)_88px_72px_64px_64px_96px_auto] items-center gap-4 px-5 py-3 border-b border-rule hover:bg-surface transition-colors tabular text-[13px]">
       <div className="min-w-0">
-        <Link href={`/sifs/${f.schemeCode.toLowerCase()}`} className="font-medium truncate block hover:text-primary">
+        <Link href={fundHref(f.fundName, f.schemeCode)} className="font-medium truncate block hover:text-primary">
           {shortName(f.name)}
         </Link>
         <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted truncate">
@@ -62,7 +63,7 @@ export function FundListRow({ f }: { f: FundRow }) {
           {inTray ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
         </button>
         <Link
-          href={`/sifs/${f.schemeCode.toLowerCase()}`}
+          href={fundHref(f.fundName, f.schemeCode)}
           className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-rule hover:border-rule-strong text-muted hover:text-body transition"
           title="Open fund"
         >

@@ -5,6 +5,7 @@ import FundDetails from "@/models/FundDetails";
 import SIFScheme from "@/models/SIFScheme";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { fetchFundByIsin, mapFinApiToFundDetails } from "@/lib/finApiClient";
+import { fundHref } from "@/lib/slugify";
 
 const ISIN_RE = /^[A-Za-z0-9]{9,12}$/;
 
@@ -61,7 +62,10 @@ export async function POST(req: NextRequest) {
 
     const schemes = await SIFScheme.find({ fundName: scheme.fundName }, { schemeCode: 1, _id: 0 }).lean();
     for (const s of schemes) {
+      // Revalidate both the legacy bare-code path and the canonical pretty-slug
+      // path — they're separate ISR cache entries even though same route file.
       revalidatePath(`/sifs/${(s.schemeCode as string).toLowerCase()}`);
+      revalidatePath(fundHref(scheme.fundName, s.schemeCode as string));
     }
     revalidatePath("/");
     revalidatePath("/sifs");

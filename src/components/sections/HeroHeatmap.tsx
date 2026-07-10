@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { FundRow, SnapshotStats } from "@/lib/sifData";
+import { fundHref } from "@/lib/slugify";
 
 type SignalBar = "orange" | "white";
 
@@ -139,7 +140,7 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
         trend={oneMonthReturn != null ? `${oneMonthReturn >= 0 ? "+" : ""}${oneMonthReturn.toFixed(2)}%` : "+6.64%"}
         showArrow
         bars={riskBars}
-        href={topFund?.schemeCode ? `/sifs/${topFund.schemeCode.toLowerCase()}` : "/sifs"}
+        href={topFund?.schemeCode ? fundHref(topFund.fundName, topFund.schemeCode) : "/sifs"}
       />
 
       <FloatingStatCard

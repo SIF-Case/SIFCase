@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { getCategoryAverages } from "@/lib/categoryAverages";
+import { fundHref } from "@/lib/slugify";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
@@ -51,7 +52,7 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
   const spark = fund.sparklines[period];
   const ret = fund.returns[period];
   const pos = ret === null ? true : ret >= 0;
-  const href = `/sifs/${fund.schemeCode.toLowerCase()}`;
+  const href = fundHref(fund.fundName, fund.schemeCode);
 
   return (
     <div

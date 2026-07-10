@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const { name, phone, email, message } = body;
+    const { name, phone, email, message, fundName, schemeCode, amountLakhs } = body;
 
     if (!name || !String(name).trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -20,10 +20,15 @@ export async function POST(req: NextRequest) {
       phone: String(phone).trim(),
       email: email ? String(email).trim() : undefined,
       stage: "call_req",
-      source: "callback_popup",
+      source: fundName ? "fund_cta_popup" : "callback_popup",
+      tags: fundName ? ["Investor"] : [],
+      investmentInterest: fundName ? [String(fundName)] : [],
+      estimatedAumLakhs: typeof amountLakhs === "number" ? amountLakhs : null,
       notes: [
         {
-          text: `User requested a callback.${message ? ` Message: ${String(message).trim()}` : ""}`,
+          text: fundName
+            ? `Requested to get started with ${fundName}${schemeCode ? ` (${schemeCode})` : ""}.${amountLakhs ? ` Planning to invest ₹${amountLakhs}L.` : ""}${message ? ` Message: ${String(message).trim()}` : ""}`
+            : `User requested a callback.${message ? ` Message: ${String(message).trim()}` : ""}`,
           authorName: "System",
           createdAt: new Date(),
         } as any,

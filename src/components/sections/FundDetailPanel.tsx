@@ -279,15 +279,21 @@ export function FundDetailPanel({
 
                 {/* X-axis ticks + date labels */}
                 {(() => {
-                  const TICKS = 6;
+                  // Show every distinct label (month, for most ranges) rather than
+                  // capping at a fixed tick count — capping was skipping months
+                  // (e.g. Oct, Dec, Feb, May, Jul but not Jan/Mar/Apr/Jun) even
+                  // though there was room to label all of them. Only thin the
+                  // labels down if there genuinely isn't room (very long ranges),
+                  // and even then thin by whole calendar units so the labels
+                  // shown stay evenly spaced instead of landing at odd points.
+                  const MAX_LABELS = 14;
                   const spanDays =
                     (new Date(visible[visible.length - 1].date).getTime() - new Date(visible[0].date).getTime()) /
                     (1000 * 60 * 60 * 24);
 
                   // Group data indices by their axis label (e.g. distinct months/days)
-                  // so we can pick evenly-spaced *labels* rather than evenly-spaced
-                  // *indices* (the latter can land mid-label and get deduped,
-                  // producing uneven gaps between the labels actually shown).
+                  // so ticks land exactly on label boundaries instead of at
+                  // arbitrary trading-day offsets.
                   const firstIdxByLabel: number[] = [];
                   let lastLabel = "";
                   visible.forEach((h, idx) => {
@@ -298,12 +304,20 @@ export function FundDetailPanel({
                     }
                   });
 
-                  const count = Math.min(TICKS, firstIdxByLabel.length);
-                  if (count < 2) return null;
+                  if (firstIdxByLabel.length < 2) return null;
 
-                  return Array.from({ length: count }, (_, i) => {
-                    const pos = Math.round((i / (count - 1)) * (firstIdxByLabel.length - 1));
-                    const idx = firstIdxByLabel[pos];
+                  // Thin by a whole-number stride (every Nth label) so spacing
+                  // between shown labels stays uniform, rather than picking an
+                  // arbitrary evenly-spaced subset by position.
+                  const stride = Math.max(1, Math.ceil(firstIdxByLabel.length / MAX_LABELS));
+                  const shownIdx = firstIdxByLabel.filter((_, i) => i % stride === 0);
+                  // Always include the last label so the range's end date is visible.
+                  if (shownIdx[shownIdx.length - 1] !== firstIdxByLabel[firstIdxByLabel.length - 1]) {
+                    shownIdx.push(firstIdxByLabel[firstIdxByLabel.length - 1]);
+                  }
+                  const count = shownIdx.length;
+
+                  return shownIdx.map((idx, i) => {
                     const x = PL + (idx / (visible.length - 1)) * (W - PL - PR);
                     const label = fmtAxisDate(visible[idx].date, spanDays);
                     return (

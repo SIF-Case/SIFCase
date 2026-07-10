@@ -7,6 +7,7 @@ import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { RiskMeter, RISK_LABELS } from "@/components/ui/RiskMeter";
 import { cn } from "@/lib/utils";
+import { fundHref } from "@/lib/slugify";
 
 const CHART_PERIODS: PeriodKey[] = ["1M", "3M", "SI"];
 
@@ -274,7 +275,7 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
 
         <div className="flex items-center gap-2 sm:shrink-0">
           <Link
-            href={`/sifs/${fund.schemeCode.toLowerCase()}`}
+            href={fundHref(fund.fundName, fund.schemeCode)}
             className="flex-1 sm:flex-none h-9 px-4 inline-flex items-center justify-center rounded-[8px] bg-primary text-white text-[14px] font-semibold hover:bg-primary-hover transition-colors whitespace-nowrap"
           >
             View Details →

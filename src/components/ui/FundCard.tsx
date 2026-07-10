@@ -6,6 +6,7 @@ import type { FundRow } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { SEBIRiskometer } from "@/components/ui/RiskMeter";
+import { fundHref } from "@/lib/slugify";
 
 export function FundCard({ f }: { f: FundRow }) {
   const siReturn = f.returns["SI"];
@@ -19,7 +20,7 @@ export function FundCard({ f }: { f: FundRow }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link
-            href={`/sifs/${f.schemeCode.toLowerCase()}`}
+            href={fundHref(f.fundName, f.schemeCode)}
             className="block text-[16px] font-semibold text-heading leading-tight truncate group-hover:text-primary transition-colors"
           >
             {f.fundName}
@@ -93,7 +94,7 @@ export function FundCard({ f }: { f: FundRow }) {
           {inTray ? <Check className="size-4" /> : <Plus className="size-4" />}
         </button>
         <Link
-          href={`/sifs/${f.schemeCode.toLowerCase()}`}
+          href={fundHref(f.fundName, f.schemeCode)}
           className="flex-1 h-10 inline-flex items-center justify-center rounded-full border border-rule-strong text-[13px] font-medium hover:bg-surface transition"
         >
           Details
