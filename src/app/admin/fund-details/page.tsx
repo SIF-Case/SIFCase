@@ -3,22 +3,47 @@
 import { useState, useEffect, useRef } from "react";
 import {
   FileText, Plus, Trash2, ExternalLink, Loader2,
-  Wand2, Check, ChevronDown, Upload, AlertCircle,
+  Wand2, Check, ChevronDown, Upload, AlertCircle, RefreshCw,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Manager = { name: string; designation: string; experienceYears: string; managingSince: string };
 type Allocation = { assetClass: string; percentage: string };
-type IndustryAlloc = { industry: string; percentage: string };
+type IndustryAlloc = { industry: string; percentage: string; marketValue: string; change1M: string };
 type RatingAlloc = { ratingClass: string; percentage: string };
-type Holding = { name: string; percentage: string; sector: string; rating: string };
+type Holding = { name: string; percentage: string; sector: string; rating: string; marketValue: string; change1M: string };
 type Factsheet = { url: string; filename: string; documentType: string; uploadedAt: string };
 type PlanCode = { planName: string; isin: string };
 type SipDetail = { frequency: string; minAmount: string; minInstallments: string };
 type TerSlab = { aumSlab: string; ter: string };
 type AllocRange = { assetClass: string; min: string; max: string };
 type DerivativeStrategy = { name: string; description: string };
+
+// ── finapi.upvaly.com sync fields ──────────────────────────────────────────
+type FundamentalsForm = {
+  pe: string; categoryAveragePe: string;
+  pb: string; categoryAveragePb: string;
+  priceToSale: string; categoryAveragePriceToSale: string;
+  priceToCashFlow: string; categoryAveragePriceToCashFlow: string;
+  dividendYield: string; categoryAverageDividendYield: string;
+  roe: string; categoryAverageRoe: string;
+};
+type ConcentrationForm = {
+  numberOfHoldings: string; averageMarketCap: string;
+  top3SectorWeight: string; top5StocksWeight: string; top10StocksWeight: string;
+};
+type MarketCapForm = { largeCap: string; midCap: string; smallCap: string; others: string };
+type RollingReturnRow = {
+  timeframe: string; averageReturn: string; medianReturn: string;
+  minReturn: string; minPeriod: string; maxReturn: string; maxPeriod: string;
+  standardDeviation: string; downsideDeviation: string;
+  positiveRatio: string; negativeRatio: string; consistencyScore: string;
+};
+type CategoryRankRow = { timeframe: string; annualizedReturn: string; categoryAverage: string; rankInCategory: string };
+type PeerRow = { schemeCode: string; isin: string; schemeName: string; schemeNameShort: string; aum: string; pe: string; pb: string; dividendYield: string; expenseRatio: string };
+type AmcSchemeRow = { schemeCode: string; isin: string; schemeName: string; schemeShortName: string; morningstarRating: string; aum: string; return1y: string; return3y: string; return7y: string; return10y: string };
+type RiskConclusionRow = { timeframe: string; conclusion: string };
 
 const DOCUMENT_TYPES = [
   "Factsheet",
@@ -88,6 +113,27 @@ type FormState = {
   howItWorks: string;
   mfEquivalent: string;
   portfolioFit: string;
+  // ── API (finapi.upvaly.com sync) ──────────────────────────────────────
+  isin: string;
+  externalSchemeCode: string;
+  fundamentals: FundamentalsForm;
+  concentration: ConcentrationForm;
+  marketCapWeightage: MarketCapForm;
+  rollingReturns: RollingReturnRow[];
+  categoryRanks: CategoryRankRow[];
+  peers: PeerRow[];
+  amcOtherFundsCompanyName: string;
+  amcOtherFundsSchemeList: AmcSchemeRow[];
+  riskReturnsInfo: string;
+  riskReturns: RiskConclusionRow[];
+  riskStandardDeviationInfo: string;
+  riskStandardDeviation: RiskConclusionRow[];
+  riskSharpRatioInfo: string;
+  riskSharpRatio: RiskConclusionRow[];
+  riskSortinoRatioInfo: string;
+  riskSortinoRatio: RiskConclusionRow[];
+  riskBetaInfo: string;
+  riskBeta: RiskConclusionRow[];
 };
 
 type AiResult = Partial<{
@@ -160,9 +206,9 @@ const EMPTY_FORM: FormState = {
   fundManagers: [{ name: "", designation: "", experienceYears: "", managingSince: "" }],
   benchmarkName: "", benchmarkRiskBand: "", benchmarkDetails: "",
   assetAllocation: [{ assetClass: "", percentage: "" }],
-  portfolioByIndustry: [{ industry: "", percentage: "" }],
+  portfolioByIndustry: [{ industry: "", percentage: "", marketValue: "", change1M: "" }],
   portfolioByRatingClass: [{ ratingClass: "", percentage: "" }],
-  topHoldings: [{ name: "", percentage: "", sector: "", rating: "" }],
+  topHoldings: [{ name: "", percentage: "", sector: "", rating: "", marketValue: "", change1M: "" }],
   factsheets: [],
   schemeCategory: "", schemeNature: "", inceptionDate: "",
   planCodes: [{ planName: "", isin: "" }],
@@ -180,6 +226,24 @@ const EMPTY_FORM: FormState = {
   suitableFor: "", notSuitableFor: "",
   bullMarket: "", bearMarket: "", sidewaysMarket: "",
   howItWorks: "", mfEquivalent: "", portfolioFit: "",
+  isin: "", externalSchemeCode: "",
+  fundamentals: {
+    pe: "", categoryAveragePe: "", pb: "", categoryAveragePb: "",
+    priceToSale: "", categoryAveragePriceToSale: "", priceToCashFlow: "", categoryAveragePriceToCashFlow: "",
+    dividendYield: "", categoryAverageDividendYield: "", roe: "", categoryAverageRoe: "",
+  },
+  concentration: { numberOfHoldings: "", averageMarketCap: "", top3SectorWeight: "", top5StocksWeight: "", top10StocksWeight: "" },
+  marketCapWeightage: { largeCap: "", midCap: "", smallCap: "", others: "" },
+  rollingReturns: [{ timeframe: "", averageReturn: "", medianReturn: "", minReturn: "", minPeriod: "", maxReturn: "", maxPeriod: "", standardDeviation: "", downsideDeviation: "", positiveRatio: "", negativeRatio: "", consistencyScore: "" }],
+  categoryRanks: [{ timeframe: "", annualizedReturn: "", categoryAverage: "", rankInCategory: "" }],
+  peers: [{ schemeCode: "", isin: "", schemeName: "", schemeNameShort: "", aum: "", pe: "", pb: "", dividendYield: "", expenseRatio: "" }],
+  amcOtherFundsCompanyName: "",
+  amcOtherFundsSchemeList: [{ schemeCode: "", isin: "", schemeName: "", schemeShortName: "", morningstarRating: "", aum: "", return1y: "", return3y: "", return7y: "", return10y: "" }],
+  riskReturnsInfo: "", riskReturns: [{ timeframe: "", conclusion: "" }],
+  riskStandardDeviationInfo: "", riskStandardDeviation: [{ timeframe: "", conclusion: "" }],
+  riskSharpRatioInfo: "", riskSharpRatio: [{ timeframe: "", conclusion: "" }],
+  riskSortinoRatioInfo: "", riskSortinoRatio: [{ timeframe: "", conclusion: "" }],
+  riskBetaInfo: "", riskBeta: [{ timeframe: "", conclusion: "" }],
 };
 
 type Provider = "deepseek" | "gemini" | "openrouter";
@@ -243,11 +307,16 @@ export default function FundDetailsPage() {
   const [savedConfig, setSavedConfig] = useState<{ label: string; provider: Provider; modelName: string } | null | undefined>(undefined);
   const [overrideConfig, setOverrideConfig] = useState(false);
   const [analysing, setAnalysing] = useState(false);
+  const [generatingNarrative, setGeneratingNarrative] = useState(false);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [aiError, setAiError] = useState("");
 
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isinInput, setIsinInput] = useState("");
+  const [syncingIsin, setSyncingIsin] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/fund-details?list=1")
@@ -290,12 +359,15 @@ export default function FundDetailsPage() {
     setAiResult(null);
     setAiError("");
     setSaveMsg(null);
+    setIsinInput("");
+    setSyncMsg(null);
     if (!name) { setForm(EMPTY_FORM); return; }
 
     setLoadingFund(true);
     try {
       const r = await fetch(`/api/admin/fund-details?fundName=${encodeURIComponent(name)}`);
       const d = await r.json();
+      setIsinInput(d.isinGrowth || "");
       if (d.detail) {
         const det = d.detail;
         setForm({
@@ -316,14 +388,14 @@ export default function FundDetailsPage() {
             ? det.assetAllocation.map((a: { assetClass: string; percentage: number }) => ({ assetClass: a.assetClass || "", percentage: String(a.percentage) }))
             : [{ assetClass: "", percentage: "" }],
           portfolioByIndustry: det.portfolioByIndustry?.length
-            ? det.portfolioByIndustry.map((p: { industry: string; percentage: number }) => ({ industry: p.industry || "", percentage: String(p.percentage) }))
-            : [{ industry: "", percentage: "" }],
+            ? det.portfolioByIndustry.map((p: { industry: string; percentage: number; marketValue?: number | null; change1M?: number | null }) => ({ industry: p.industry || "", percentage: String(p.percentage), marketValue: p.marketValue != null ? String(p.marketValue) : "", change1M: p.change1M != null ? String(p.change1M) : "" }))
+            : [{ industry: "", percentage: "", marketValue: "", change1M: "" }],
           portfolioByRatingClass: det.portfolioByRatingClass?.length
             ? det.portfolioByRatingClass.map((p: { ratingClass: string; percentage: number }) => ({ ratingClass: p.ratingClass || "", percentage: String(p.percentage) }))
             : [{ ratingClass: "", percentage: "" }],
           topHoldings: det.topHoldings?.length
-            ? det.topHoldings.map((h: { name: string; percentage: number; sector?: string; rating?: string }) => ({ name: h.name || "", percentage: String(h.percentage), sector: h.sector || "", rating: h.rating || "" }))
-            : [{ name: "", percentage: "", sector: "", rating: "" }],
+            ? det.topHoldings.map((h: { name: string; percentage: number; sector?: string; rating?: string; marketValue?: number | null; change1M?: number | null }) => ({ name: h.name || "", percentage: String(h.percentage), sector: h.sector || "", rating: h.rating || "", marketValue: h.marketValue != null ? String(h.marketValue) : "", change1M: h.change1M != null ? String(h.change1M) : "" }))
+            : [{ name: "", percentage: "", sector: "", rating: "", marketValue: "", change1M: "" }],
           factsheets: (det.factsheets || []).map((f: any) => ({
             url: f.url, filename: f.filename, documentType: f.documentType || "", uploadedAt: f.uploadedAt,
           })),
@@ -369,6 +441,73 @@ export default function FundDetailsPage() {
           howItWorks: det.howItWorks || "",
           mfEquivalent: det.mfEquivalent || "",
           portfolioFit: det.portfolioFit || "",
+          isin: det.isin || "",
+          externalSchemeCode: det.externalSchemeCode || "",
+          fundamentals: det.fundamentals
+            ? Object.fromEntries(Object.entries(det.fundamentals).map(([k, v]) => [k, v != null ? String(v) : ""])) as unknown as FundamentalsForm
+            : EMPTY_FORM.fundamentals,
+          concentration: det.concentration
+            ? {
+                numberOfHoldings: det.concentration.numberOfHoldings != null ? String(det.concentration.numberOfHoldings) : "",
+                averageMarketCap: det.concentration.averageMarketCap || "",
+                top3SectorWeight: det.concentration.top3SectorWeight != null ? String(det.concentration.top3SectorWeight) : "",
+                top5StocksWeight: det.concentration.top5StocksWeight != null ? String(det.concentration.top5StocksWeight) : "",
+                top10StocksWeight: det.concentration.top10StocksWeight != null ? String(det.concentration.top10StocksWeight) : "",
+              }
+            : EMPTY_FORM.concentration,
+          marketCapWeightage: det.marketCapWeightage
+            ? {
+                largeCap: det.marketCapWeightage.largeCap != null ? String(det.marketCapWeightage.largeCap) : "",
+                midCap: det.marketCapWeightage.midCap != null ? String(det.marketCapWeightage.midCap) : "",
+                smallCap: det.marketCapWeightage.smallCap != null ? String(det.marketCapWeightage.smallCap) : "",
+                others: det.marketCapWeightage.others != null ? String(det.marketCapWeightage.others) : "",
+              }
+            : EMPTY_FORM.marketCapWeightage,
+          rollingReturns: det.rollingReturns?.length
+            ? det.rollingReturns.map((r: Record<string, unknown>) => ({
+                timeframe: String(r.timeframe ?? ""), averageReturn: r.averageReturn != null ? String(r.averageReturn) : "",
+                medianReturn: r.medianReturn != null ? String(r.medianReturn) : "", minReturn: r.minReturn != null ? String(r.minReturn) : "",
+                minPeriod: String(r.minPeriod ?? ""), maxReturn: r.maxReturn != null ? String(r.maxReturn) : "", maxPeriod: String(r.maxPeriod ?? ""),
+                standardDeviation: r.standardDeviation != null ? String(r.standardDeviation) : "", downsideDeviation: r.downsideDeviation != null ? String(r.downsideDeviation) : "",
+                positiveRatio: r.positiveRatio != null ? String(r.positiveRatio) : "", negativeRatio: r.negativeRatio != null ? String(r.negativeRatio) : "",
+                consistencyScore: r.consistencyScore != null ? String(r.consistencyScore) : "",
+              }))
+            : EMPTY_FORM.rollingReturns,
+          categoryRanks: det.categoryRanks?.length
+            ? det.categoryRanks.map((r: Record<string, unknown>) => ({
+                timeframe: String(r.timeframe ?? ""), annualizedReturn: r.annualizedReturn != null ? String(r.annualizedReturn) : "",
+                categoryAverage: r.categoryAverage != null ? String(r.categoryAverage) : "", rankInCategory: String(r.rankInCategory ?? ""),
+              }))
+            : EMPTY_FORM.categoryRanks,
+          peers: det.peers?.length
+            ? det.peers.map((p: Record<string, unknown>) => ({
+                schemeCode: String(p.schemeCode ?? ""), isin: String(p.isin ?? ""), schemeName: String(p.schemeName ?? ""),
+                schemeNameShort: String(p.schemeNameShort ?? ""), aum: String(p.aum ?? ""), pe: String(p.pe ?? ""),
+                pb: String(p.pb ?? ""), dividendYield: String(p.dividendYield ?? ""), expenseRatio: String(p.expenseRatio ?? ""),
+              }))
+            : EMPTY_FORM.peers,
+          amcOtherFundsCompanyName: det.amcOtherFunds?.companyName || "",
+          amcOtherFundsSchemeList: det.amcOtherFunds?.schemeList?.length
+            ? det.amcOtherFunds.schemeList.map((s: Record<string, unknown>) => {
+                const returns = (s.returns ?? {}) as Record<string, string>;
+                return {
+                  schemeCode: String(s.schemeCode ?? ""), isin: String(s.isin ?? ""), schemeName: String(s.schemeName ?? ""),
+                  schemeShortName: String(s.schemeShortName ?? ""), morningstarRating: s.morningstarRating != null ? String(s.morningstarRating) : "",
+                  aum: String(s.aum ?? ""),
+                  return1y: returns["1y"] ?? "", return3y: returns["3y"] ?? "", return7y: returns["7y"] ?? "", return10y: returns["10y"] ?? "",
+                };
+              })
+            : EMPTY_FORM.amcOtherFundsSchemeList,
+          riskReturnsInfo: det.riskMetricsConclusions?.returns?.info || "",
+          riskReturns: det.riskMetricsConclusions?.returns?.timeframes?.length ? det.riskMetricsConclusions.returns.timeframes : EMPTY_FORM.riskReturns,
+          riskStandardDeviationInfo: det.riskMetricsConclusions?.riskStandardDeviation?.info || "",
+          riskStandardDeviation: det.riskMetricsConclusions?.riskStandardDeviation?.timeframes?.length ? det.riskMetricsConclusions.riskStandardDeviation.timeframes : EMPTY_FORM.riskStandardDeviation,
+          riskSharpRatioInfo: det.riskMetricsConclusions?.sharpRatio?.info || "",
+          riskSharpRatio: det.riskMetricsConclusions?.sharpRatio?.timeframes?.length ? det.riskMetricsConclusions.sharpRatio.timeframes : EMPTY_FORM.riskSharpRatio,
+          riskSortinoRatioInfo: det.riskMetricsConclusions?.sortinoRatio?.info || "",
+          riskSortinoRatio: det.riskMetricsConclusions?.sortinoRatio?.timeframes?.length ? det.riskMetricsConclusions.sortinoRatio.timeframes : EMPTY_FORM.riskSortinoRatio,
+          riskBetaInfo: det.riskMetricsConclusions?.beta?.info || "",
+          riskBeta: det.riskMetricsConclusions?.beta?.timeframes?.length ? det.riskMetricsConclusions.beta.timeframes : EMPTY_FORM.riskBeta,
         });
       } else {
         setForm(EMPTY_FORM);
@@ -476,6 +615,58 @@ export default function FundDetailsPage() {
     setForm(prev => ({ ...prev, factsheets: prev.factsheets.filter((_, i) => i !== idx) }));
   };
 
+  const handleSyncIsin = async () => {
+    const isin = isinInput.trim().toUpperCase();
+    if (!isin) return;
+    setSyncingIsin(true);
+    setSyncMsg(null);
+    try {
+      const r = await fetch("/api/admin/fund-details/sync-isin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isin }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setSyncMsg({ ok: false, text: d.error || "Sync failed" });
+        return;
+      }
+      setSyncMsg({ ok: true, text: `Synced ${d.fundName} — ${d.updatedFields.length} fields updated` });
+      if (d.fundName === selectedFund) {
+        await handleSelectFund(selectedFund);
+      }
+    } catch (e: unknown) {
+      setSyncMsg({ ok: false, text: (e as Error).message || "Sync failed" });
+    } finally {
+      setSyncingIsin(false);
+    }
+  };
+
+  const handleGenerateNarrative = async () => {
+    if (!selectedFund) return;
+    setGeneratingNarrative(true);
+    setAiError("");
+    try {
+      const activeModel = provider === "openrouter" ? customModel : model;
+      const useManualEntry = !savedConfig || overrideConfig;
+      const r = await fetch("/api/admin/fund-details/generate-narrative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fundName: selectedFund,
+          ...(useManualEntry ? { provider, model: activeModel, apiKey } : {}),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setAiError(d.error || "Generation failed"); return; }
+      setAiResult(prev => ({ ...prev, ...d.extracted }));
+    } catch (e: unknown) {
+      setAiError((e as Error).message || "Generation failed");
+    } finally {
+      setGeneratingNarrative(false);
+    }
+  };
+
   const handleAnalyse = async () => {
     setAnalysing(true);
     setAiError("");
@@ -531,13 +722,13 @@ export default function FundDetailsPage() {
       setForm(prev => ({ ...prev, assetAllocation: arr.map(a => ({ assetClass: a.assetClass, percentage: String(a.percentage) })) }));
     } else if (field === "portfolioByIndustry") {
       const arr = (val as { industry: string; percentage: number }[]) || [];
-      setForm(prev => ({ ...prev, portfolioByIndustry: arr.map(p => ({ industry: p.industry, percentage: String(p.percentage) })) }));
+      setForm(prev => ({ ...prev, portfolioByIndustry: arr.map(p => ({ industry: p.industry, percentage: String(p.percentage), marketValue: "", change1M: "" })) }));
     } else if (field === "portfolioByRatingClass") {
       const arr = (val as { ratingClass: string; percentage: number }[]) || [];
       setForm(prev => ({ ...prev, portfolioByRatingClass: arr.map(p => ({ ratingClass: p.ratingClass, percentage: String(p.percentage) })) }));
     } else if (field === "topHoldings") {
       const arr = (val as { name: string; percentage: number; sector?: string; rating?: string }[]) || [];
-      setForm(prev => ({ ...prev, topHoldings: arr.map(h => ({ name: h.name, percentage: String(h.percentage), sector: h.sector || "", rating: h.rating || "" })) }));
+      setForm(prev => ({ ...prev, topHoldings: arr.map(h => ({ name: h.name, percentage: String(h.percentage), sector: h.sector || "", rating: h.rating || "", marketValue: "", change1M: "" })) }));
     } else {
       setForm(prev => ({ ...prev, [field]: val != null ? String(val) : "" }));
     }
@@ -578,13 +769,21 @@ export default function FundDetailsPage() {
             .map(a => ({ assetClass: a.assetClass, percentage: Number(a.percentage) || 0 })),
           portfolioByIndustry: form.portfolioByIndustry
             .filter(p => p.industry.trim())
-            .map(p => ({ industry: p.industry, percentage: Number(p.percentage) || 0 })),
+            .map(p => ({
+              industry: p.industry, percentage: Number(p.percentage) || 0,
+              marketValue: p.marketValue !== "" ? Number(p.marketValue) : null,
+              change1M: p.change1M !== "" ? Number(p.change1M) : null,
+            })),
           portfolioByRatingClass: form.portfolioByRatingClass
             .filter(p => p.ratingClass.trim())
             .map(p => ({ ratingClass: p.ratingClass, percentage: Number(p.percentage) || 0 })),
           topHoldings: form.topHoldings
             .filter(h => h.name.trim())
-            .map(h => ({ name: h.name, percentage: Number(h.percentage) || 0, sector: h.sector, rating: h.rating || undefined })),
+            .map(h => ({
+              name: h.name, percentage: Number(h.percentage) || 0, sector: h.sector, rating: h.rating || undefined,
+              marketValue: h.marketValue !== "" ? Number(h.marketValue) : null,
+              change1M: h.change1M !== "" ? Number(h.change1M) : null,
+            })),
           factsheets: form.factsheets,
           schemeCategory: form.schemeCategory,
           schemeNature: form.schemeNature,
@@ -622,6 +821,76 @@ export default function FundDetailsPage() {
           howItWorks: form.howItWorks,
           mfEquivalent: form.mfEquivalent,
           portfolioFit: form.portfolioFit,
+          isin: form.isin,
+          externalSchemeCode: form.externalSchemeCode,
+          fundamentals: Object.values(form.fundamentals).some(v => v !== "")
+            ? Object.fromEntries(Object.entries(form.fundamentals).map(([k, v]) => [k, v !== "" ? Number(v) : null]))
+            : null,
+          concentration: Object.values(form.concentration).some(v => v !== "")
+            ? {
+                numberOfHoldings: form.concentration.numberOfHoldings !== "" ? Number(form.concentration.numberOfHoldings) : null,
+                averageMarketCap: form.concentration.averageMarketCap,
+                top3SectorWeight: form.concentration.top3SectorWeight !== "" ? Number(form.concentration.top3SectorWeight) : null,
+                top5StocksWeight: form.concentration.top5StocksWeight !== "" ? Number(form.concentration.top5StocksWeight) : null,
+                top10StocksWeight: form.concentration.top10StocksWeight !== "" ? Number(form.concentration.top10StocksWeight) : null,
+              }
+            : null,
+          marketCapWeightage: Object.values(form.marketCapWeightage).some(v => v !== "")
+            ? {
+                largeCap: form.marketCapWeightage.largeCap !== "" ? Number(form.marketCapWeightage.largeCap) : null,
+                midCap: form.marketCapWeightage.midCap !== "" ? Number(form.marketCapWeightage.midCap) : null,
+                smallCap: form.marketCapWeightage.smallCap !== "" ? Number(form.marketCapWeightage.smallCap) : null,
+                others: form.marketCapWeightage.others !== "" ? Number(form.marketCapWeightage.others) : null,
+              }
+            : null,
+          rollingReturns: form.rollingReturns.filter(r => r.timeframe.trim()).map(r => ({
+            timeframe: r.timeframe,
+            averageReturn: r.averageReturn !== "" ? Number(r.averageReturn) : null,
+            medianReturn: r.medianReturn !== "" ? Number(r.medianReturn) : null,
+            minReturn: r.minReturn !== "" ? Number(r.minReturn) : null,
+            minPeriod: r.minPeriod,
+            maxReturn: r.maxReturn !== "" ? Number(r.maxReturn) : null,
+            maxPeriod: r.maxPeriod,
+            standardDeviation: r.standardDeviation !== "" ? Number(r.standardDeviation) : null,
+            downsideDeviation: r.downsideDeviation !== "" ? Number(r.downsideDeviation) : null,
+            positiveRatio: r.positiveRatio !== "" ? Number(r.positiveRatio) : null,
+            negativeRatio: r.negativeRatio !== "" ? Number(r.negativeRatio) : null,
+            consistencyScore: r.consistencyScore !== "" ? Number(r.consistencyScore) : null,
+          })),
+          categoryRanks: form.categoryRanks.filter(r => r.timeframe.trim()).map(r => ({
+            timeframe: r.timeframe,
+            annualizedReturn: r.annualizedReturn !== "" ? Number(r.annualizedReturn) : null,
+            categoryAverage: r.categoryAverage !== "" ? Number(r.categoryAverage) : null,
+            rankInCategory: r.rankInCategory,
+          })),
+          peers: form.peers.filter(p => p.schemeName.trim()).map(p => ({
+            schemeCode: p.schemeCode, isin: p.isin, schemeName: p.schemeName, schemeNameShort: p.schemeNameShort,
+            aum: p.aum, pe: p.pe, pb: p.pb, dividendYield: p.dividendYield, expenseRatio: p.expenseRatio,
+          })),
+          amcOtherFunds: form.amcOtherFundsCompanyName.trim() || form.amcOtherFundsSchemeList.some(s => s.schemeName.trim())
+            ? {
+                companyName: form.amcOtherFundsCompanyName,
+                schemeList: form.amcOtherFundsSchemeList.filter(s => s.schemeName.trim()).map(s => {
+                  const returns: Record<string, string> = {};
+                  if (s.return1y !== "") returns["1y"] = s.return1y;
+                  if (s.return3y !== "") returns["3y"] = s.return3y;
+                  if (s.return7y !== "") returns["7y"] = s.return7y;
+                  if (s.return10y !== "") returns["10y"] = s.return10y;
+                  return {
+                    schemeCode: s.schemeCode, isin: s.isin, schemeName: s.schemeName, schemeShortName: s.schemeShortName,
+                    morningstarRating: s.morningstarRating !== "" ? Number(s.morningstarRating) : undefined,
+                    aum: s.aum, returns,
+                  };
+                }),
+              }
+            : null,
+          riskMetricsConclusions: {
+            returns: { info: form.riskReturnsInfo, timeframes: form.riskReturns.filter(r => r.timeframe.trim()) },
+            riskStandardDeviation: { info: form.riskStandardDeviationInfo, timeframes: form.riskStandardDeviation.filter(r => r.timeframe.trim()) },
+            sharpRatio: { info: form.riskSharpRatioInfo, timeframes: form.riskSharpRatio.filter(r => r.timeframe.trim()) },
+            sortinoRatio: { info: form.riskSortinoRatioInfo, timeframes: form.riskSortinoRatio.filter(r => r.timeframe.trim()) },
+            beta: { info: form.riskBetaInfo, timeframes: form.riskBeta.filter(r => r.timeframe.trim()) },
+          },
         }),
       });
       const d = await r.json();
@@ -674,7 +943,7 @@ export default function FundDetailsPage() {
 
   const updateIndustryAlloc = (i: number, k: keyof IndustryAlloc, v: string) =>
     setForm(prev => ({ ...prev, portfolioByIndustry: prev.portfolioByIndustry.map((p, idx) => idx === i ? { ...p, [k]: v } : p) }));
-  const addIndustryAlloc = () => setForm(prev => ({ ...prev, portfolioByIndustry: [...prev.portfolioByIndustry, { industry: "", percentage: "" }] }));
+  const addIndustryAlloc = () => setForm(prev => ({ ...prev, portfolioByIndustry: [...prev.portfolioByIndustry, { industry: "", percentage: "", marketValue: "", change1M: "" }] }));
   const removeIndustryAlloc = (i: number) => setForm(prev => ({ ...prev, portfolioByIndustry: prev.portfolioByIndustry.filter((_, idx) => idx !== i) }));
 
   const updateRatingAlloc = (i: number, k: keyof RatingAlloc, v: string) =>
@@ -684,12 +953,42 @@ export default function FundDetailsPage() {
 
   const updateHolding = (i: number, k: keyof Holding, v: string) =>
     setForm(prev => ({ ...prev, topHoldings: prev.topHoldings.map((h, idx) => idx === i ? { ...h, [k]: v } : h) }));
-  const addHolding = () => setForm(prev => ({ ...prev, topHoldings: [...prev.topHoldings, { name: "", percentage: "", sector: "", rating: "" }] }));
+  const addHolding = () => setForm(prev => ({ ...prev, topHoldings: [...prev.topHoldings, { name: "", percentage: "", sector: "", rating: "", marketValue: "", change1M: "" }] }));
   const removeHolding = (i: number) => setForm(prev => ({ ...prev, topHoldings: prev.topHoldings.filter((_, idx) => idx !== i) }));
+
+  const setFundamentalsField = (k: keyof FundamentalsForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, fundamentals: { ...prev.fundamentals, [k]: e.target.value } }));
+  const setConcentrationField = (k: keyof ConcentrationForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, concentration: { ...prev.concentration, [k]: e.target.value } }));
+  const setMarketCapField = (k: keyof MarketCapForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(prev => ({ ...prev, marketCapWeightage: { ...prev.marketCapWeightage, [k]: e.target.value } }));
+
+  // Generic row-array editor for the API section (rollingReturns, categoryRanks, peers, amcOtherFundsSchemeList, risk-conclusion rows)
+  type ArrayField = "rollingReturns" | "categoryRanks" | "peers" | "amcOtherFundsSchemeList" | "riskReturns" | "riskStandardDeviation" | "riskSharpRatio" | "riskSortinoRatio" | "riskBeta";
+  const arrayFieldOps = <F extends ArrayField>(field: F, blankRow: FormState[F][number]) => ({
+    update: (i: number, k: keyof FormState[F][number], v: string) =>
+      setForm(prev => ({
+        ...prev,
+        [field]: (prev[field] as Array<Record<string, string>>).map((row, idx) => idx === i ? { ...row, [k]: v } : row),
+      })),
+    add: () => setForm(prev => ({ ...prev, [field]: [...(prev[field] as unknown[]), blankRow] })),
+    remove: (i: number) => setForm(prev => ({ ...prev, [field]: (prev[field] as unknown[]).filter((_, idx) => idx !== i) })),
+  });
+  const rollingReturnsOps = arrayFieldOps("rollingReturns", EMPTY_FORM.rollingReturns[0]);
+  const categoryRanksOps = arrayFieldOps("categoryRanks", EMPTY_FORM.categoryRanks[0]);
+  const peersOps = arrayFieldOps("peers", EMPTY_FORM.peers[0]);
+  const amcSchemesOps = arrayFieldOps("amcOtherFundsSchemeList", EMPTY_FORM.amcOtherFundsSchemeList[0]);
+  const riskReturnsOps = arrayFieldOps("riskReturns", EMPTY_FORM.riskReturns[0]);
+  const riskStdDevOps = arrayFieldOps("riskStandardDeviation", EMPTY_FORM.riskStandardDeviation[0]);
+  const riskSharpeOps = arrayFieldOps("riskSharpRatio", EMPTY_FORM.riskSharpRatio[0]);
+  const riskSortinoOps = arrayFieldOps("riskSortinoRatio", EMPTY_FORM.riskSortinoRatio[0]);
+  const riskBetaOps = arrayFieldOps("riskBeta", EMPTY_FORM.riskBeta[0]);
 
 
   const usingSavedConfig = !!savedConfig && !overrideConfig;
   const canAnalyse = !!selectedFund && form.factsheets.length > 0 &&
+    (usingSavedConfig || (!!apiKey && (provider !== "openrouter" ? !!model : !!customModel)));
+  const canGenerateNarrative = !!selectedFund &&
     (usingSavedConfig || (!!apiKey && (provider !== "openrouter" ? !!model : !!customModel)));
 
   const aiDisplayValue = (field: keyof AiResult): string | null => {
@@ -922,9 +1221,15 @@ export default function FundDetailsPage() {
                 <div className="space-y-2 mt-2">
                   {form.portfolioByIndustry.map((p, i) => (
                     <div key={i} className="flex gap-2 items-center">
-                      <input className={inputCls} value={p.industry} onChange={e => updateIndustryAlloc(i, "industry", e.target.value)} placeholder="Industry / sector" />
-                      <div className="relative w-28 shrink-0">
+                      <input className={`${inputCls} flex-1`} value={p.industry} onChange={e => updateIndustryAlloc(i, "industry", e.target.value)} placeholder="Industry / sector" />
+                      <div className="relative w-24 shrink-0">
                         <input type="number" className={inputCls} value={p.percentage} onChange={e => updateIndustryAlloc(i, "percentage", e.target.value)} placeholder="%" />
+                      </div>
+                      <div className="relative w-28 shrink-0">
+                        <input type="number" className={inputCls} value={p.marketValue} onChange={e => updateIndustryAlloc(i, "marketValue", e.target.value)} placeholder="Market value ₹Cr" />
+                      </div>
+                      <div className="relative w-24 shrink-0">
+                        <input type="number" className={inputCls} value={p.change1M} onChange={e => updateIndustryAlloc(i, "change1M", e.target.value)} placeholder="1M change %" />
                       </div>
                       {form.portfolioByIndustry.length > 1 && (
                         <button onClick={() => removeIndustryAlloc(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
@@ -988,6 +1293,10 @@ export default function FundDetailsPage() {
                         <input className={`${inputFlexCls} w-[90px] shrink-0`} value={h.percentage} onChange={e => updateHolding(i, "percentage", e.target.value)} placeholder="% of NAV" type="number" />
                         <input className={`${inputFlexCls} flex-1`} value={h.sector} onChange={e => updateHolding(i, "sector", e.target.value)} placeholder="Industry / sector" />
                         <input className={`${inputFlexCls} w-28 shrink-0`} value={h.rating} onChange={e => updateHolding(i, "rating", e.target.value)} placeholder="Rating" />
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <input className={`${inputFlexCls} flex-1`} type="number" value={h.marketValue} onChange={e => updateHolding(i, "marketValue", e.target.value)} placeholder="Market value ₹Cr" />
+                        <input className={`${inputFlexCls} flex-1`} type="number" value={h.change1M} onChange={e => updateHolding(i, "change1M", e.target.value)} placeholder="1M change %" />
                       </div>
                     </div>
                   ))}
@@ -1250,6 +1559,217 @@ export default function FundDetailsPage() {
                   {aiResult?.portfolioFit != null && <AiValueBadge value={String(aiResult.portfolioFit)} onApply={() => applyField("portfolioFit")} />}
                 </FieldRow>
 
+                {/* ═══ API (finapi.upvaly.com sync) ═══════════════════════════ */}
+                <SectionHeader title="API" />
+                <p className="text-[11.5px] text-[#94A3B8] -mt-2 mb-3">
+                  Fields populated by &quot;Sync from ISIN&quot; above. Editable here too — saving preserves any field left blank.
+                </p>
+
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="ISIN">
+                    <input className={inputCls} value={form.isin} onChange={setField("isin")} placeholder="e.g. INF966L30027" />
+                  </FieldRow>
+                  <FieldRow label="External Scheme Code">
+                    <input className={inputCls} value={form.externalSchemeCode} onChange={setField("externalSchemeCode")} placeholder="e.g. SIF-3" />
+                  </FieldRow>
+                </div>
+
+                <SectionHeader title="Fundamentals" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  {([
+                    ["pe", "P/E"], ["categoryAveragePe", "P/E (Cat Avg)"],
+                    ["pb", "P/B"], ["categoryAveragePb", "P/B (Cat Avg)"],
+                    ["priceToSale", "Price/Sales"], ["categoryAveragePriceToSale", "Price/Sales (Cat Avg)"],
+                    ["priceToCashFlow", "Price/Cash Flow"], ["categoryAveragePriceToCashFlow", "Price/Cash Flow (Cat Avg)"],
+                    ["dividendYield", "Dividend Yield %"], ["categoryAverageDividendYield", "Dividend Yield % (Cat Avg)"],
+                    ["roe", "ROE %"], ["categoryAverageRoe", "ROE % (Cat Avg)"],
+                  ] as [keyof FundamentalsForm, string][]).map(([k, label]) => (
+                    <FieldRow key={k} label={label}>
+                      <input type="number" className={inputCls} value={form.fundamentals[k]} onChange={setFundamentalsField(k)} />
+                    </FieldRow>
+                  ))}
+                </div>
+
+                <SectionHeader title="Concentration" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Number of Holdings">
+                    <input type="number" className={inputCls} value={form.concentration.numberOfHoldings} onChange={setConcentrationField("numberOfHoldings")} />
+                  </FieldRow>
+                  <FieldRow label="Average Market Cap">
+                    <input className={inputCls} value={form.concentration.averageMarketCap} onChange={setConcentrationField("averageMarketCap")} placeholder="e.g. ₹1,29,548.11 Cr" />
+                  </FieldRow>
+                  <FieldRow label="Top 3 Sector Weight %">
+                    <input type="number" className={inputCls} value={form.concentration.top3SectorWeight} onChange={setConcentrationField("top3SectorWeight")} />
+                  </FieldRow>
+                  <FieldRow label="Top 5 Stocks Weight %">
+                    <input type="number" className={inputCls} value={form.concentration.top5StocksWeight} onChange={setConcentrationField("top5StocksWeight")} />
+                  </FieldRow>
+                  <FieldRow label="Top 10 Stocks Weight %">
+                    <input type="number" className={inputCls} value={form.concentration.top10StocksWeight} onChange={setConcentrationField("top10StocksWeight")} />
+                  </FieldRow>
+                </div>
+
+                <SectionHeader title="Market Cap Weightage" />
+                <div className="grid grid-cols-2 gap-x-4">
+                  <FieldRow label="Large Cap %">
+                    <input type="number" className={inputCls} value={form.marketCapWeightage.largeCap} onChange={setMarketCapField("largeCap")} />
+                  </FieldRow>
+                  <FieldRow label="Mid Cap %">
+                    <input type="number" className={inputCls} value={form.marketCapWeightage.midCap} onChange={setMarketCapField("midCap")} />
+                  </FieldRow>
+                  <FieldRow label="Small Cap %">
+                    <input type="number" className={inputCls} value={form.marketCapWeightage.smallCap} onChange={setMarketCapField("smallCap")} />
+                  </FieldRow>
+                  <FieldRow label="Others %">
+                    <input type="number" className={inputCls} value={form.marketCapWeightage.others} onChange={setMarketCapField("others")} />
+                  </FieldRow>
+                </div>
+
+                <SectionHeader title="Rolling Returns" />
+                <div className="space-y-3 mt-2">
+                  {form.rollingReturns.map((r, i) => (
+                    <div key={i} className="border border-[#E2E8F0] rounded-[8px] p-3 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input className={inputFlexCls} style={{ flex: 1 }} value={r.timeframe} onChange={e => rollingReturnsOps.update(i, "timeframe", e.target.value)} placeholder="Timeframe (e.g. 3M)" />
+                        {form.rollingReturns.length > 1 && (
+                          <button onClick={() => rollingReturnsOps.remove(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input type="number" className={inputFlexCls} value={r.averageReturn} onChange={e => rollingReturnsOps.update(i, "averageReturn", e.target.value)} placeholder="Avg return %" />
+                        <input type="number" className={inputFlexCls} value={r.medianReturn} onChange={e => rollingReturnsOps.update(i, "medianReturn", e.target.value)} placeholder="Median return %" />
+                        <input type="number" className={inputFlexCls} value={r.standardDeviation} onChange={e => rollingReturnsOps.update(i, "standardDeviation", e.target.value)} placeholder="Std deviation" />
+                        <input type="number" className={inputFlexCls} value={r.downsideDeviation} onChange={e => rollingReturnsOps.update(i, "downsideDeviation", e.target.value)} placeholder="Downside deviation" />
+                        <input type="number" className={inputFlexCls} value={r.positiveRatio} onChange={e => rollingReturnsOps.update(i, "positiveRatio", e.target.value)} placeholder="Positive ratio %" />
+                        <input type="number" className={inputFlexCls} value={r.negativeRatio} onChange={e => rollingReturnsOps.update(i, "negativeRatio", e.target.value)} placeholder="Negative ratio %" />
+                        <input type="number" className={inputFlexCls} value={r.consistencyScore} onChange={e => rollingReturnsOps.update(i, "consistencyScore", e.target.value)} placeholder="Consistency score" />
+                        <input type="number" className={inputFlexCls} value={r.minReturn} onChange={e => rollingReturnsOps.update(i, "minReturn", e.target.value)} placeholder="Min return %" />
+                        <input type="number" className={inputFlexCls} value={r.maxReturn} onChange={e => rollingReturnsOps.update(i, "maxReturn", e.target.value)} placeholder="Max return %" />
+                        <input className={inputFlexCls} value={r.minPeriod} onChange={e => rollingReturnsOps.update(i, "minPeriod", e.target.value)} placeholder="Min period" />
+                        <input className={inputFlexCls} value={r.maxPeriod} onChange={e => rollingReturnsOps.update(i, "maxPeriod", e.target.value)} placeholder="Max period" />
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={rollingReturnsOps.add} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add rolling return row
+                  </button>
+                </div>
+
+                <SectionHeader title="Category Ranks" />
+                <div className="space-y-2 mt-2">
+                  {form.categoryRanks.map((r, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={r.timeframe} onChange={e => categoryRanksOps.update(i, "timeframe", e.target.value)} placeholder="Timeframe" />
+                      <input type="number" className={inputFlexCls} style={{ flex: 1 }} value={r.annualizedReturn} onChange={e => categoryRanksOps.update(i, "annualizedReturn", e.target.value)} placeholder="Annualised return %" />
+                      <input type="number" className={inputFlexCls} style={{ flex: 1 }} value={r.categoryAverage} onChange={e => categoryRanksOps.update(i, "categoryAverage", e.target.value)} placeholder="Category avg %" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={r.rankInCategory} onChange={e => categoryRanksOps.update(i, "rankInCategory", e.target.value)} placeholder="Rank" />
+                      {form.categoryRanks.length > 1 && (
+                        <button onClick={() => categoryRanksOps.remove(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={categoryRanksOps.add} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add rank row
+                  </button>
+                </div>
+
+                <SectionHeader title="Peers" />
+                <div className="space-y-2 mt-2">
+                  {form.peers.map((p, i) => (
+                    <div key={i} className="border border-[#E2E8F0] rounded-[8px] p-3 space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input className={inputFlexCls} style={{ flex: 1 }} value={p.schemeName} onChange={e => peersOps.update(i, "schemeName", e.target.value)} placeholder="Scheme name" />
+                        {form.peers.length > 1 && (
+                          <button onClick={() => peersOps.remove(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input className={inputFlexCls} value={p.schemeNameShort} onChange={e => peersOps.update(i, "schemeNameShort", e.target.value)} placeholder="Short name" />
+                        <input className={inputFlexCls} value={p.schemeCode} onChange={e => peersOps.update(i, "schemeCode", e.target.value)} placeholder="Scheme code" />
+                        <input className={inputFlexCls} value={p.isin} onChange={e => peersOps.update(i, "isin", e.target.value)} placeholder="ISIN" />
+                        <input className={inputFlexCls} value={p.aum} onChange={e => peersOps.update(i, "aum", e.target.value)} placeholder="AUM" />
+                        <input className={inputFlexCls} value={p.pe} onChange={e => peersOps.update(i, "pe", e.target.value)} placeholder="P/E" />
+                        <input className={inputFlexCls} value={p.pb} onChange={e => peersOps.update(i, "pb", e.target.value)} placeholder="P/B" />
+                        <input className={inputFlexCls} value={p.dividendYield} onChange={e => peersOps.update(i, "dividendYield", e.target.value)} placeholder="Dividend yield" />
+                        <input className={inputFlexCls} value={p.expenseRatio} onChange={e => peersOps.update(i, "expenseRatio", e.target.value)} placeholder="Expense ratio" />
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={peersOps.add} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add peer
+                  </button>
+                </div>
+
+                <SectionHeader title="More Funds from this AMC" />
+                <FieldRow label="AMC Company Name">
+                  <input className={inputCls} value={form.amcOtherFundsCompanyName} onChange={setField("amcOtherFundsCompanyName")} placeholder="e.g. Quant Money Managers Limited" />
+                </FieldRow>
+                <div className="space-y-2 mt-2">
+                  {form.amcOtherFundsSchemeList.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center flex-wrap">
+                      <input className={inputFlexCls} style={{ flex: 2 }} value={s.schemeName} onChange={e => amcSchemesOps.update(i, "schemeName", e.target.value)} placeholder="Scheme name" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.schemeShortName} onChange={e => amcSchemesOps.update(i, "schemeShortName", e.target.value)} placeholder="Short name" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.schemeCode} onChange={e => amcSchemesOps.update(i, "schemeCode", e.target.value)} placeholder="Scheme code" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.isin} onChange={e => amcSchemesOps.update(i, "isin", e.target.value)} placeholder="ISIN" />
+                      <input type="number" className={inputFlexCls} style={{ flex: 1 }} value={s.morningstarRating} onChange={e => amcSchemesOps.update(i, "morningstarRating", e.target.value)} placeholder="★ rating" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.aum} onChange={e => amcSchemesOps.update(i, "aum", e.target.value)} placeholder="AUM" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.return1y} onChange={e => amcSchemesOps.update(i, "return1y", e.target.value)} placeholder="1Y return %" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.return3y} onChange={e => amcSchemesOps.update(i, "return3y", e.target.value)} placeholder="3Y return %" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.return7y} onChange={e => amcSchemesOps.update(i, "return7y", e.target.value)} placeholder="7Y return %" />
+                      <input className={inputFlexCls} style={{ flex: 1 }} value={s.return10y} onChange={e => amcSchemesOps.update(i, "return10y", e.target.value)} placeholder="10Y return %" />
+                      {form.amcOtherFundsSchemeList.length > 1 && (
+                        <button onClick={() => amcSchemesOps.remove(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={amcSchemesOps.add} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors mt-1">
+                    <Plus className="size-3.5" /> Add AMC scheme
+                  </button>
+                </div>
+
+                <SectionHeader title="Risk Metric Conclusions" />
+                {([
+                  ["Returns", riskReturnsOps, form.riskReturns, "riskReturnsInfo"] as const,
+                  ["Std Deviation", riskStdDevOps, form.riskStandardDeviation, "riskStandardDeviationInfo"] as const,
+                  ["Sharpe Ratio", riskSharpeOps, form.riskSharpRatio, "riskSharpRatioInfo"] as const,
+                  ["Sortino Ratio", riskSortinoOps, form.riskSortinoRatio, "riskSortinoRatioInfo"] as const,
+                  ["Beta", riskBetaOps, form.riskBeta, "riskBetaInfo"] as const,
+                ]).map(([label, ops, rows, infoField]) => (
+                  <div key={label} className="mb-4">
+                    <p className="text-[12px] font-semibold text-[#475569] mb-2">{label}</p>
+                    <textarea
+                      className={`${textareaCls} h-14 mb-2`}
+                      value={form[infoField]}
+                      onChange={setField(infoField)}
+                      placeholder={`Explanatory copy for ${label} (what this metric means)...`}
+                    />
+                    <div className="space-y-2">
+                      {rows.map((r, i) => (
+                        <div key={i} className="flex gap-2 items-center">
+                          <input className={inputFlexCls} style={{ flex: 1 }} value={r.timeframe} onChange={e => ops.update(i, "timeframe", e.target.value)} placeholder="Timeframe" />
+                          <input className={inputFlexCls} style={{ flex: 2 }} value={r.conclusion} onChange={e => ops.update(i, "conclusion", e.target.value)} placeholder="Conclusion" />
+                          {rows.length > 1 && (
+                            <button onClick={() => ops.remove(i)} className="shrink-0 p-1.5 rounded-[6px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-red-50 transition-colors">
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={ops.add} className="flex items-center gap-1.5 text-[12px] text-primary hover:text-[#1E3A8A] transition-colors">
+                        <Plus className="size-3.5" /> Add row
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
                 {/* Save */}
                 <div className="mt-8 pt-6 border-t border-[#E2E8F0] flex items-center gap-3 flex-wrap">
                   <button
@@ -1327,6 +1847,36 @@ export default function FundDetailsPage() {
               {uploadingPdf ? `Uploading… ${uploadProgress}%` : "Upload PDF / Excel"}
             </button>
             {!selectedFund && <p className="text-[11.5px] text-[#94A3B8] mt-1.5">Select a fund first</p>}
+
+            {/* Sync from ISIN (finapi.upvaly.com) */}
+            <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
+              <h2 className="text-[15px] font-bold text-[#0B1F3A] mb-1">Sync from ISIN</h2>
+              <p className="text-[11.5px] text-[#94A3B8] mb-3">
+                Pulls holdings, sectors, fundamentals, rolling returns, ranks, risk metrics and peers from finapi and overwrites this fund&apos;s record (NAV untouched).
+              </p>
+              <div className="flex gap-2">
+                <input
+                  className={inputCls}
+                  value={isinInput}
+                  onChange={e => setIsinInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. INF966L30027"
+                  maxLength={12}
+                />
+                <button
+                  onClick={handleSyncIsin}
+                  disabled={syncingIsin || !isinInput.trim()}
+                  className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-[8px] bg-[#0B1F3A] text-white text-[13px] font-semibold hover:bg-[#1E3A8A] transition-colors disabled:opacity-50"
+                >
+                  {syncingIsin ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                  {syncingIsin ? "Syncing…" : "Sync"}
+                </button>
+              </div>
+              {syncMsg && (
+                <p className={`text-[11.5px] mt-2 ${syncMsg.ok ? "text-[#16A34A]" : "text-[#DC2626]"}`}>
+                  {syncMsg.text}
+                </p>
+              )}
+            </div>
 
             {/* AI Config */}
             {selectedFund && <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
@@ -1411,6 +1961,16 @@ export default function FundDetailsPage() {
               >
                 {analysing ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
                 {analysing ? "Analysing factsheet…" : "Analyse Factsheet"}
+              </button>
+
+              <button
+                onClick={handleGenerateNarrative}
+                disabled={!canGenerateNarrative || generatingNarrative}
+                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-[8px] border border-primary text-primary text-[13px] font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50"
+                title="Generates benchmark details, taxation summary, derivative strategies, alpha approach, suitability, market scenario and portfolio-fit copy from the synced API data (fundamentals, holdings, sectors, rolling returns, risk metrics)."
+              >
+                {generatingNarrative ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                {generatingNarrative ? "Generating…" : "Generate Narrative Fields with AI"}
               </button>
 
               {!canAnalyse && !analysing && (
@@ -1516,6 +2076,24 @@ export default function FundDetailsPage() {
                 </div>
               )}
             </div>}
+
+            {/* Debug: full current form state as JSON */}
+            {selectedFund && (
+              <div className="mt-8 pt-6 border-t border-[#E2E8F0]">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[15px] font-bold text-[#0B1F3A]">Form JSON</h2>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(JSON.stringify(form, null, 2))}
+                    className="text-[11.5px] font-semibold text-primary hover:text-[#1E3A8A] transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <pre className="text-[11px] leading-relaxed bg-[#0B1F3A] text-[#E2E8F0] rounded-[8px] p-3 overflow-auto max-h-[600px] whitespace-pre-wrap break-words">
+                  {JSON.stringify(form, null, 2)}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
       </div>

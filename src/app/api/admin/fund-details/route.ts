@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
   const fundName = searchParams.get("fundName");
   if (!fundName) return NextResponse.json({ error: "fundName required" }, { status: 400 });
 
-  const detail = await FundDetails.findOne({ fundName }).lean();
-  return NextResponse.json({ detail: detail ?? null });
+  const [detail, scheme] = await Promise.all([
+    FundDetails.findOne({ fundName }).lean(),
+    SIFScheme.findOne({ fundName, plan: "Regular" }, { isinGrowth: 1, _id: 0 }).lean(),
+  ]);
+  return NextResponse.json({ detail: detail ?? null, isinGrowth: scheme?.isinGrowth ?? "" });
 }

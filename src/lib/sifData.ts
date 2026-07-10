@@ -363,7 +363,7 @@ export const getFundHouseBySlug = unstable_cache(
 
 const RISK_BAND_STRING_MAP_EARLY: Record<string, 1 | 2 | 3 | 4 | 5> = {
   "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
-  "Moderately High Risk": 4, "High Risk": 5,
+  "Moderately High Risk": 4, "High Risk": 5, "Very High Risk": 5,
 };
 
 function normaliseRiskBandEarly(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
@@ -720,9 +720,9 @@ export interface FundDetailsData {
   benchmarkRiskBand: 1 | 2 | 3 | 4 | 5 | null;
   benchmarkDetails: string;
   assetAllocation: { assetClass: string; percentage: number }[];
-  portfolioByIndustry: { industry: string; percentage: number }[];
+  portfolioByIndustry: { industry: string; percentage: number; marketValue?: number | null; change1M?: number | null }[];
   portfolioByRatingClass: { ratingClass: string; percentage: number }[];
-  topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
+  topHoldings: { name: string; percentage: number; sector?: string; rating?: string; marketValue?: number | null; change1M?: number | null }[];
   factsheets: { url: string; filename: string; documentType?: string; uploadedAt: string }[];
   suitableFor: string;
   notSuitableFor: string;
@@ -732,14 +732,53 @@ export interface FundDetailsData {
   howItWorks: string;
   mfEquivalent: string;
   portfolioFit: string;
+  // ── finapi.upvaly.com sync ─────────────────────────────────────────────
+  isin: string;
+  externalSchemeCode: string;
+  marketCapWeightage: { largeCap: number | null; midCap: number | null; smallCap: number | null; others: number | null } | null;
+  concentration: {
+    numberOfHoldings: number | null;
+    averageMarketCap: string;
+    top3SectorWeight: number | null;
+    top5StocksWeight: number | null;
+    top10StocksWeight: number | null;
+  } | null;
+  fundamentals: {
+    pe: number | null; categoryAveragePe: number | null;
+    pb: number | null; categoryAveragePb: number | null;
+    priceToSale: number | null; categoryAveragePriceToSale: number | null;
+    priceToCashFlow: number | null; categoryAveragePriceToCashFlow: number | null;
+    dividendYield: number | null; categoryAverageDividendYield: number | null;
+    roe: number | null; categoryAverageRoe: number | null;
+  } | null;
+  riskMetricsConclusions: {
+    returns: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
+    riskStandardDeviation: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
+    sharpRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
+    sortinoRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
+    beta: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
+  } | null;
+  rollingReturns: {
+    timeframe: string; averageReturn: number | null; medianReturn: number | null;
+    minReturn: number | null; minPeriod: string; maxReturn: number | null; maxPeriod: string;
+    standardDeviation: number | null; downsideDeviation: number | null;
+    positiveRatio: number | null; negativeRatio: number | null; consistencyScore: number | null;
+  }[];
+  categoryRanks: { timeframe: string; annualizedReturn: number | null; categoryAverage: number | null; rankInCategory: string }[];
+  peers: { schemeCode: string; isin: string; schemeName: string; schemeNameShort: string; aum: string; pe: string; pb: string; dividendYield: string; expenseRatio: string }[];
+  amcOtherFunds: {
+    companyName: string;
+    schemeList: { schemeCode: string; isin: string; schemeName: string; schemeShortName: string; morningstarRating?: number; aum: string; returns: Record<string, string> }[];
+  } | null;
+  lastSyncedFromFinApi: string | null;
 }
 
 const RISK_BAND_STRING_MAP: Record<string, 1 | 2 | 3 | 4 | 5> = {
   "Low Risk": 1, "Low to Moderate Risk": 2, "Moderate Risk": 3,
-  "Moderately High Risk": 4, "High Risk": 5,
+  "Moderately High Risk": 4, "High Risk": 5, "Very High Risk": 5,
 };
 
-function normaliseRiskBand(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
+export function normaliseRiskBand(v: unknown): 1 | 2 | 3 | 4 | 5 | null {
   if (v == null) return null;
   if (typeof v === "string") {
     if (RISK_BAND_STRING_MAP[v]) return RISK_BAND_STRING_MAP[v];

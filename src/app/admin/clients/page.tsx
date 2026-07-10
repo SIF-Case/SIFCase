@@ -708,6 +708,13 @@ export default function AdminClients() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <Link
+                      href={`/admin/users?q=${encodeURIComponent(selectedClient.email || selectedClient.phone || selectedClient.name)}`}
+                      className="px-2.5 py-1 rounded-[6px] border border-rule text-[11px] font-medium text-muted hover:text-body whitespace-nowrap"
+                      title="Assign a role to make this person an internal user"
+                    >
+                      Move to Internal User
+                    </Link>
                     <button
                       onClick={() => setIsEditing(!isEditing)}
                       className="px-2.5 py-1 rounded-[6px] border border-rule text-[11px] font-medium text-muted hover:text-body"

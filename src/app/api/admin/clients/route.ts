@@ -62,6 +62,26 @@ export async function GET(req: NextRequest) {
     filters.push({ assignedTo });
   }
 
+  // Internal staff (isAdmin or an assigned role) are managed on /admin/users, not here —
+  // exclude any Client record belonging to one. Many Client rows (e.g. from the callback
+  // popup) predate the person becoming staff and were never linked via linkedUserId, so
+  // match on email/phone too, not just the link.
+  const staff = await User.find(
+    { $or: [{ isAdmin: true }, { role: { $ne: null } }] },
+    "_id email phone",
+  ).lean();
+  if (staff.length) {
+    const staffIds = staff.map((s) => s._id);
+    const staffEmails = staff.map((s) => s.email).filter(Boolean);
+    const staffPhoneDigits = [...new Set(
+      staff.map((s) => s.phone).filter(Boolean).map((p) => String(p).replace(/\D/g, "").slice(-10)).filter((d) => d.length === 10),
+    )];
+    const staffMatch: Record<string, unknown>[] = [{ linkedUserId: { $in: staffIds } }];
+    if (staffEmails.length) staffMatch.push({ email: { $in: staffEmails } });
+    if (staffPhoneDigits.length) staffMatch.push({ phone: { $regex: `(${staffPhoneDigits.join("|")})$` } });
+    filters.push({ $nor: staffMatch });
+  }
+
   const query = filters.length ? { $and: filters } : {};
 
   // Projection: exclude fat subdoc arrays from list view
