@@ -1128,7 +1128,7 @@ export function currentMonthKey(): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Computes a month's SIF performance table (Direct • Growth) directly from stored NAV history. */
+/** Computes a month's SIF performance table (Regular • Growth) directly from stored NAV history. */
 export async function getMonthlyPerformanceData(monthKey: string): Promise<MonthlyPerformanceData | null> {
   const m = monthKey.match(/^(\d{4})-(\d{2})$/);
   if (!m) return null;
@@ -1139,18 +1139,19 @@ export async function getMonthlyPerformanceData(monthKey: string): Promise<Month
   const end = new Date(Date.UTC(year, month, 0, 23, 59, 59));
   const now = new Date();
   const isCurrentMonth = now.getUTCFullYear() === year && now.getUTCMonth() + 1 === month;
-  const effectiveEnd = isCurrentMonth ? now : end;
 
   const { schemes, navs } = await getCollections();
 
   const allSchemes = await schemes
-    .find({ plan: "Direct", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, companyName: 1 } })
+    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, companyName: 1 } })
     .toArray();
   if (!allSchemes.length) return null;
 
   const codes = allSchemes.map((s) => s.schemeCode as string);
+  // Full history (not capped to the report month) — "Since Inception" always
+  // reflects the latest available NAV, while "Monthly" stays scoped below.
   const allNavRecords = await navs
-    .find({ schemeCode: { $in: codes }, navDate: { $lte: effectiveEnd } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
+    .find({ schemeCode: { $in: codes } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
     .sort({ navDate: 1 })
     .toArray();
 

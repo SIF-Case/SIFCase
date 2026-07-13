@@ -21,36 +21,80 @@ function ReportPreviewCard({
   onUnlock: () => void;
 }) {
   return (
-    <div className="relative bg-white rounded-[18px] shadow-2xl border border-rule overflow-hidden select-none mx-auto w-full max-w-[420px]">
-      {/* Dark header */}
-      <div className="px-6 py-5" style={{ background: "#0C3B54" }}>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-[#14b7a3] mb-1">
-          Monthly Report · {report.label}
-        </p>
-        <h3 className="text-[19px] font-extrabold text-white leading-tight">SIF Performance, Fund By Fund</h3>
-      </div>
-
-      {/* Body */}
-      <div className="px-6 pt-5 pb-6">
-        <p className="text-[15px] font-semibold text-heading leading-relaxed">
-          Unlock the full report to access detailed fund performance, rankings, and key insights.
-        </p>
-
-        <div className="mt-4 w-full rounded-[14px] bg-mist p-6 flex flex-col items-center text-center gap-2">
-          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-1">
-            <Lock className="size-5 text-primary" />
+    <div className="relative bg-white rounded-lg shadow-2xl overflow-hidden select-none mx-auto w-full max-w-[540px] h-[340px] flex flex-col font-sans">
+      {/* Blurred background document */}
+      <div className="absolute inset-0 pt-8 px-10 pb-4 scale-[1.02] pointer-events-none origin-top" style={{ userSelect: "none" }}>
+        {/* Header row */}
+        <div className="flex justify-between items-end mb-4">
+          <img src="/logo.svg" alt="SIFcase" className="h-6 w-auto" />
+          <div className="text-[11px] text-gray-500 font-medium">
+            SIF Monthly Performance Report | {report.label} | Page 1
           </div>
-          <p className="text-[16px] font-bold text-heading">Unlock the full report</p>
-          <p className="text-[13px] text-muted leading-snug">
-            Sign in to read the complete fund-by-fund breakdown.
+        </div>
+        
+        {/* Green line separator */}
+        <div className="w-full h-[2px] bg-[#0E9F8E] mb-8"></div>
+        
+        {/* Titles */}
+        <h1 className="text-[#0a233f] text-[32px] leading-[1.1] font-extrabold tracking-tight mb-2">
+          SIF MONTHLY PERFORMANCE REPORT
+        </h1>
+        <h2 className="text-[#0E9F8E] text-[32px] leading-[1.1] font-extrabold tracking-tight mb-8">
+          {report.label.toUpperCase()}
+        </h2>
+        
+        {/* Fake content paragraphs */}
+        <div className="blur-[3.5px] opacity-75">
+          <div className="flex justify-between gap-12">
+             <div className="flex-1 space-y-3">
+               <div className="h-3.5 bg-gray-200 rounded w-full"></div>
+               <div className="h-3.5 bg-gray-200 rounded w-[90%]"></div>
+               <div className="h-3.5 bg-gray-200 rounded w-[80%]"></div>
+             </div>
+             <div className="flex-1 space-y-3">
+               <div className="h-3.5 bg-gray-200 rounded w-full"></div>
+               <div className="h-3.5 bg-gray-200 rounded w-[85%]"></div>
+             </div>
+          </div>
+          
+          {/* Fake table */}
+          <div className="mt-8 border-t border-gray-300">
+             <div className="flex border-b border-gray-300 bg-gray-50">
+               <div className="w-24 h-8 border-r border-gray-300"></div>
+               <div className="flex-1 h-8"></div>
+             </div>
+             <div className="flex border-b border-gray-300">
+               <div className="w-24 h-10 border-r border-gray-300"></div>
+               <div className="flex-1 h-10"></div>
+             </div>
+             <div className="flex border-b border-gray-300">
+               <div className="w-24 h-10 border-r border-gray-300"></div>
+               <div className="flex-1 h-10"></div>
+             </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Overlay box */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center p-6" style={{ background: "rgba(255,255,255,0.25)" }}>
+        <div className="bg-white rounded-[16px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-6 text-center w-full max-w-[420px] border border-gray-100 flex flex-col items-center">
+          <Lock className="size-6 text-[#334155] mb-4" strokeWidth={1.5} />
+          <h3 className="text-[19px] font-semibold text-[#0f172a] mb-1.5 tracking-tight">Unlock the full report</h3>
+          <p className="text-[14px] text-[#475569] mb-6">
+            Get scheme-by-scheme returns for all {report.data?.funds.length ?? 21} SIFs, free.
           </p>
-          <button
-            type="button"
-            onClick={onUnlock}
-            className="mt-3 w-full h-10 rounded-[8px] bg-primary text-white text-[14px] font-semibold hover:opacity-90 transition-opacity"
-          >
-            Unlock report
-          </button>
+          
+          <div className="flex items-center justify-center gap-3 w-full">
+            <div className="flex-1 h-11 border border-gray-200 rounded-[10px] bg-white shadow-sm flex items-center px-4 cursor-text overflow-hidden" onClick={onUnlock}>
+              <span className="text-[15px] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">name@company.com</span>
+            </div>
+            <button 
+              onClick={onUnlock}
+              className="h-11 px-5 bg-white border border-gray-200 rounded-[10px] text-[15px] font-medium text-[#0f172a] hover:bg-gray-50 transition-colors whitespace-nowrap shadow-sm"
+            >
+              Unlock report
+            </button>
+          </div>
         </div>
       </div>
     </div>

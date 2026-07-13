@@ -66,7 +66,7 @@ export default async function PerformanceReportPage({ params }: Props) {
             {data.label} SIF Performance Report
           </h1>
           <p className="text-[15px] text-muted max-w-[720px] leading-relaxed">
-            {report.summary || `A complete look at how Specialized Investment Fund strategies performed in ${data.label}, covering ${data.funds.length} Direct • Growth schemes from ${data.rangeStart} to ${data.rangeEnd}.`}
+            {report.summary || `A complete look at how Specialized Investment Fund strategies performed in ${data.label}, covering ${data.funds.length} Regular • Growth schemes from ${data.rangeStart} to ${data.rangeEnd}.`}
           </p>
           <div className="flex items-center gap-6 mt-6 text-[13px] text-body">
             <span><span className="font-semibold text-heading nums">{data.funds.length}</span> funds covered</span>
@@ -126,7 +126,7 @@ export default async function PerformanceReportPage({ params }: Props) {
 
         <div className="bg-white rounded-[16px] border border-rule shadow-card overflow-hidden mb-10">
           <div className="px-6 py-4 border-b border-rule">
-            <h2 className="text-[17px] font-bold text-heading">Fund-wise Returns — Direct • Growth</h2>
+            <h2 className="text-[17px] font-bold text-heading">Fund-wise Returns — Regular • Growth</h2>
             <p className="text-[12.5px] text-muted mt-0.5">Sorted by {data.label} monthly return</p>
           </div>
           <div className="overflow-x-auto">
@@ -211,7 +211,7 @@ export default async function PerformanceReportPage({ params }: Props) {
 
         <div className="bg-mist border border-rule rounded-[16px] p-5 text-[12.5px] text-muted leading-relaxed">
           <span className="font-semibold text-body">Disclaimer: </span>
-          Returns shown are point-to-point NAV changes for Direct Plan • Growth Option schemes, computed from end-of-day NAV records and not adjusted for loads or taxes. Past performance is not indicative of future results. This report is for informational purposes only and does not constitute investment advice — please consult a registered investment advisor before making investment decisions.
+          Returns shown are point-to-point NAV changes for Regular Plan • Growth Option schemes, computed from end-of-day NAV records and not adjusted for loads or taxes. Past performance is not indicative of future results. This report is for informational purposes only and does not constitute investment advice — please consult a registered investment advisor before making investment decisions.
         </div>
       </section>
 

@@ -15,7 +15,7 @@ import { Plus, Check, Bookmark } from "lucide-react";
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
 const CATEGORIES = ["All", "Equity", "Hybrid"] as const;
-type SortKey = "return" | "sharpe" | "drawdown" | "nav" | "name";
+type SortKey = "return1m" | "return3m" | "return1y" | "sharpe" | "drawdown" | "nav" | "name";
 
 function shortName(name: string) {
   return name
@@ -49,16 +49,13 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
     }
     toggleWatch();
   }
-  const spark = fund.sparklines[period];
-  const ret = fund.returns[period];
-  const pos = ret === null ? true : ret >= 0;
   const href = fundHref(fund.fundName, fund.schemeCode);
 
   return (
     <div
       onClick={() => router.push(href)}
       className="group relative grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[840px] cursor-pointer"
-      style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 110px" }}>
+      style={{ gridTemplateColumns: "minmax(0,2fr) 90px 72px 72px 72px 72px 88px 100px" }}>
 
       {/* Name */}
       <div className="min-w-0">
@@ -78,8 +75,14 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
         <p className="text-[10px] text-muted">{fund.navDate}</p>
       </div>
 
-      {/* Period return */}
-      <div className="text-right"><ReturnBadge value={fund.returns[period]} /></div>
+      {/* 1M return */}
+      <div className="text-right"><ReturnBadge value={fund.returns["1M"]} /></div>
+      
+      {/* 3M return */}
+      <div className="text-right"><ReturnBadge value={fund.returns["3M"]} /></div>
+      
+      {/* 1Y return */}
+      <div className="text-right"><ReturnBadge value={fund.returns["1Y"]} /></div>
 
       {/* Sharpe */}
       <div className="text-right">
@@ -101,15 +104,8 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
         })()}
       </div>
 
-      {/* Sparkline */}
-      <div className="h-8">
-        {spark.length > 1
-          ? <Sparkline data={spark} stroke={pos ? "var(--color-gain)" : "var(--color-loss)"} />
-          : <span className="text-[10px] text-muted">No data</span>}
-      </div>
-
       {/* Compare + Watchlist buttons — stopPropagation so row click doesn't fire */}
-      <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={handleWatchClick}
           disabled={watchLoading}
@@ -140,7 +136,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [period, setPeriod] = useState<PeriodKey>("SI");
   const [category, setCategory] = useState<typeof CATEGORIES[number]>("All");
-  const [sortKey, setSortKey] = useState<SortKey>("return");
+  const [sortKey, setSortKey] = useState<SortKey>("return1m");
   const [sortAsc, setSortAsc] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [strategyFilter, setStrategyFilter] = useState("All");
@@ -178,7 +174,9 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     list = [...list].sort((a, b) => {
       let va: number, vb: number;
       switch (sortKey) {
-        case "return":   va = a.returns[period] ?? -Infinity;  vb = b.returns[period] ?? -Infinity; break;
+        case "return1m": va = a.returns["1M"] ?? -Infinity; vb = b.returns["1M"] ?? -Infinity; break;
+        case "return3m": va = a.returns["3M"] ?? -Infinity; vb = b.returns["3M"] ?? -Infinity; break;
+        case "return1y": va = a.returns["1Y"] ?? -Infinity; vb = b.returns["1Y"] ?? -Infinity; break;
         case "sharpe":   va = a.sharpes[period] ?? -Infinity;  vb = b.sharpes[period] ?? -Infinity; break;
         case "drawdown": va = a.drawdowns[period] ?? Infinity; vb = b.drawdowns[period] ?? Infinity; break;
         case "nav":      va = a.nav; vb = b.nav; break;
@@ -323,13 +321,14 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
         <div className="overflow-x-auto">
           {/* Table header */}
           <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[840px]"
-            style={{ gridTemplateColumns: "minmax(0,2fr) 110px 72px 72px 88px 96px 110px" }}>
+            style={{ gridTemplateColumns: "minmax(0,2fr) 90px 72px 72px 72px 72px 88px 100px" }}>
             <SortBtn col="name" label="Fund" />
             <div className="flex justify-end"><SortBtn col="nav" label="NAV" /></div>
-            <div className="flex justify-end"><SortBtn col="return" label={period} /></div>
+            <div className="flex justify-end"><SortBtn col="return1m" label="1M" /></div>
+            <div className="flex justify-end"><SortBtn col="return3m" label="3M" /></div>
+            <div className="flex justify-end"><SortBtn col="return1y" label="1Y" /></div>
             <div className="flex justify-end"><SortBtn col="sharpe" label="Sharpe" /></div>
             <div className="flex justify-end"><SortBtn col="drawdown" label="Drawdown" /></div>
-            <div>Trend</div>
             <div />
           </div>
 
