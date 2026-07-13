@@ -80,7 +80,7 @@ export function SEBIRiskometer({
   if (size === "xs") {
     return (
       <div className="w-full">
-        <div className="text-[7px] font-bold uppercase tracking-widest text-muted mb-0.5 px-0.5">Risk Band</div>
+        <div className="text-[8px] font-bold text-center uppercase tracking-widest text-muted mb-0.5 px-0.5">Risk Band</div>
         <div className="flex justify-between text-[7px] font-bold uppercase tracking-widest text-muted mb-0.5 px-0.5">
           <span>Lower Risk</span>
           <span>Higher Risk</span>
@@ -96,14 +96,9 @@ export function SEBIRiskometer({
                     backgroundColor: RISK_COLORS[i - 1],
                     height: "14px",
                     fontSize: "8px",
-                    outline: active ? "1.5px solid #0B1F3A" : "none",
-                    outlineOffset: "0.5px",
-                    boxShadow: active ? "0 0 0 0.5px #fff inset" : "none",
+                    boxShadow: active ? "inset 0 0 0 1.5px #0B1F3A, inset 0 0 0 2px #fff" : "none",
                   }}
                 >
-                  {active && (
-                    <div className="absolute inset-0 rounded-[2px] border border-white" />
-                  )}
                   {i}
                 </div>
                 {active ? (
@@ -143,14 +138,9 @@ export function SEBIRiskometer({
                     backgroundColor: RISK_COLORS[i - 1],
                     height: "22px",
                     fontSize: "11px",
-                    outline: active ? "2px solid #0B1F3A" : "none",
-                    outlineOffset: "1px",
-                    boxShadow: active ? "0 0 0 1px #fff inset" : "none",
+                    boxShadow: active ? "inset 0 0 0 2px #0B1F3A, inset 0 0 0 3px #fff" : "none",
                   }}
                 >
-                  {active && (
-                    <div className="absolute inset-0 rounded-[4px] border-2 border-white" />
-                  )}
                   {i}
                 </div>
                 {active ? (
@@ -198,16 +188,9 @@ export function SEBIRiskometer({
                     backgroundColor: RISK_COLORS[i - 1],
                     height: "44px",
                     fontSize: "18px",
-                    outline: active ? "3px solid #0B1F3A" : "none",
-                    outlineOffset: "2px",
-                    boxShadow: active ? "0 0 0 1px #fff inset" : "none",
+                    boxShadow: active ? "inset 0 0 0 3px #0B1F3A, inset 0 0 0 5px #fff" : "none",
                   }}
                 >
-                  {active && (
-                    <div
-                      className="absolute inset-0 rounded-[6px] border-[2.5px] border-white"
-                    />
-                  )}
                   {i}
                 </div>
                 {/* Triangle pointer under active */}

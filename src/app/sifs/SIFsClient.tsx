@@ -54,8 +54,8 @@ function FundRow({ fund, period, onRequireAuth }: { fund: FundRow; period: Perio
   return (
     <div
       onClick={() => router.push(href)}
-      className="group relative grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[840px] cursor-pointer"
-      style={{ gridTemplateColumns: "minmax(0,2fr) 90px 72px 72px 72px 72px 88px 100px" }}>
+      className="group relative grid items-center gap-4 px-5 py-3.5 border-b border-rule last:border-0 hover:bg-blue-50/30 transition-colors min-w-[888px] cursor-pointer"
+      style={{ gridTemplateColumns: "minmax(0,1.2fr) 90px 72px 72px 72px 72px 88px 148px" }}>
 
       {/* Name */}
       <div className="min-w-0">
@@ -320,8 +320,8 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
         {/* Table — scrollable on small screens */}
         <div className="overflow-x-auto">
           {/* Table header */}
-          <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[840px]"
-            style={{ gridTemplateColumns: "minmax(0,2fr) 90px 72px 72px 72px 72px 88px 100px" }}>
+          <div className="grid items-center gap-4 px-5 py-2.5 bg-mist text-[10px] font-mono uppercase tracking-widest text-muted min-w-[888px]"
+            style={{ gridTemplateColumns: "minmax(0,1.2fr) 90px 72px 72px 72px 72px 88px 148px" }}>
             <SortBtn col="name" label="Fund" />
             <div className="flex justify-end"><SortBtn col="nav" label="NAV" /></div>
             <div className="flex justify-end"><SortBtn col="return1m" label="1M" /></div>
@@ -333,7 +333,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
           </div>
 
           {/* Rows */}
-          <div className="min-w-[840px]">
+          <div className="min-w-[888px]">
             {filtered.length === 0 ? (
               <div className="py-16 text-center text-muted text-[14px]">No funds match your filters.</div>
             ) : (

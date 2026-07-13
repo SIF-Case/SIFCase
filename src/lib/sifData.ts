@@ -244,6 +244,9 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
   const Nfo = (await import("@/models/Nfo")).default;
   const SifAum = (await import("@/models/SifAum")).default;
 
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
   const [
     totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, fundNames,
     latestNavRecord, growthSchemes, latestAum, nfosInPipeline,
@@ -257,7 +260,7 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
     navs.findOne({}, { sort: { navDate: -1 } }),
     schemes.find({ plan: "Regular", option: "Growth" }, { projection: { fundName: 1, strategy: 1, _id: 0 } }).toArray(),
     SifAum.findOne({}).sort({ fetchedAt: -1 }).lean(),
-    Nfo.countDocuments({ published: true, closeDate: { $gte: new Date() } }),
+    Nfo.countDocuments({ published: true, closeDate: { $gte: startOfToday } }),
   ]);
 
   const categoryBreakdown = { equity: 0, hybrid: 0, debt: 0 };

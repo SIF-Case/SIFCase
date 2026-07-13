@@ -212,8 +212,13 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
                 color: "#000",
                 fontSize: 16,
                 fontWeight: 700,
-                lineHeight: "normal",
+                lineHeight: "22px",
+                minHeight: "44px",
                 letterSpacing: "0.3px",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
               }}
             >
               {fund.fundName || fund.name}
