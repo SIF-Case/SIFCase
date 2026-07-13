@@ -15,7 +15,7 @@ function formatRupees(n: number): string {
 
 type NfoLean = {
   slug: string; amc: string; amcShort: string; avatar: string; name: string;
-  category: "Equity" | "Hybrid"; structure: "Open-ended" | "Close-ended";
+  category: "Equity" | "Hybrid"; structure: "Open-ended" | "Close-ended"; objective: string;
   openDate: Date; closeDate: Date; allotmentDate: Date | null; reopenDate: Date | null;
   minInvestment: number; subscriptionPrice: number; exitLoad: string; benchmark: string;
   riskLevel: string; riskColor: string;
@@ -35,6 +35,7 @@ function toNFOData(doc: NfoLean): NFOData & { minInvestmentValue: number } {
     name: doc.name,
     category: doc.category,
     structure: doc.structure,
+    objective: doc.objective,
     daysLeft,
     closeDate: formatDisplayDate(doc.closeDate),
     openDate: formatDisplayDate(doc.openDate),
@@ -55,11 +56,30 @@ function toNFOData(doc: NfoLean): NFOData & { minInvestmentValue: number } {
   };
 }
 
+// AMFI close dates are date-only (stored at UTC midnight), so an NFO "closing
+// today" must still count as open until the end of today, not just until 00:00.
+function startOfToday(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+// Flips published NFOs whose subscription window has fully closed (before today)
+// to unpublished, so admins don't have to remember to hide them manually.
+export async function unpublishExpiredNfos(): Promise<{ unpublished: number }> {
+  await connectDB();
+  const result = await Nfo.updateMany(
+    { published: true, closeDate: { $lt: startOfToday() } },
+    { $set: { published: false } },
+  );
+  return { unpublished: result.modifiedCount };
+}
+
 // Published NFOs still within their subscription window, soonest-closing first.
 export async function getOpenNfos(): Promise<(NFOData & { minInvestmentValue: number })[]> {
   await connectDB();
   const docs = await Nfo.find(
-    { published: true, closeDate: { $gte: new Date() } },
+    { published: true, closeDate: { $gte: startOfToday() } },
     "-createdAt -updatedAt -__v",
   ).sort({ closeDate: 1 }).lean<NfoLean[]>();
   return docs.map(toNFOData);
@@ -73,6 +93,6 @@ export async function getNfoBySlug(slug: string): Promise<(NFOData & { minInvest
 
 export async function getOpenNfoSlugs(): Promise<string[]> {
   await connectDB();
-  const docs = await Nfo.find({ published: true, closeDate: { $gte: new Date() } }, "slug").lean<{ slug: string }[]>();
+  const docs = await Nfo.find({ published: true, closeDate: { $gte: startOfToday() } }, "slug").lean<{ slug: string }[]>();
   return docs.map((d) => d.slug);
 }

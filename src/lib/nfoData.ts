@@ -31,6 +31,7 @@ export interface NFOData {
   name: string;
   category: "Equity" | "Hybrid";
   structure: "Open-ended" | "Close-ended";
+  objective: string;
   daysLeft: number;
   closeDate: string;
   openDate: string;

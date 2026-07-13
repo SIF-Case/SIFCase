@@ -1,4 +1,4 @@
-# Tech Stack Selection (2026)
+**Tech Stack Selection (2026)**
 
 > Default and alternative technology choices for web applications.
 
@@ -32,10 +32,10 @@ Monorepo:
 
 ## Alternative Options
 
-| Need | Default | Alternative |
-|------|---------|-------------|
-| Real-time | Supabase Realtime | Socket.io, Ably |
-| File storage | Supabase Storage | Cloudinary, AWS S3 |
-| Payment | Stripe | LemonSqueezy, Paddle |
-| Email | Resend | SendGrid, Postmark |
-| Search | Algolia | Typesense, Orama |
+| Need         | Default           | Alternative          |
+| ------------ | ----------------- | -------------------- |
+| Real-time    | Supabase Realtime | Socket.io, Ably      |
+| File storage | Supabase Storage  | Cloudinary, AWS S3   |
+| Payment      | Stripe            | LemonSqueezy, Paddle |
+| Email        | Resend            | SendGrid, Postmark   |
+| Search       | Algolia           | Typesense, Orama     |

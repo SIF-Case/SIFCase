@@ -27,12 +27,14 @@ export interface INfoDocument {
 
 export interface INfo extends Document {
   slug: string;
+  externalSchemeId: string | null;
   amc: string;
   amcShort: string;
   avatar: string;
   name: string;
   category: "Equity" | "Hybrid";
   structure: "Open-ended" | "Close-ended";
+  objective: string;
   openDate: Date;
   closeDate: Date;
   allotmentDate: Date | null;
@@ -79,12 +81,16 @@ const NfoDocumentSchema = new Schema<INfoDocument>(
 const NfoSchema = new Schema<INfo>(
   {
     slug: { type: String, required: true, unique: true, trim: true },
+    // AMFI's Scheme_Id (e.g. "S-30") for NFOs synced from amfiindia.com/sif/new-fund-offer.
+    // Null for NFOs created manually in the admin panel.
+    externalSchemeId: { type: String, default: null, unique: true, sparse: true },
     amc: { type: String, required: true },
     amcShort: { type: String, default: "" },
     avatar: { type: String, default: "" },
     name: { type: String, required: true },
     category: { type: String, enum: ["Equity", "Hybrid"], required: true },
     structure: { type: String, enum: ["Open-ended", "Close-ended"], default: "Open-ended" },
+    objective: { type: String, default: "" },
     openDate: { type: Date, required: true },
     closeDate: { type: Date, required: true },
     allotmentDate: { type: Date, default: null },

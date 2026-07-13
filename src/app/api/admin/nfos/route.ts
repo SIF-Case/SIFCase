@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     name,
     category,
     structure: body.structure || "Open-ended",
+    objective: body.objective || "",
     openDate: new Date(openDate),
     closeDate: new Date(closeDate),
     allotmentDate: allotmentDate ? new Date(allotmentDate) : null,

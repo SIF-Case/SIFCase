@@ -17,6 +17,7 @@ type Nfo = {
   name: string;
   category: "Equity" | "Hybrid";
   structure: "Open-ended" | "Close-ended";
+  objective: string;
   openDate: string;
   closeDate: string;
   allotmentDate: string;
@@ -62,7 +63,7 @@ function toDateInput(v: string | null | undefined): string {
 function emptyForm() {
   return {
     slug: "", amc: "", amcShort: "", avatar: "", name: "",
-    category: "Equity" as const, structure: "Open-ended" as const,
+    category: "Equity" as const, structure: "Open-ended" as const, objective: "",
     openDate: "", closeDate: "", allotmentDate: "", reopenDate: "",
     minInvestment: 1000000, subscriptionPrice: 10,
     exitLoad: "1% ≤ 30 days", benchmark: "", riskLevel: "", riskColor: "var(--danger)",
@@ -79,7 +80,7 @@ type FormState = ReturnType<typeof emptyForm>;
 function fromNfo(n: Nfo): FormState {
   return {
     slug: n.slug, amc: n.amc, amcShort: n.amcShort, avatar: n.avatar, name: n.name,
-    category: n.category as "Equity", structure: n.structure as "Open-ended",
+    category: n.category as "Equity", structure: n.structure as "Open-ended", objective: n.objective ?? "",
     openDate: toDateInput(n.openDate), closeDate: toDateInput(n.closeDate),
     allotmentDate: toDateInput(n.allotmentDate), reopenDate: toDateInput(n.reopenDate),
     minInvestment: n.minInvestment, subscriptionPrice: n.subscriptionPrice,
@@ -213,6 +214,16 @@ function NfoModal({ nfo, onClose, onSaved }: { nfo: Nfo | null; onClose: () => v
               </label>
             </Field>
           </div>
+
+          <Field label="Objective of investment strategy">
+            <textarea
+              value={form.objective}
+              onChange={(e) => set("objective", e.target.value)}
+              rows={3}
+              className={inputCls + " h-auto py-2 resize-y"}
+              placeholder="To generate long-term capital appreciation by investing primarily in equity and equity-related instruments…"
+            />
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="NFO opened"><input type="date" value={form.openDate} onChange={(e) => set("openDate", e.target.value)} className={inputCls} /></Field>

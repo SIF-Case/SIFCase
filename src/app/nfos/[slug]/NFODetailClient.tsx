@@ -161,6 +161,7 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
         .nfo-strategy-icon svg { color: var(--accent); }
         .nfo-strategy-title { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 3px; }
         .nfo-strategy-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+        .nfo-objective-text { font-size: 13.5px; color: var(--text-2); line-height: 1.65; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
 
         /* ── Fund Managers ──────────────────────────────────────────────── */
         .nfo-managers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -481,6 +482,9 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                 </h2>
               </div>
               <div className="nfo-card-el-body">
+                {nfo.objective && (
+                  <p className="nfo-objective-text">{nfo.objective}</p>
+                )}
                 {nfo.strategyPoints.map((point, idx) => {
                   const IconComponent =
                     point.icon === "pulse"
@@ -618,6 +622,8 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                     <a
                       key={idx}
                       href={doc.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -626,10 +632,6 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                         background: "var(--surface-2)",
                         border: "1px solid var(--border)",
                         borderRadius: "var(--radius-s)"
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        alert(`Downloading ${doc.title} (Simulation)`);
                       }}
                     >
                       <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--text-1)" }}>

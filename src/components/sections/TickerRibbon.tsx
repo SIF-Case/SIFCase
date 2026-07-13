@@ -14,11 +14,12 @@ function TickerItem({ label, value, change, neg }: TickerNav) {
       )}
       {change && (
         <span
-          className={`text-[11px] font-normal nums ${
+          className={`text-[11px] font-normal nums flex items-center gap-1 ${
             neg ? "text-red-400" : "text-[#05df72]"
           }`}
         >
           {change}
+          <span className="text-[9px] opacity-70">1D</span>
         </span>
       )}
     </span>

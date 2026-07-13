@@ -157,6 +157,8 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
         .nfo-meta-item { }
         .nfo-meta-label { font-size: 10px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
         .nfo-meta-val { font-size: 13px; color: var(--text-1); font-weight: 500; }
+        .nfo-card-objective-wrap { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+        .nfo-card-objective { font-size: 12.5px; color: var(--text-2); line-height: 1.55; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
         .nfo-card-bottom { display: flex; gap: 8px; padding: 0.875rem 1.25rem; border-top: 1px solid var(--border); background: var(--surface-2); }
         .nfo-btn-primary { flex: 1; text-align: center; padding: 9px; background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 600; border-radius: var(--radius-s); transition: background 0.15s; }
@@ -362,10 +364,12 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
                       <div className="nfo-meta-label">NFO opened</div>
                       <div className="nfo-meta-val">{nfo.openDate}</div>
                     </div>
-                    <div className="nfo-meta-item">
-                      <div className="nfo-meta-label">Allotment date</div>
-                      <div className="nfo-meta-val">{nfo.allotmentDate}</div>
-                    </div>
+                    {nfo.allotmentDate && (
+                      <div className="nfo-meta-item">
+                        <div className="nfo-meta-label">Allotment date</div>
+                        <div className="nfo-meta-val">{nfo.allotmentDate}</div>
+                      </div>
+                    )}
                     <div className="nfo-meta-item">
                       <div className="nfo-meta-label">Min. investment</div>
                       <div className="nfo-meta-val">{nfo.minInvestment}</div>
@@ -374,15 +378,26 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
                       <div className="nfo-meta-label">Subscription price</div>
                       <div className="nfo-meta-val">{nfo.subscriptionPrice} / unit</div>
                     </div>
-                    <div className="nfo-meta-item">
-                      <div className="nfo-meta-label">Exit load</div>
-                      <div className="nfo-meta-val">{nfo.exitLoad}</div>
-                    </div>
-                    <div className="nfo-meta-item">
-                      <div className="nfo-meta-label">Benchmark</div>
-                      <div className="nfo-meta-val">{nfo.benchmark}</div>
-                    </div>
+                    {nfo.exitLoad && (
+                      <div className="nfo-meta-item">
+                        <div className="nfo-meta-label">Exit load</div>
+                        <div className="nfo-meta-val">{nfo.exitLoad}</div>
+                      </div>
+                    )}
+                    {nfo.benchmark && (
+                      <div className="nfo-meta-item">
+                        <div className="nfo-meta-label">Benchmark</div>
+                        <div className="nfo-meta-val">{nfo.benchmark}</div>
+                      </div>
+                    )}
                   </div>
+
+                  {nfo.objective && (
+                    <div className="nfo-card-objective-wrap">
+                      <div className="nfo-meta-label">Objective of investment strategy</div>
+                      <p className="nfo-card-objective">{nfo.objective}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="nfo-card-bottom">
                   <Link href={`/nfos/${nfo.slug}`} className="nfo-btn-primary">

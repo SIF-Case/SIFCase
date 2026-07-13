@@ -22,6 +22,10 @@ export interface SnapshotStats {
   uniqueAMCs: number;
   latestNavDate: string;
   totalNavRecords: number;
+  totalAUM: number | null;
+  aumAsOfLabel: string | null;
+  categoryBreakdown: { equity: number; hybrid: number; debt: number };
+  nfosInPipeline: number;
 }
 
 export interface SIFRow {
@@ -182,6 +186,12 @@ function strategyToCategory(strategy: string): "Equity" | "Hybrid" {
   return "Equity";
 }
 
+function strategyToBroadCategory(strategy: string): "Equity" | "Hybrid" | "Debt" {
+  if (/hybrid/i.test(strategy) || /active\s*asset/i.test(strategy)) return "Hybrid";
+  if (/debt|credit|income|bond|fixed\s*income/i.test(strategy)) return "Debt";
+  return "Equity";
+}
+
 function computeSharpe(records: { nav: number; navDate: Date }[], riskFreeAnnual = 0.065): number | null {
   if (records.length < 15) return null;
 
@@ -231,17 +241,36 @@ async function getCollections() {
 
 async function _getSnapshotStats(): Promise<SnapshotStats> {
   const { schemes, navs } = await getCollections();
+  const Nfo = (await import("@/models/Nfo")).default;
+  const SifAum = (await import("@/models/SifAum")).default;
 
-  const [totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, fundNames, latestNavRecord] =
-    await Promise.all([
-      schemes.countDocuments(),
-      schemes.countDocuments({ plan: "Regular" }),
-      schemes.countDocuments({ plan: "Regular", option: "Growth" }),
-      navs.countDocuments(),
-      schemes.distinct("amc"),
-      schemes.distinct("fundName", { plan: "Regular" }),
-      navs.findOne({}, { sort: { navDate: -1 } }),
-    ]);
+  const [
+    totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, fundNames,
+    latestNavRecord, growthSchemes, latestAum, nfosInPipeline,
+  ] = await Promise.all([
+    schemes.countDocuments(),
+    schemes.countDocuments({ plan: "Regular" }),
+    schemes.countDocuments({ plan: "Regular", option: "Growth" }),
+    navs.countDocuments(),
+    schemes.distinct("amc"),
+    schemes.distinct("fundName", { plan: "Regular" }),
+    navs.findOne({}, { sort: { navDate: -1 } }),
+    schemes.find({ plan: "Regular", option: "Growth" }, { projection: { fundName: 1, strategy: 1, _id: 0 } }).toArray(),
+    SifAum.findOne({}).sort({ fetchedAt: -1 }).lean(),
+    Nfo.countDocuments({ published: true, closeDate: { $gte: new Date() } }),
+  ]);
+
+  const categoryBreakdown = { equity: 0, hybrid: 0, debt: 0 };
+  for (const s of growthSchemes) {
+    const cat = strategyToBroadCategory((s.strategy as string) || "");
+    if (cat === "Equity") categoryBreakdown.equity++;
+    else if (cat === "Hybrid") categoryBreakdown.hybrid++;
+    else categoryBreakdown.debt++;
+  }
+
+  // AMFI publishes AUM in ₹ Lakhs; convert to raw rupees (1 Lakh = 100,000).
+  const totalAUM = latestAum ? latestAum.totalAumLakhs * 1e5 : null;
+  const aumAsOfLabel = latestAum ? latestAum.periodLabel : null;
 
   return {
     totalSchemes,
@@ -253,6 +282,10 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
       ? formatDate(latestNavRecord.navDate)
       : "—",
     totalNavRecords,
+    totalAUM,
+    aumAsOfLabel,
+    categoryBreakdown,
+    nfosInPipeline,
   };
 }
 
@@ -603,7 +636,6 @@ async function _getTickerNavs(): Promise<TickerNav[]> {
   // Only Regular plan Growth schemes for the ticker
   const regularSchemes = await schemes
     .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, fundName: 1, amc: 1 } })
-    .limit(12)
     .toArray();
 
   const items: TickerNav[] = [];

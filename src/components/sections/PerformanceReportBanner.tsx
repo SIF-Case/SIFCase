@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Download, ArrowUpRight } from "lucide-react";
+import { ArrowRight, Download, ArrowUpRight, Lock } from "lucide-react";
 import type { LatestReportSummary } from "@/lib/sifData";
 import { AuthModal } from "@/components/auth/AuthModal";
 
@@ -13,42 +13,44 @@ function startDownload(slug: string) {
   window.location.href = `/api/reports/${slug}/download`;
 }
 
-function HiddenDocumentPreview() {
+function ReportPreviewCard({
+  report,
+  onUnlock,
+}: {
+  report: LatestReportSummary;
+  onUnlock: () => void;
+}) {
   return (
-    <div className="sif-chart-wrap flex items-center justify-center pointer-events-none overflow-hidden">
-      <div 
-        className="relative bg-white rounded-md shadow-2xl border border-white/20 flex flex-col p-4 overflow-hidden transform rotate-2 select-none mx-auto mt-4"
-        style={{ width: "160px", height: "180px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}
-      >
-        {/* Faded gradient overlay at the bottom to blend it out */}
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent z-10" />
+    <div className="relative bg-white rounded-[18px] shadow-2xl border border-rule overflow-hidden select-none mx-auto w-full max-w-[420px]">
+      {/* Dark header */}
+      <div className="px-6 py-5" style={{ background: "#0C3B54" }}>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[#14b7a3] mb-1">
+          Monthly Report · {report.label}
+        </p>
+        <h3 className="text-[19px] font-extrabold text-white leading-tight">SIF Performance, Fund By Fund</h3>
+      </div>
 
-        {/* Document Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="size-6 bg-[#0E9F8E]/10 rounded flex items-center justify-center shrink-0">
-            <div className="w-2.5 h-2.5 bg-[#0E9F8E] rounded-[2px]" />
+      {/* Body */}
+      <div className="px-6 pt-5 pb-6">
+        <p className="text-[15px] font-semibold text-heading leading-relaxed">
+          Unlock the full report to access detailed fund performance, rankings, and key insights.
+        </p>
+
+        <div className="mt-4 w-full rounded-[14px] bg-mist p-6 flex flex-col items-center text-center gap-2">
+          <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+            <Lock className="size-5 text-primary" />
           </div>
-          <div className="h-2.5 w-16 bg-[#0F2918]/20 rounded" />
-        </div>
-        
-        {/* Blurred Content Lines */}
-        <div className="flex-1 space-y-2 opacity-60 blur-[2px]">
-          <div className="h-1.5 w-3/4 bg-[#0F2918] rounded" />
-          <div className="h-1.5 w-full bg-[#0F2918] rounded" />
-          <div className="h-1.5 w-5/6 bg-[#0F2918] rounded" />
-          <div className="h-1.5 w-full bg-[#0F2918] rounded" />
-          <div className="h-1.5 w-4/5 bg-[#0F2918] rounded" />
-          <div className="h-1.5 w-1/2 bg-[#0F2918] rounded" />
-          <div className="mt-4 h-12 w-full bg-[#0F2918]/20 rounded" />
-        </div>
-        
-        {/* "MAY REPORT" watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <div className="transform -rotate-12 bg-white/40 backdrop-blur-sm border-2 border-[#0F2918]/20 px-2 py-0.5 rounded shadow-sm">
-            <span className="text-[12px] font-bold tracking-widest text-[#0F2918]/40">
-              MAY REPORT
-            </span>
-          </div>
+          <p className="text-[16px] font-bold text-heading">Unlock the full report</p>
+          <p className="text-[13px] text-muted leading-snug">
+            Sign in to read the complete fund-by-fund breakdown.
+          </p>
+          <button
+            type="button"
+            onClick={onUnlock}
+            className="mt-3 w-full h-10 rounded-[8px] bg-primary text-white text-[14px] font-semibold hover:opacity-90 transition-opacity"
+          >
+            Unlock report
+          </button>
         </div>
       </div>
     </div>
@@ -158,9 +160,9 @@ export function PerformanceReportBanner({
           </div>
         </div>
 
-        {/* Right: hidden document preview */}
+        {/* Right: real report preview with unlock overlay */}
         <div className="report-banner-right">
-          <HiddenDocumentPreview />
+          <ReportPreviewCard report={report} onUnlock={handleGetReport} />
           {/* Nav arrow */}
           <a
             href={`/performance/${report.slug}`}

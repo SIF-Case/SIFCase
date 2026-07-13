@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import Nfo from "@/models/Nfo";
 import { revalidatePath } from "next/cache";
 
-const STRING_FIELDS = ["amc", "amcShort", "avatar", "name", "category", "structure", "exitLoad", "benchmark", "riskLevel", "riskColor"];
+const STRING_FIELDS = ["amc", "amcShort", "avatar", "name", "category", "structure", "objective", "exitLoad", "benchmark", "riskLevel", "riskColor"];
 const DATE_FIELDS = ["openDate", "closeDate", "allotmentDate", "reopenDate"];
 const NUMBER_FIELDS = ["minInvestment", "subscriptionPrice"];
 const ARRAY_FIELDS = ["allocationBands", "strategyPoints", "managers", "docs"];
