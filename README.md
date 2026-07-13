@@ -13,3 +13,4 @@ fixes
 minor ui fix
 Yoo
 Vercel Analytics 
+NEW FIXED
