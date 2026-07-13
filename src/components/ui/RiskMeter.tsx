@@ -7,7 +7,7 @@ export const RISK_COLORS = [
 ];
 
 export const RISK_LABELS = [
-  "Low", "Low-Mod", "Moderate", "Mod-High", "High",
+  "Low", "Low to Moderate", "Moderate", "Moderately High", "Very High",
 ];
 
 export function RiskMeter({ level: rawLevel, size = "md" }: { level: 1 | 2 | 3 | 4 | 5; size?: "md" | "sm" }) {
@@ -80,6 +80,7 @@ export function SEBIRiskometer({
   if (size === "xs") {
     return (
       <div className="w-full">
+        <div className="text-[7px] font-bold uppercase tracking-widest text-muted mb-0.5 px-0.5">Risk Band</div>
         <div className="flex justify-between text-[7px] font-bold uppercase tracking-widest text-muted mb-0.5 px-0.5">
           <span>Lower Risk</span>
           <span>Higher Risk</span>
@@ -126,6 +127,7 @@ export function SEBIRiskometer({
   if (size === "sm") {
     return (
       <div className="w-full">
+        <div className="text-[8px] font-bold uppercase tracking-widest text-muted mb-1 px-0.5">Risk Band</div>
         <div className="flex justify-between text-[8px] font-bold uppercase tracking-widest text-muted mb-1 px-0.5">
           <span>Lower Risk</span>
           <span>Higher Risk</span>
@@ -172,7 +174,7 @@ export function SEBIRiskometer({
   return (
     <div className="flex flex-col items-center gap-3 w-full">
       <div className="text-center">
-        <div className="text-[11px] font-mono uppercase tracking-widest text-muted mb-0.5">Risk-band</div>
+        <div className="text-[11px] font-mono uppercase tracking-widest text-muted mb-0.5">Risk Band</div>
         <div className="text-[18px] font-bold text-heading tracking-tight">RISK-LEVEL {level}</div>
         {title && <div className="text-[13px] text-body mt-0.5">{title}</div>}
         {subtitle && <div className="text-[11px] text-muted mt-0.5">{subtitle}</div>}

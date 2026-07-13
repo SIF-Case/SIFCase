@@ -9,74 +9,48 @@ import { AuthModal } from "@/components/auth/AuthModal";
 
 const PENDING_KEY = "sif:pendingReportDownload";
 
-// Wavy SIF performance path from Figma — realistic oscillating market movement
-const WAVY_PATH =
-  "M0 89.6C26.1 89.6 37 36.5 61.7 68.8C86.5 101.1 111.3 20 125 40.6C138.6 61.2 138.6 5.1 148 48.7C152.5 69.8 161 106.9 177 77.9C190.4 53.5 199.1 106.9 216.1 69.5C233.1 32.1 230.3 91.7 241.1 74.5C245.9 66.9 257.7 93 277.6 55.9C286 40.2 305.7 94.6 321.8 71.7C329.7 60.3 337.1 27.1 344.4 39.9C351.7 52.6 358.3 24.8 364.3 24.8C375.5 24.8 370.8 51.7 393 33.9C415.2 16 435.8 89.6 474 89.6";
-
-// Blob background fill shape — creates organic shaded area under the line
-const BLOB_PATH =
-  "M0 94.7C28.7 94.7 33.4 25.8 50.5 25.8C67.7 25.8 57 38.2 79.2 38.2C101.3 38.2 92.9 61.5 109.5 61.5C126.1 61.5 116.7 0 141.9 0C167.1 0 153.3 34 189.7 34C226.2 34 217.4 94.1 241.1 94.1C264.8 94.1 265.5 41.5 282.4 41.5C299.4 41.5 296.3 82.1 318.9 82.1C341.5 82.1 345.1 55.2 364.3 55.2C383.6 55.2 383.6 62.4 397.8 62.4C412 62.4 405.5 30.2 427.9 29.7C450.3 29.3 440.2 102 474.3 102";
-
 function startDownload(slug: string) {
   window.location.href = `/api/reports/${slug}/download`;
 }
 
-function ReportChart() {
+function HiddenDocumentPreview() {
   return (
-    <div className="sif-chart-wrap">
-      {/*
-        viewBox top is -50 to give the tooltip room above the wavy path.
-        Path y-range is ~5–107. Tooltip sits 44px above dot origin = y≈-39 at worst.
-      */}
-      <svg viewBox="0 -50 474 160" fill="none" className="sif-chart-svg" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <linearGradient id="sifBlobGrad" x1="237" y1="102" x2="237" y2="0" gradientUnits="userSpaceOnUse">
-            <stop stopOpacity="0.01" />
-            <stop offset="1" stopOpacity="0.15" />
-          </linearGradient>
-        </defs>
+    <div className="sif-chart-wrap flex items-center justify-center pointer-events-none overflow-hidden">
+      <div 
+        className="relative bg-white rounded-md shadow-2xl border border-white/20 flex flex-col p-4 overflow-hidden transform rotate-2 select-none mx-auto mt-4"
+        style={{ width: "160px", height: "180px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}
+      >
+        {/* Faded gradient overlay at the bottom to blend it out */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent z-10" />
 
-        {/* Organic background blob fill */}
-        <path fillRule="evenodd" clipRule="evenodd" d={BLOB_PATH} fill="url(#sifBlobGrad)" className="sif-blob" />
-
-        {/* Main wavy performance line */}
-        <path
-          id="sif-wave"
-          d={WAVY_PATH}
-          stroke="#0F2918"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          className="sif-line"
-        />
-
-        {/*
-          Moving group: tooltip bubble + caret + dot share one animateMotion.
-          Group origin (0,0) = dot center on the path.
-          Tooltip bubble is 44px above; caret points down to the dot.
-        */}
-        <g className="sif-indicator">
-          {/* Tooltip bubble */}
-          <rect x="-25" y="-44" width="50" height="21" rx="8" fill="#0F2918" />
-          {/* Down-pointing caret */}
-          <polygon points="-4,-23 4,-23 0,-18" fill="#0F2918" />
-          {/* Short connector line from caret tip to dot */}
-          <line x1="0" y1="-18" x2="0" y2="-6" stroke="#D8D8D8" strokeWidth="0.56" />
-          {/* Dot */}
-          <ellipse rx="4.8" ry="5.1" fill="#000" />
-          <animateMotion
-            dur="5s"
-            repeatCount="indefinite"
-            calcMode="spline"
-            keyPoints="0;0;1;1;0"
-            keyTimes="0;0.04;0.86;0.93;1"
-            keySplines="0.42 0 0.58 1;0.42 0 0.58 1;0 0 1 1;0 0 1 1"
-          >
-            <mpath href="#sif-wave" />
-          </animateMotion>
-        </g>
-      </svg>
+        {/* Document Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="size-6 bg-[#0E9F8E]/10 rounded flex items-center justify-center shrink-0">
+            <div className="w-2.5 h-2.5 bg-[#0E9F8E] rounded-[2px]" />
+          </div>
+          <div className="h-2.5 w-16 bg-[#0F2918]/20 rounded" />
+        </div>
+        
+        {/* Blurred Content Lines */}
+        <div className="flex-1 space-y-2 opacity-60 blur-[2px]">
+          <div className="h-1.5 w-3/4 bg-[#0F2918] rounded" />
+          <div className="h-1.5 w-full bg-[#0F2918] rounded" />
+          <div className="h-1.5 w-5/6 bg-[#0F2918] rounded" />
+          <div className="h-1.5 w-full bg-[#0F2918] rounded" />
+          <div className="h-1.5 w-4/5 bg-[#0F2918] rounded" />
+          <div className="h-1.5 w-1/2 bg-[#0F2918] rounded" />
+          <div className="mt-4 h-12 w-full bg-[#0F2918]/20 rounded" />
+        </div>
+        
+        {/* "MAY REPORT" watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="transform -rotate-12 bg-white/40 backdrop-blur-sm border-2 border-[#0F2918]/20 px-2 py-0.5 rounded shadow-sm">
+            <span className="text-[12px] font-bold tracking-widest text-[#0F2918]/40">
+              MAY REPORT
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -184,9 +158,9 @@ export function PerformanceReportBanner({
           </div>
         </div>
 
-        {/* Right: chart */}
+        {/* Right: hidden document preview */}
         <div className="report-banner-right">
-          <ReportChart />
+          <HiddenDocumentPreview />
           {/* Nav arrow */}
           <a
             href={`/performance/${report.slug}`}

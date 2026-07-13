@@ -11,7 +11,7 @@ import { fundHref } from "@/lib/slugify";
 
 const SECTION_ROWS: {
   section: string;
-  rows: { label: string; key: (f: FundRow, p: PeriodKey) => { text: string; tone?: "gain" | "loss" | "muted" | null } }[];
+  rows: { label: string; key: (f: FundRow, p: PeriodKey) => { text: string; tone?: "gain" | "loss" | "muted" | null; link?: string | null } }[];
 }[] = [
   {
     section: "Basic",
@@ -21,7 +21,15 @@ const SECTION_ROWS: {
       { label: "Strategy",      key: (f) => ({ text: f.strategy }) },
       { label: "Category",      key: (f) => ({ text: f.category }) },
       { label: "Plan",          key: (f) => ({ text: f.plan }) },
-      { label: "Option",        key: (f) => ({ text: (f as any).option ?? "—" }) },
+      { label: "Option",        key: (f) => ({ text: f.option || "—" }) },
+      { label: "Scheme Category", key: (f) => ({ text: f.schemeCategory || "—" }) },
+      { label: "Scheme Nature",   key: (f) => ({ text: f.schemeNature || "—" }) },
+      { label: "Inception Date",  key: (f) => ({ text: f.inceptionDate || "—" }) },
+      { label: "Benchmark",       key: (f) => ({ text: f.benchmarkName || "—" }) },
+      { label: "Fund Manager(s)", key: (f) => ({ text: f.fundManagers.length ? f.fundManagers.map((m) => m.name).join(", ") : "—" }) },
+      { label: "Sponsor",         key: (f) => ({ text: f.sponsorName || "—" }) },
+      { label: "Trustee",         key: (f) => ({ text: f.trusteeName || "—" }) },
+      { label: "Registrar",       key: (f) => ({ text: f.registrarName || "—" }) },
     ],
   },
   {
@@ -43,23 +51,45 @@ const SECTION_ROWS: {
       { label: "Sharpe (3M)",      key: (f) => numCell(f.sharpes["3M"]) },
       { label: "Max Drawdown (SI)", key: (f) => drawdownCell(f.drawdowns["SI"]) },
       { label: "Max Drawdown (3M)", key: (f) => drawdownCell(f.drawdowns["3M"]) },
-      { label: "Riskometer",        key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
+      { label: "Risk",               key: (f) => f.riskBand ? { text: ["", "Low", "Low-to-Moderate", "Moderate", "Moderately High", "Very High"][f.riskBand] + " Risk" } : { text: "Pending source verification", tone: "muted" as const } },
+      { label: "Risk Band",         key: (f) => f.riskBand ? { text: `RISK-LEVEL ${f.riskBand}` } : { text: "Pending source verification", tone: "muted" as const } },
     ],
   },
   {
     section: "Cost",
     rows: [
-      { label: "Expense Ratio (TER)", key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
-      { label: "Exit Load",           key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
-      { label: "Min Investment",      key: () => ({ text: "₹10 Lakhs (SEBI rule)", tone: null }) },
+      { label: "Expense Ratio (TER)", key: (f) => f.expenseRatio ? { text: f.expenseRatio } : { text: "Pending source verification", tone: "muted" as const } },
+      { label: "Exit Load",           key: (f) => f.exitLoad ? { text: f.exitLoad } : { text: "Pending source verification", tone: "muted" as const } },
+      { label: "Min Investment",      key: (f) => ({ text: f.minInvestment ? `₹${f.minInvestment.toLocaleString("en-IN")}` : "₹10 Lakhs (SEBI rule)" }) },
+      { label: "Additional Investment", key: (f) => ({ text: f.additionalInvestment ? `₹${f.additionalInvestment.toLocaleString("en-IN")}` : "—" }) },
+      { label: "Taxation",            key: (f) => f.taxationSummary ? { text: f.taxationSummary } : { text: "Pending source verification", tone: "muted" as const } },
     ],
   },
   {
-    section: "Documents",
+    section: "AUM & Fundamentals",
     rows: [
-      { label: "Scheme Info Document",  key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
-      { label: "Factsheet",             key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
-      { label: "Portfolio Disclosure",  key: () => ({ text: "Pending source verification", tone: "muted" as const }) },
+      { label: "AUM",              key: (f) => ({ text: f.aum ? `₹${(f.aum / 1e7).toFixed(2)} Cr` : "—" }) },
+      { label: "P/E",               key: (f) => ({ text: f.fundamentals?.pe != null ? f.fundamentals.pe.toFixed(2) : "—" }) },
+      { label: "P/B",               key: (f) => ({ text: f.fundamentals?.pb != null ? f.fundamentals.pb.toFixed(2) : "—" }) },
+      { label: "Dividend Yield",    key: (f) => ({ text: f.fundamentals?.dividendYield != null ? `${f.fundamentals.dividendYield.toFixed(2)}%` : "—" }) },
+      { label: "ROE",               key: (f) => ({ text: f.fundamentals?.roe != null ? `${f.fundamentals.roe.toFixed(2)}%` : "—" }) },
+      { label: "# Holdings",        key: (f) => ({ text: f.concentration?.numberOfHoldings != null ? String(f.concentration.numberOfHoldings) : "—" }) },
+      { label: "Top 5 Stocks Weight", key: (f) => ({ text: f.concentration?.top5StocksWeight != null ? `${f.concentration.top5StocksWeight.toFixed(2)}%` : "—" }) },
+      { label: "Top 10 Stocks Weight", key: (f) => ({ text: f.concentration?.top10StocksWeight != null ? `${f.concentration.top10StocksWeight.toFixed(2)}%` : "—" }) },
+      { label: "Top 3 Sector Weight", key: (f) => ({ text: f.concentration?.top3SectorWeight != null ? `${f.concentration.top3SectorWeight.toFixed(2)}%` : "—" }) },
+      { label: "Large Cap %",       key: (f) => ({ text: f.marketCapWeightage?.largeCap != null ? `${f.marketCapWeightage.largeCap.toFixed(2)}%` : "—" }) },
+      { label: "Mid Cap %",         key: (f) => ({ text: f.marketCapWeightage?.midCap != null ? `${f.marketCapWeightage.midCap.toFixed(2)}%` : "—" }) },
+      { label: "Small Cap %",       key: (f) => ({ text: f.marketCapWeightage?.smallCap != null ? `${f.marketCapWeightage.smallCap.toFixed(2)}%` : "—" }) },
+    ],
+  },
+  {
+    section: "Redemption & Suitability",
+    rows: [
+      { label: "Redemption Frequency", key: (f) => ({ text: f.redemptionFrequency || "—" }) },
+      { label: "NAV Cutoff Time",      key: (f) => ({ text: f.navCutoffTime || "—" }) },
+      { label: "Redemption Payout",    key: (f) => ({ text: f.redemptionPayoutDays || "—" }) },
+      { label: "Suitable For",         key: (f) => ({ text: f.suitableFor || "—" }) },
+      { label: "Not Suitable For",     key: (f) => ({ text: f.notSuitableFor || "—" }) },
     ],
   },
 ];
@@ -250,7 +280,7 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
             <div className="overflow-x-auto">
               <div style={{ minWidth: `${140 + selected.length * 160}px` }}>
                 {/* Fund header row */}
-                <div className="grid bg-brand-navy text-white border-b border-white/10" style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                <div className="grid bg-brand-navy text-white border-b border-white/10" style={{ gridTemplateColumns: `140px repeat(${selected.length}, minmax(0, 1fr))` }}>
                   <div className="px-4 py-4 text-[10px] font-mono uppercase tracking-widest text-white/40">Metric</div>
                   {selected.map((f, i) => (
                     <div key={f.schemeCode} className="px-4 py-4 border-l border-white/10">
@@ -270,7 +300,7 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
                 {SECTION_ROWS.map(({ section, rows }) => (
                   <div key={section}>
                     {/* Section header */}
-                    <div className="grid bg-mist border-y border-rule" style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                    <div className="grid bg-mist border-y border-rule" style={{ gridTemplateColumns: `140px repeat(${selected.length}, minmax(0, 1fr))` }}>
                       <div className="px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest text-primary font-semibold col-span-full">
                         {section}
                       </div>
@@ -280,16 +310,22 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
                     {rows.map(({ label, key }, ri) => {
                       const cells = selected.map((f) => key(f, period));
                       return (
-                        <div key={label} className={`grid border-b border-rule last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-surface/40"}`} style={{ gridTemplateColumns: `140px repeat(${selected.length}, 1fr)` }}>
+                        <div key={label} className={`grid border-b border-rule last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-surface/40"}`} style={{ gridTemplateColumns: `140px repeat(${selected.length}, minmax(0, 1fr))` }}>
                           <div className="px-4 py-3.5 text-[11px] text-muted font-medium self-center">{label}</div>
                           {cells.map((cell, ci) => (
-                            <div key={ci} className="px-4 py-3.5 border-l border-rule self-center">
+                          <div key={ci} className="px-4 py-3.5 border-l border-rule flex items-center">
+                              {cell.link ? (
+                                <a href={cell.link} target="_blank" rel="noopener noreferrer" className="text-[12px] font-semibold text-primary hover:underline tabular">
+                                  {cell.text}
+                                </a>
+                              ) : (
                                 <span className={`text-[12px] font-semibold tabular ${
                                   cell.tone === "gain" ? "text-gain" : cell.tone === "loss" ? "text-loss" : cell.tone === "muted" ? "text-muted" : "text-body"
                                 }`}>
                                   {cell.text}
                                 </span>
-                            </div>
+                              )}
+                          </div>
                           ))}
                         </div>
                       );

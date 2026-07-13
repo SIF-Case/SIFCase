@@ -36,6 +36,24 @@ type Nfo = {
 
 const ICON_OPTIONS: StrategyPoint["icon"][] = ["pulse", "clock", "shield", "chart", "lock"];
 
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function amcShortFor(amc: string): string {
+  const stripped = amc.replace(/\bmutual fund\b/i, "").trim();
+  const first = stripped.split(/\s+/)[0] ?? "";
+  return first.toLowerCase();
+}
+
+function avatarFor(amc: string): string {
+  const stripped = amc.replace(/\bmutual fund\b/i, "").trim();
+  return (stripped[0] ?? "").toUpperCase();
+}
+
 function toDateInput(v: string | null | undefined): string {
   if (!v) return "";
   return new Date(v).toISOString().slice(0, 10);
@@ -78,14 +96,17 @@ function NfoModal({ nfo, onClose, onSaved }: { nfo: Nfo | null; onClose: () => v
   const [form, setForm] = useState<FormState>(nfo ? fromNfo(nfo) : emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slugTouched, setSlugTouched] = useState(!!nfo);
+  const [amcShortTouched, setAmcShortTouched] = useState(!!nfo);
+  const [avatarTouched, setAvatarTouched] = useState(!!nfo);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((p) => ({ ...p, [key]: value }));
   }
 
   async function save() {
-    if (!form.name.trim() || !form.amc.trim() || !form.openDate || !form.closeDate || !form.allotmentDate) {
-      setError("Name, AMC, open/close/allotment dates are required");
+    if (!form.name.trim() || !form.amc.trim() || !form.openDate || !form.closeDate) {
+      setError("Name, AMC, open date, and close date are required");
       return;
     }
     setSaving(true);
@@ -96,8 +117,10 @@ function NfoModal({ nfo, onClose, onSaved }: { nfo: Nfo | null; onClose: () => v
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Save failed"); return; }
+      const raw = await res.text();
+      let data: { error?: string } | null = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* non-JSON response (e.g. server crash page) */ }
+      if (!res.ok) { setError(data?.error || `Save failed (${res.status})`); return; }
       onSaved();
       onClose();
     } finally {
@@ -120,19 +143,56 @@ function NfoModal({ nfo, onClose, onSaved }: { nfo: Nfo | null; onClose: () => v
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Fund name">
-              <input value={form.name} onChange={(e) => set("name", e.target.value)} className={inputCls} placeholder="Kotak Infinity Hybrid Long-Short Fund" />
+              <input
+                value={form.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setForm((p) => ({ ...p, name, slug: slugTouched ? p.slug : slugify(name) }));
+                }}
+                className={inputCls}
+                placeholder="Kotak Infinity Hybrid Long-Short Fund"
+              />
             </Field>
             <Field label="Slug (blank = auto)">
-              <input value={form.slug} onChange={(e) => set("slug", e.target.value)} className={inputCls} placeholder="kotak-infinity-hybrid" />
+              <input
+                value={form.slug}
+                onChange={(e) => { setSlugTouched(true); set("slug", e.target.value); }}
+                className={inputCls}
+                placeholder="kotak-infinity-hybrid"
+              />
             </Field>
             <Field label="AMC (fund house)">
-              <input value={form.amc} onChange={(e) => set("amc", e.target.value)} className={inputCls} placeholder="Kotak Mahindra Mutual Fund" />
+              <input
+                value={form.amc}
+                onChange={(e) => {
+                  const amc = e.target.value;
+                  setForm((p) => ({
+                    ...p,
+                    amc,
+                    amcShort: amcShortTouched ? p.amcShort : amcShortFor(amc),
+                    avatar: avatarTouched ? p.avatar : avatarFor(amc),
+                  }));
+                }}
+                className={inputCls}
+                placeholder="Kotak Mahindra Mutual Fund"
+              />
             </Field>
             <Field label="AMC short code">
-              <input value={form.amcShort} onChange={(e) => set("amcShort", e.target.value)} className={inputCls} placeholder="kotak" />
+              <input
+                value={form.amcShort}
+                onChange={(e) => { setAmcShortTouched(true); set("amcShort", e.target.value); }}
+                className={inputCls}
+                placeholder="kotak"
+              />
             </Field>
             <Field label="Avatar letter(s)">
-              <input value={form.avatar} onChange={(e) => set("avatar", e.target.value)} className={inputCls} placeholder="K" maxLength={3} />
+              <input
+                value={form.avatar}
+                onChange={(e) => { setAvatarTouched(true); set("avatar", e.target.value); }}
+                className={inputCls}
+                placeholder="K"
+                maxLength={3}
+              />
             </Field>
             <Field label="Category">
               <select value={form.category} onChange={(e) => set("category", e.target.value as FormState["category"])} className={inputCls}>
@@ -157,7 +217,7 @@ function NfoModal({ nfo, onClose, onSaved }: { nfo: Nfo | null; onClose: () => v
           <div className="grid grid-cols-2 gap-3">
             <Field label="NFO opened"><input type="date" value={form.openDate} onChange={(e) => set("openDate", e.target.value)} className={inputCls} /></Field>
             <Field label="Closes"><input type="date" value={form.closeDate} onChange={(e) => set("closeDate", e.target.value)} className={inputCls} /></Field>
-            <Field label="Allotment date"><input type="date" value={form.allotmentDate} onChange={(e) => set("allotmentDate", e.target.value)} className={inputCls} /></Field>
+            <Field label="Allotment date (optional)"><input type="date" value={form.allotmentDate} onChange={(e) => set("allotmentDate", e.target.value)} className={inputCls} /></Field>
             <Field label="Reopens (optional)"><input type="date" value={form.reopenDate} onChange={(e) => set("reopenDate", e.target.value)} className={inputCls} /></Field>
             <Field label="Min. investment (₹)"><input type="number" value={form.minInvestment} onChange={(e) => set("minInvestment", Number(e.target.value))} className={inputCls} /></Field>
             <Field label="Subscription price (₹/unit)"><input type="number" step="0.01" value={form.subscriptionPrice} onChange={(e) => set("subscriptionPrice", Number(e.target.value))} className={inputCls} /></Field>

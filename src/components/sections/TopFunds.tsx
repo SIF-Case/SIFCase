@@ -52,7 +52,7 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   if (data.length < 2) return (
     <div
       className="flex items-center justify-center text-[11px] text-[#90a5ba] font-medium"
-      style={{ height: H, borderRadius: 8, background: "#f0f0f0" }}
+      style={{ height: H, borderRadius: 8, background: "#f8f9fa" }}
     >
       No chart data available
     </div>
@@ -84,7 +84,7 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
   const tipAnchorRight = tip && tip.x > W * 0.6;
 
   return (
-    <div className="relative" style={{ borderRadius: 8, background: "#f0f0f0", overflow: "hidden" }}>
+    <div className="relative w-full" style={{ borderRadius: 8 }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -100,37 +100,64 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={areaPath} fill={`url(#${gradId})`} />
-        <path d={linePath} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={last.x} cy={last.y} r="3" fill={color} />
-
-        {tip && (
-          <>
-            <line x1={tip.x} y1={PAD} x2={tip.x} y2={H} stroke={color} strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.5" />
-            <circle cx={tip.x} cy={tip.y} r="4" fill="white" stroke={color} strokeWidth="1.8" />
-          </>
-        )}
+        <path d={linePath} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
 
+      <div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          left: `calc(${(last.x / W) * 100}% - 3px)`,
+          top: `calc(${(last.y / H) * 100}% - 3px)`,
+          width: 6,
+          height: 6,
+          backgroundColor: color,
+        }}
+      />
+
       {tip && (
-        <div
-          className="pointer-events-none absolute z-10 text-white text-[10px] font-semibold rounded-md px-2 py-1 leading-snug shadow-lg whitespace-nowrap"
-          style={{
-            background: "#0d2b3e",
-            bottom: `${H - tip.y + 10}px`,
-            ...(tipAnchorRight
-              ? { right: `${(1 - tip.x / W) * 100}%` }
-              : { left: `${(tip.x / W) * 100}%` }),
-            transform: tipAnchorRight ? "translateX(0)" : "translateX(-50%)",
-          }}
-        >
-          <p className="nums">₹{tipNav.toFixed(4)}</p>
-          <p className="text-[9px] font-normal opacity-75">{tipDate}</p>
-        </div>
+        <>
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: `${(tip.x / W) * 100}%`,
+              top: `${(PAD / H) * 100}%`,
+              bottom: 0,
+              width: 1,
+              borderLeft: `1px dashed ${color}`,
+              opacity: 0.5,
+            }}
+          />
+          <div
+            className="absolute pointer-events-none rounded-full"
+            style={{
+              left: `calc(${(tip.x / W) * 100}% - 4px)`,
+              top: `calc(${(tip.y / H) * 100}% - 4px)`,
+              width: 8,
+              height: 8,
+              backgroundColor: 'white',
+              border: `2px solid ${color}`,
+            }}
+          />
+          <div
+            className="pointer-events-none absolute z-20 text-white text-[10px] font-semibold rounded-md px-2 py-1 leading-snug shadow-lg whitespace-nowrap"
+            style={{
+              background: "#0d2b3e",
+              bottom: `calc(${100 - (tip.y / H) * 100}% + 10px)`,
+              ...(tipAnchorRight
+                ? { right: `${(1 - tip.x / W) * 100}%` }
+                : { left: `${(tip.x / W) * 100}%` }),
+              transform: tipAnchorRight ? "translateX(0)" : "translateX(-50%)",
+            }}
+          >
+            <p className="nums">₹{tipNav.toFixed(4)}</p>
+            <p className="text-[9px] font-normal opacity-75">{tipDate}</p>
+          </div>
+        </>
       )}
     </div>
   );

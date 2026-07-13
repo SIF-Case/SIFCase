@@ -16,7 +16,7 @@ function formatRupees(n: number): string {
 type NfoLean = {
   slug: string; amc: string; amcShort: string; avatar: string; name: string;
   category: "Equity" | "Hybrid"; structure: "Open-ended" | "Close-ended";
-  openDate: Date; closeDate: Date; allotmentDate: Date; reopenDate: Date | null;
+  openDate: Date; closeDate: Date; allotmentDate: Date | null; reopenDate: Date | null;
   minInvestment: number; subscriptionPrice: number; exitLoad: string; benchmark: string;
   riskLevel: string; riskColor: string;
   allocationBands: NFOData["allocationBands"];
@@ -38,7 +38,7 @@ function toNFOData(doc: NfoLean): NFOData & { minInvestmentValue: number } {
     daysLeft,
     closeDate: formatDisplayDate(doc.closeDate),
     openDate: formatDisplayDate(doc.openDate),
-    allotmentDate: formatDisplayDate(doc.allotmentDate),
+    allotmentDate: doc.allotmentDate ? formatDisplayDate(doc.allotmentDate) : "",
     reopenDate: doc.reopenDate ? formatDisplayDate(doc.reopenDate) : "",
     minInvestment: formatRupees(doc.minInvestment),
     minInvestmentValue: doc.minInvestment,

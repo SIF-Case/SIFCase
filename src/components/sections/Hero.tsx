@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { HeroHeatmap } from "@/components/sections/HeroHeatmap";
 import type { FundRow, SnapshotStats } from "@/lib/sifData";
+import type { NFOData } from "@/lib/nfoData";
 
-export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[] }) {
+export function Hero({ stats, topFund, allFunds, nextNfo }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[]; nextNfo?: NFOData }) {
   return (
     <section
       className="overflow-hidden px-5 py-12 sm:px-10 sm:py-16 lg:px-[113px] lg:py-[84px]"
@@ -62,7 +63,7 @@ export function Hero({ stats, topFund, allFunds }: { stats?: SnapshotStats; topF
 
           {/* Right: heatmap panel */}
           <div className="mx-auto w-full max-w-[378px] lg:mx-0">
-            <HeroHeatmap stats={stats} topFund={topFund} allFunds={allFunds} />
+            <HeroHeatmap stats={stats} topFund={topFund} allFunds={allFunds} nextNfo={nextNfo} />
           </div>
         </div>
       </div>

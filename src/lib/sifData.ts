@@ -65,6 +65,45 @@ export interface FundRow {
   sparklines: Record<PeriodKey, number[]>;
   sparklineDates: Record<PeriodKey, string[]>;
   riskBand: 1 | 2 | 3 | 4 | 5 | null;
+  expenseRatio: string | null;
+  exitLoad: string | null;
+  factsheetUrl: string | null;
+  schemeInfoDocumentUrl: string | null;
+  portfolioDisclosureUrl: string | null;
+  option: string;
+  benchmarkName: string | null;
+  benchmarkRiskBand: 1 | 2 | 3 | 4 | 5 | null;
+  fundManagers: { name: string; designation?: string; experienceYears?: string; managingSince?: string }[];
+  inceptionDate: string | null;
+  minInvestment: number | null;
+  additionalInvestment: number | null;
+  schemeCategory: string | null;
+  schemeNature: string | null;
+  redemptionFrequency: string | null;
+  navCutoffTime: string | null;
+  redemptionPayoutDays: string | null;
+  taxationSummary: string | null;
+  suitableFor: string | null;
+  notSuitableFor: string | null;
+  sponsorName: string | null;
+  trusteeName: string | null;
+  registrarName: string | null;
+  fundamentals: {
+    pe: number | null; categoryAveragePe: number | null;
+    pb: number | null; categoryAveragePb: number | null;
+    dividendYield: number | null; categoryAverageDividendYield: number | null;
+    roe: number | null; categoryAverageRoe: number | null;
+  } | null;
+  concentration: {
+    numberOfHoldings: number | null;
+    averageMarketCap: string | null;
+    top3SectorWeight: number | null;
+    top5StocksWeight: number | null;
+    top10StocksWeight: number | null;
+  } | null;
+  marketCapWeightage: { largeCap: number | null; midCap: number | null; smallCap: number | null; others: number | null } | null;
+  assetAllocation: { assetClass: string; percentage: number }[];
+  topHoldings: { name: string; percentage: number; sector?: string; rating?: string }[];
 }
 
 export interface TickerNav {
@@ -417,13 +456,22 @@ async function _getTopFunds(): Promise<FundRow[]> {
   const db = mongoose.connection.db!;
   const fundNames = sorted.map((s) => s.fundName);
   const detailsDocs = await db.collection("funddetails")
-    .find({ fundName: { $in: fundNames } }, { projection: { fundName: 1, riskBand: 1, aumCurrent: 1, aumAggregate: 1, aumEnd: 1, _id: 0 } })
+    .find({ fundName: { $in: fundNames } }, { projection: {
+      fundName: 1, riskBand: 1, aumCurrent: 1, aumAggregate: 1, aumEnd: 1, terMax: 1, exitLoad: 1, factsheets: 1,
+      benchmarkName: 1, benchmarkRiskBand: 1, fundManagers: 1, inceptionDate: 1, minInvestment: 1, additionalInvestment: 1,
+      schemeCategory: 1, schemeNature: 1, redemptionFrequency: 1, navCutoffTime: 1, redemptionPayoutDays: 1,
+      taxationSummary: 1, suitableFor: 1, notSuitableFor: 1, sponsorName: 1, trusteeName: 1, registrarName: 1,
+      fundamentals: 1, concentration: 1, marketCapWeightage: 1, assetAllocation: 1, topHoldings: 1,
+      _id: 0,
+    } })
     .toArray();
   const riskBandByName = new Map<string, 1 | 2 | 3 | 4 | 5 | null>();
   const aumByName = new Map<string, number | null>();
+  const detailsByFundName = new Map<string, any>();
   for (const d of detailsDocs) {
     riskBandByName.set(d.fundName as string, normaliseRiskBandEarly(d.riskBand));
     aumByName.set(d.fundName as string, d.aumCurrent ?? d.aumAggregate ?? d.aumEnd ?? null);
+    detailsByFundName.set(d.fundName as string, d);
   }
 
   const funds: FundRow[] = sorted.map((s) => {
@@ -442,7 +490,7 @@ async function _getTopFunds(): Promise<FundRow[]> {
     // return in the window captures the weekend/holiday gap correctly.
     const sliceFor = (cutoff: Date) => {
       const idx = lastIdxOnOrBefore(allHistory, cutoff);
-      return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
+      return idx >= 0 ? allHistory.slice(idx) : [];
     };
 
     const sharpes: Record<PeriodKey, number | null> = {
@@ -509,6 +557,34 @@ async function _getTopFunds(): Promise<FundRow[]> {
       sparklines,
       sparklineDates,
       riskBand: riskBandByName.get(s.fundName) ?? null,
+      expenseRatio: detailsByFundName.get(s.fundName)?.terMax ?? null,
+      exitLoad: detailsByFundName.get(s.fundName)?.exitLoad ?? null,
+      factsheetUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "Factsheet")?.url ?? null,
+      schemeInfoDocumentUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "KIM")?.url ?? null,
+      portfolioDisclosureUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "XLS - Summary Document")?.url ?? null,
+      option: s.option,
+      benchmarkName: detailsByFundName.get(s.fundName)?.benchmarkName || null,
+      benchmarkRiskBand: normaliseRiskBandEarly(detailsByFundName.get(s.fundName)?.benchmarkRiskBand),
+      fundManagers: detailsByFundName.get(s.fundName)?.fundManagers ?? [],
+      inceptionDate: detailsByFundName.get(s.fundName)?.inceptionDate || null,
+      minInvestment: detailsByFundName.get(s.fundName)?.minInvestment ?? null,
+      additionalInvestment: detailsByFundName.get(s.fundName)?.additionalInvestment ?? null,
+      schemeCategory: detailsByFundName.get(s.fundName)?.schemeCategory || null,
+      schemeNature: detailsByFundName.get(s.fundName)?.schemeNature || null,
+      redemptionFrequency: detailsByFundName.get(s.fundName)?.redemptionFrequency || null,
+      navCutoffTime: detailsByFundName.get(s.fundName)?.navCutoffTime || null,
+      redemptionPayoutDays: detailsByFundName.get(s.fundName)?.redemptionPayoutDays || null,
+      taxationSummary: detailsByFundName.get(s.fundName)?.taxationSummary || null,
+      suitableFor: detailsByFundName.get(s.fundName)?.suitableFor || null,
+      notSuitableFor: detailsByFundName.get(s.fundName)?.notSuitableFor || null,
+      sponsorName: detailsByFundName.get(s.fundName)?.sponsorName || null,
+      trusteeName: detailsByFundName.get(s.fundName)?.trusteeName || null,
+      registrarName: detailsByFundName.get(s.fundName)?.registrarName || null,
+      fundamentals: detailsByFundName.get(s.fundName)?.fundamentals ?? null,
+      concentration: detailsByFundName.get(s.fundName)?.concentration ?? null,
+      marketCapWeightage: detailsByFundName.get(s.fundName)?.marketCapWeightage ?? null,
+      assetAllocation: detailsByFundName.get(s.fundName)?.assetAllocation ?? [],
+      topHoldings: detailsByFundName.get(s.fundName)?.topHoldings ?? [],
     };
   });
 
@@ -853,7 +929,7 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
 
   const sliceFor = (cutoff: Date) => {
     const idx = lastIdxOnOrBefore(allHistory, cutoff);
-    return idx >= 0 ? allHistory.slice(idx) : allHistory.filter((r) => r.navDate >= cutoff);
+    return idx >= 0 ? allHistory.slice(idx) : [];
   };
 
   const ytdCutoff = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1));

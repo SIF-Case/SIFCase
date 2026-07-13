@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { FundRow, SnapshotStats } from "@/lib/sifData";
+import type { NFOData } from "@/lib/nfoData";
 import { fundHref } from "@/lib/slugify";
 
 type SignalBar = "orange" | "white";
@@ -106,7 +107,7 @@ function formatCurrency(value: number | null | undefined) {
   return `₹${value.toFixed(2)}`;
 }
 
-export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[] }) {
+export function HeroHeatmap({ stats, topFund, allFunds, nextNfo }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[]; nextNfo?: NFOData }) {
   const oneMonthReturn = topFund?.returns?.["1M"];
   const marketTitle =
     stats ? `${stats.totalGrowthRegular} SIFs - ${stats.totalNavRecords.toLocaleString("en-IN")} NAV records` : "94 SIFs - ₹ 1,950 Cr AUM";
@@ -152,14 +153,16 @@ export function HeroHeatmap({ stats, topFund, allFunds }: { stats?: SnapshotStat
         href="/sifs"
       />
 
-      <FloatingStatCard
-        className="left-[18%] top-[68%] h-[38%] w-[60%] hero-card hero-card-3 z-[3]"
-        eyebrow="NFO OPEN"
-        title="Kotak Infinity Hybrid L'S"
-        detail="Closes 29 jun"
-        trend="NFO OPEN"
-        href="/nfos"
-      />
+      {nextNfo && (
+        <FloatingStatCard
+          className="left-[18%] top-[68%] h-[38%] w-[60%] hero-card hero-card-3 z-[3]"
+          eyebrow="NFO OPEN"
+          title={nextNfo.name}
+          detail={`Closes ${nextNfo.closeDate.replace(/(\d+)\s(\w+)\s\d+/, (_, d, m) => `${d} ${m.toLowerCase()}`)}`}
+          trend="NFO OPEN"
+          href={`/nfos/${nextNfo.slug}`}
+        />
+      )}
     </div>
   );
 }

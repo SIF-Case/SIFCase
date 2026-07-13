@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, DM_Sans } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
+import { Analytics } from "@vercel/analytics/next";
 import { UserTracker } from "@/components/UserTracker";
 import { CallbackPopup } from "@/components/ui/CallbackPopup";
 import "./globals.css";
@@ -49,6 +50,7 @@ export default function RootLayout({
           <UserTracker />
           <CallbackPopup />
           {children}
+          <Analytics />
         </SessionProvider>
       </body>
     </html>

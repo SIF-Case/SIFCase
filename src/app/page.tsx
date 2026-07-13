@@ -22,6 +22,7 @@ import {
   getLatestPublishedReport,
   getPublishedFaqs,
 } from "@/lib/sifData";
+import { getOpenNfos } from "@/lib/nfoQueries";
 
 // recharts is heavy — split out of the initial homepage bundle, load on demand.
 const BuildYourCompare = dynamic(
@@ -32,12 +33,13 @@ const BuildYourCompare = dynamic(
 // Admin sign-in redirect now happens in middleware.ts (matcher: "/") — keeping
 // auth()/cookies() out of this component lets it stay statically cached (ISR).
 export default async function HomePage() {
-  const [stats, topFunds, tickerNavs, latestReport, faqGroups] = await Promise.all([
+  const [stats, topFunds, tickerNavs, latestReport, faqGroups, openNfos] = await Promise.all([
     getSnapshotStats(),
     getTopFunds(),
     getTickerNavs(),
     getLatestPublishedReport(),
     getPublishedFaqs(),
+    getOpenNfos(),
   ]);
 
   const compareFunds = topFunds.map(({ schemeCode, name }) => ({ schemeCode, name }));
@@ -47,7 +49,7 @@ export default async function HomePage() {
       <main className="flex flex-col min-h-screen">
         <TickerRibbon navItems={tickerNavs} />
         <Navbar />
-        <Hero stats={stats} topFund={topFunds[0]} allFunds={topFunds} />
+        <Hero stats={stats} topFund={topFunds[0]} allFunds={topFunds} nextNfo={openNfos[0]} />
         <WhySIFcase />
         <MarketSnapshot stats={stats} />
         <PerformanceReportBanner report={latestReport} />

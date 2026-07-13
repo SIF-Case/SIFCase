@@ -545,7 +545,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                               <SEBIRiskometer
                                 level={fundDetails.benchmarkRiskBand}
                                 title={fundDetails.benchmarkName || "Benchmark"}
-                                subtitle="as applicable"
                               />
                             )}
                           </div>
@@ -918,8 +917,8 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   {[
                     { label: "Compare with other funds →", href: `/compare?funds=${encodeURIComponent(fund.schemeCode)}` },
                     { label: "Learn how SIFs work →", href: "/sif-101" },
-                    { label: "View open NFOs →", href: "/sifs?filter=nfo" },
-                    { label: "Speak to a specialist →", href: "#" },
+                    { label: "View open NFOs →", href: "/nfos" },
+                    { label: "Speak to a specialist →", href: "mailto:support@sifcase.com" },
                   ].map(({ label, href }) => (
                     <Link
                       key={label}

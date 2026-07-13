@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
   await connectDB();
   const body = await req.json();
   const { name, amc, category, openDate, closeDate, allotmentDate, minInvestment, subscriptionPrice } = body;
-  if (!name || !amc || !category || !openDate || !closeDate || !allotmentDate) {
-    return NextResponse.json({ error: "Name, AMC, category, open/close/allotment dates required" }, { status: 400 });
+  if (!name || !amc || !category || !openDate || !closeDate || minInvestment == null || subscriptionPrice == null) {
+    return NextResponse.json({ error: "Name, AMC, category, open/close dates, min. investment, and subscription price are required" }, { status: 400 });
   }
 
   let slug = typeof body.slug === "string" && body.slug.trim() ? slugify(body.slug) : slugify(name);
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     structure: body.structure || "Open-ended",
     openDate: new Date(openDate),
     closeDate: new Date(closeDate),
-    allotmentDate: new Date(allotmentDate),
+    allotmentDate: allotmentDate ? new Date(allotmentDate) : null,
     reopenDate: body.reopenDate ? new Date(body.reopenDate) : null,
     minInvestment: Number(minInvestment) || 0,
     subscriptionPrice: Number(subscriptionPrice) || 0,

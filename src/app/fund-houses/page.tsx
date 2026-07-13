@@ -39,7 +39,6 @@ interface FundHouseSummary {
   brandName: string;
   companyName: string;
   schemeCount: number;
-  activeCount: number;
   logoUrl: string;
   overview: string;
 }
@@ -52,15 +51,12 @@ async function getFundHouses(): Promise<FundHouseSummary[]> {
     db
       .collection("sifschemes")
       .aggregate([
-        { $match: { brandName: { $exists: true, $ne: "" } } },
+        { $match: { brandName: { $exists: true, $ne: "" }, plan: "Regular", option: "Growth" } },
         {
           $group: {
             _id: "$brandName",
             companyName: { $first: "$companyName" },
             schemeCount: { $sum: 1 },
-            activeCount: {
-              $sum: { $cond: [{ $eq: ["$plan", "Regular"] }, 1, 0] },
-            },
           },
         },
         { $sort: { _id: 1 } },
@@ -77,7 +73,6 @@ async function getFundHouses(): Promise<FundHouseSummary[]> {
       brandName: r._id as string,
       companyName: (r.companyName as string) || (r._id as string),
       schemeCount: r.schemeCount as number,
-      activeCount: r.activeCount as number,
       logoUrl: b?.logoUrl ?? "",
       overview: b?.overview ?? "",
     };
@@ -188,7 +183,7 @@ export default async function FundHousesPage() {
                         {fh.schemeCount}
                       </div>
                       <div className="text-[11px] text-muted mt-1 uppercase tracking-wide font-semibold">
-                        Scheme{fh.schemeCount !== 1 ? "s" : ""}
+                        Fund{fh.schemeCount !== 1 ? "s" : ""}
                       </div>
                     </div>
                   </div>

@@ -35,7 +35,7 @@ export interface INfo extends Document {
   structure: "Open-ended" | "Close-ended";
   openDate: Date;
   closeDate: Date;
-  allotmentDate: Date;
+  allotmentDate: Date | null;
   reopenDate: Date | null;
   minInvestment: number;
   subscriptionPrice: number;
@@ -87,7 +87,7 @@ const NfoSchema = new Schema<INfo>(
     structure: { type: String, enum: ["Open-ended", "Close-ended"], default: "Open-ended" },
     openDate: { type: Date, required: true },
     closeDate: { type: Date, required: true },
-    allotmentDate: { type: Date, required: true },
+    allotmentDate: { type: Date, default: null },
     reopenDate: { type: Date, default: null },
     minInvestment: { type: Number, required: true },
     subscriptionPrice: { type: Number, required: true },
