@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Load pdfjs-dist from node_modules at runtime instead of bundling it. The
+  // report route parses the AMFI PDF with the legacy build, which works in Node
+  // without a worker; when bundled, its fake-worker fallback tries to import a
+  // pdf.worker chunk that doesn't exist → "Setting up fake worker failed".
+  serverExternalPackages: ["pdfjs-dist"],
   turbopack: {
     root: __dirname,
   },
