@@ -76,45 +76,44 @@ export function parseUniverseText(text: string, monthLabel: string): UniverseDat
     );
   }
 
-  // Reconcile: AMFI's own printed Sub Total rows must match the sum of their
-  // member categories (an independent cross-check against the Grand Total guard above).
-  const SUBTOTALS: { match: RegExp; members: CategoryKey[] }[] = [
-    { match: /^Sub Total - I \(i\+ii\+iii\)/i, members: ["equity_ls", "equity_ex100_ls", "sector_rotation_ls"] },
-    { match: /^Sub Total - II \(i\+ii\)/i, members: ["debt_ls"] },
-    { match: /^Sub Total - III \(i\+ii\+iii\+iv\+v\+vi\)/i, members: ["aaa_ls", "hybrid_ls"] },
+  // Reconcile: AMFI's own printed Sub Total rows must sum to the Grand Total.
+  // Parsed directly from the printed lines (not reconstructed from category
+  // members) so a future fund with no CategoryKey slot (e.g. "Sectoral Debt
+  // Long-Short Fund") can never cause a false-positive reconciliation failure.
+  const SUBTOTAL_LINES: { match: RegExp; label: string }[] = [
+    { match: /^Sub Total - I \(i\+ii\+iii\)/i, label: "Sub Total - I" },
+    { match: /^Sub Total - II \(i\+ii\)/i, label: "Sub Total - II" },
+    { match: /^Sub Total - III \(i\+ii\+iii\+iv\+v\+vi\)/i, label: "Sub Total - III" },
   ];
-  for (const st of SUBTOTALS) {
+  const subtotals = SUBTOTAL_LINES.map((st) => {
     const line = lines.find((l) => st.match.test(l.trim()));
-    if (!line) continue;
+    if (!line) throw new Error(`AMFI parse: ${st.label} row not found`);
     const t = line.trim();
     const n = nums(t.replace(st.match, ""));
-    if (n.length < 6) continue;
-    const printed = rowFrom(n);
-    const memberSum = st.members.reduce(
-      (a, key) => {
-        const c = found.get(key);
-        if (!c) return a;
-        return {
-          schemes: a.schemes + c.schemes, folios: a.folios + c.folios,
-          aumCr: round2(a.aumCr + c.aumCr), grossInflowCr: round2(a.grossInflowCr + c.grossInflowCr),
-          netFlowCr: round2(a.netFlowCr + c.netFlowCr),
-        };
-      },
-      { schemes: 0, folios: 0, aumCr: 0, grossInflowCr: 0, netFlowCr: 0 },
+    if (n.length < 6) throw new Error(`AMFI parse: ${st.label} row missing expected numeric columns`);
+    return rowFrom(n);
+  });
+  const subtotalSum = subtotals.reduce(
+    (a, s) => ({
+      schemes: a.schemes + s.schemes, folios: a.folios + s.folios,
+      aumCr: round2(a.aumCr + s.aumCr), grossInflowCr: round2(a.grossInflowCr + s.grossInflowCr),
+      netFlowCr: round2(a.netFlowCr + s.netFlowCr),
+    }),
+    { schemes: 0, folios: 0, aumCr: 0, grossInflowCr: 0, netFlowCr: 0 },
+  );
+  const subBad =
+    subtotalSum.schemes !== grandTotal.schemes ||
+    subtotalSum.folios !== grandTotal.folios ||
+    Math.abs(subtotalSum.aumCr - grandTotal.aumCr) > 0.5 ||
+    Math.abs(subtotalSum.grossInflowCr - grandTotal.grossInflowCr) > 0.5 ||
+    Math.abs(subtotalSum.netFlowCr - grandTotal.netFlowCr) > 0.5;
+  if (subBad) {
+    throw new Error(
+      `AMFI reconciliation failed: sub-totals sum ${JSON.stringify(subtotalSum)} != grand total ${JSON.stringify({
+        schemes: grandTotal.schemes, folios: grandTotal.folios, aumCr: grandTotal.aumCr,
+        grossInflowCr: grandTotal.grossInflowCr, netFlowCr: grandTotal.netFlowCr,
+      })}`,
     );
-    const subBad =
-      memberSum.schemes !== printed.schemes ||
-      memberSum.folios !== printed.folios ||
-      Math.abs(memberSum.aumCr - printed.aumCr) > 0.5 ||
-      Math.abs(memberSum.grossInflowCr - printed.grossInflowCr) > 0.5 ||
-      Math.abs(memberSum.netFlowCr - printed.netFlowCr) > 0.5;
-    if (subBad) {
-      throw new Error(
-        `AMFI reconciliation failed: sub-total members sum ${JSON.stringify(memberSum)} != printed sub-total ${JSON.stringify(
-          { schemes: printed.schemes, folios: printed.folios, aumCr: printed.aumCr, grossInflowCr: printed.grossInflowCr, netFlowCr: printed.netFlowCr },
-        )}`,
-      );
-    }
   }
 
   const nsr = parseNsr(lines);
@@ -128,38 +127,31 @@ function round2(n: number): number { return Math.round(n * 100) / 100; }
 // column may wrap onto the next line (continuation lines have no trailing count).
 function parseNsr(lines: string[]): UniverseData["nsr"] {
   const rows: NsrScheme[] = [];
-  const NSR_CATS = [
-    /^Equity Ex-Top 100 Long-Short Fund\b/i,
-    /^Equity Long-Short Fund\b/i,
-    /^Active Asset Allocator Long-Short Fund\b/i,
-    /^Hybrid Long-Short Fund\b/i,
-    /^Sector Rotation Long-Short Fund\b/i,
-    /^Sectoral Debt Long-Short Fund\b/i,
-    /^Debt Long-Short Fund\b/i,
+  // Each NSR category regex paired with its report label — one match does both jobs.
+  const NSR_CATS: { match: RegExp; label: string }[] = [
+    { match: /^Equity Ex-Top 100 Long-Short Fund\b/i, label: "Equity Ex-Top 100 L-S" },
+    { match: /^Equity Long-Short Fund\b/i, label: "Equity Long-Short" },
+    { match: /^Active Asset Allocator Long-Short Fund\b/i, label: "Active Asset Allocator L-S" },
+    { match: /^Hybrid Long-Short Fund\b/i, label: "Hybrid Long-Short" },
+    { match: /^Sector Rotation Long-Short Fund\b/i, label: "Sector Rotation L-S" },
+    { match: /^Sectoral Debt Long-Short Fund\b/i, label: "Sectoral Debt Long-Short" },
+    { match: /^Debt Long-Short Fund\b/i, label: "Debt Long-Short" },
   ];
-  const LABEL: Record<string, string> = {
-    "Equity Ex-Top 100 Long-Short Fund": "Equity Ex-Top 100 L-S",
-    "Equity Long-Short Fund": "Equity Long-Short",
-    "Active Asset Allocator Long-Short Fund": "Active Asset Allocator L-S",
-    "Hybrid Long-Short Fund": "Hybrid Long-Short",
-    "Sector Rotation Long-Short Fund": "Sector Rotation L-S",
-  };
 
   // Only scan lines after the NEW SCHEMES marker if present; else scan all.
   for (const raw of lines) {
     const t = raw.trim();
-    const cat = NSR_CATS.find((r) => r.test(t));
+    const cat = NSR_CATS.find((r) => r.match.test(t));
     if (!cat) continue;
     const n = nums(t);
     if (n.length < 2) continue;                  // continuation / header — skip
     const count = n[n.length - 2];
     const mobilised = n[n.length - 1];
     if (!Number.isInteger(count) || count <= 0) continue;
-    const key = Object.keys(LABEL).find((k) => new RegExp("^" + k.replace(/[()]/g, "\\$&"), "i").test(t));
     // scheme names = text between the category label and the trailing two numbers
-    const afterLabel = t.replace(cat, "").trim();
+    const afterLabel = t.replace(cat.match, "").trim();
     const schemeNames = afterLabel.replace(/\s+\d[\d,]*\s+\d[\d,]*$/, "").trim();
-    rows.push({ category: key ? LABEL[key] : t, schemeNames, count, mobilisedCr: mobilised });
+    rows.push({ category: cat.label, schemeNames, count, mobilisedCr: mobilised });
   }
   const totalSchemes = rows.reduce((a, r) => a + r.count, 0);
   const totalMobilisedCr = round2(rows.reduce((a, r) => a + r.mobilisedCr, 0));
