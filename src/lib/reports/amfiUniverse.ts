@@ -1,4 +1,7 @@
 import type { UniverseData, UniverseCategory, NsrScheme, CategoryKey } from "./types";
+// NOTE: legacy build works in Node without a worker.
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { monthMetaFromDate } from "./monthMeta";
 
 // Report display order + canonical labels + match patterns (regex on the row label).
 const CATS: { key: CategoryKey; label: string; match: RegExp }[] = [
@@ -121,6 +124,50 @@ export function parseUniverseText(text: string, monthLabel: string): UniverseDat
 }
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
+
+// Reconstruct text lines from pdfjs text items by grouping on the y-coordinate
+// and ordering left-to-right. Produces one string per visual line — the shape
+// parseUniverseText expects.
+export async function extractPdfLines(data: Uint8Array): Promise<string> {
+  const doc = await getDocument({ data, useWorkerFetch: false, useSystemFonts: true }).promise;
+  const out: string[] = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const content = await page.getTextContent();
+    const byLine = new Map<number, { x: number; s: string }[]>();
+    for (const item of content.items as { str: string; transform: number[] }[]) {
+      const y = Math.round(item.transform[5]); // vertical position
+      const x = item.transform[4];
+      const key = Math.round(y / 2) * 2;        // bucket close y's together
+      if (!byLine.has(key)) byLine.set(key, []);
+      byLine.get(key)!.push({ x, s: item.str });
+    }
+    const ys = [...byLine.keys()].sort((a, b) => b - a); // top→bottom
+    for (const y of ys) {
+      const parts = byLine.get(y)!.sort((a, b) => a.x - b.x);
+      // join with spaces so numeric columns stay separated for the number regex
+      let joined = parts.map((p) => p.s).join(" ").replace(/\s+/g, " ").trim();
+      // AMFI prints each row's serial marker ("i", "ii", "iii", "I", "II", ...) in
+      // its own narrow column immediately left of the scheme-name label, on the
+      // same visual line. Strip it so the label starts at column 0, matching the
+      // shape parseUniverseText's anchored (^) label regexes expect.
+      joined = joined.replace(/^[ivxIVX]{1,4}\s+(?=[A-Za-z])/, "");
+      out.push(joined);
+    }
+  }
+  return out.join("\n");
+}
+
+export async function fetchUniverse(toDate: string): Promise<UniverseData> {
+  const meta = monthMetaFromDate(toDate);
+  const res = await fetch(meta.amfiUrl, { cache: "no-store" } as RequestInit);
+  if (!res.ok) {
+    throw new Error(`AMFI report for ${meta.monthLabel} unavailable (HTTP ${res.status}) at ${meta.amfiUrl}`);
+  }
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const lines = await extractPdfLines(buf);
+  return parseUniverseText(lines, meta.monthLabel);
+}
 
 // NSR rows: category label, wrapped scheme names, count, mobilised.
 // A data row ends with "<count> <mobilised>" (both integers); the scheme-name

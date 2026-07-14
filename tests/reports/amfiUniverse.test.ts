@@ -33,3 +33,15 @@ const broken = text.replace("15         35,764", "14         35,764");
 assert.throws(() => parseUniverseText(broken, "June 2026"), /reconcil/i);
 
 console.log("OK amfiUniverse");
+
+// ── pdfjs extraction path ──────────────────────────────────────────────
+import { extractPdfLines } from "@/lib/reports/amfiUniverse";
+(async () => {
+  const buf = readFileSync(join(process.cwd(), "tests/fixtures/amfi-jun2026.pdf"));
+  const lines = await extractPdfLines(new Uint8Array(buf));
+  const u2 = parseUniverseText(lines, "June 2026");
+  assert.equal(u2.grandTotal.schemes, 27);
+  assert.equal(u2.grandTotal.aumCr, 17857.77);
+  assert.equal(u2.nsr.totalMobilisedCr, 1740);
+  console.log("OK amfiUniverse pdfjs");
+})().catch((e) => { console.error(e); process.exit(1); });
