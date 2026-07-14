@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "import:historical": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/importHistorical.ts",
-    "generate:may-report": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/generate_may_2026_report_data.ts"
+    "generate:may-report": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/generate_may_2026_report_data.ts",
+    "test": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.80",
@@ -35,6 +36,7 @@
     "clsx": "^2.1.1",
     "d3-hierarchy": "^3.1.2",
     "d3-voronoi-treemap": "^1.1.2",
+    "docxtemplater": "^3.69.0",
     "lucide-react": "^1.16.0",
     "mongoose": "^9.6.2",
     "next": "16.2.6",
@@ -42,6 +44,8 @@
     "nodemailer": "^7.0.13",
     "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.3",
+    "pdfjs-dist": "^6.1.200",
+    "pizzip": "^3.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
