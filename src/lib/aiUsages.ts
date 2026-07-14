@@ -23,6 +23,11 @@ export const AI_USAGES: AiUsageDef[] = [
     label: "News — Article Generation",
     description: "Synthesizes selected news items into full original articles (500–700 words each).",
   },
+  {
+    key: "monthly-report",
+    label: "Monthly Report — Prose Generation",
+    description: "Generates the overview, debt-note, and highlights sentences for the SIF monthly DOCX report.",
+  },
 ];
 
 const AI_USAGE_KEYS = new Set(AI_USAGES.map(u => u.key));
