@@ -104,10 +104,15 @@ export function parseUniverseText(text: string, monthLabel: string): UniverseDat
   // Parsed directly from the printed lines (not reconstructed from category
   // members) so a future fund with no CategoryKey slot (e.g. "Sectoral Debt
   // Long-Short Fund") can never cause a false-positive reconciliation failure.
+  // The member suffix in parentheses varies by month (e.g. Sub Total - III is
+  // "(i+ii+iii+iv+v+vi)" some months, "(i+ii)" others), so match the roman
+  // numeral + any "(…)" group. Anchoring on "<numeral> (" keeps I/II/III
+  // distinct ("Sub Total - III (" cannot match the "- I (" or "- II (" rules
+  // because the char after the shorter numeral is "I", not " (").
   const SUBTOTAL_LINES: { match: RegExp; label: string }[] = [
-    { match: /^Sub Total - I \(i\+ii\+iii\)/i, label: "Sub Total - I" },
-    { match: /^Sub Total - II \(i\+ii\)/i, label: "Sub Total - II" },
-    { match: /^Sub Total - III \(i\+ii\+iii\+iv\+v\+vi\)/i, label: "Sub Total - III" },
+    { match: /^Sub Total - I \([^)]*\)/i, label: "Sub Total - I" },
+    { match: /^Sub Total - II \([^)]*\)/i, label: "Sub Total - II" },
+    { match: /^Sub Total - III \([^)]*\)/i, label: "Sub Total - III" },
   ];
   const subtotals = SUBTOTAL_LINES.map((st) => {
     const line = lines.find((l) => st.match.test(l.trim()));
@@ -203,14 +208,20 @@ export async function fetchUniverse(toDate: string): Promise<UniverseData> {
 function parseNsr(lines: string[]): UniverseData["nsr"] {
   const rows: NsrScheme[] = [];
   // Each NSR category regex paired with its report label — one match does both jobs.
+  // "Fund" is optional: in the NSR table AMFI sometimes wraps the trailing
+  // "Fund" of the category label onto the next visual line (e.g. "Active Asset
+  // Allocator Long-Short DynaSIF …" with "Fund" on the following line), so the
+  // row must still match on the "…Long-Short" stem. Order matters — the more
+  // specific "Ex-Top 100" / "Sectoral Debt" patterns precede their shorter
+  // prefixes so the right label wins.
   const NSR_CATS: { match: RegExp; label: string }[] = [
-    { match: /^Equity Ex-Top 100 Long-Short Fund\b/i, label: "Equity Ex-Top 100 L-S" },
-    { match: /^Equity Long-Short Fund\b/i, label: "Equity Long-Short" },
-    { match: /^Active Asset Allocator Long-Short Fund\b/i, label: "Active Asset Allocator L-S" },
-    { match: /^Hybrid Long-Short Fund\b/i, label: "Hybrid Long-Short" },
-    { match: /^Sector Rotation Long-Short Fund\b/i, label: "Sector Rotation L-S" },
-    { match: /^Sectoral Debt Long-Short Fund\b/i, label: "Sectoral Debt Long-Short" },
-    { match: /^Debt Long-Short Fund\b/i, label: "Debt Long-Short" },
+    { match: /^Equity Ex-Top 100 Long-Short(?: Fund)?\b/i, label: "Equity Ex-Top 100 L-S" },
+    { match: /^Equity Long-Short(?: Fund)?\b/i, label: "Equity Long-Short" },
+    { match: /^Active Asset Allocator Long-Short(?: Fund)?\b/i, label: "Active Asset Allocator L-S" },
+    { match: /^Hybrid Long-Short(?: Fund)?\b/i, label: "Hybrid Long-Short" },
+    { match: /^Sector Rotation Long-Short(?: Fund)?\b/i, label: "Sector Rotation L-S" },
+    { match: /^Sectoral Debt Long-Short(?: Fund)?\b/i, label: "Sectoral Debt Long-Short" },
+    { match: /^Debt Long-Short(?: Fund)?\b/i, label: "Debt Long-Short" },
   ];
 
   // Only scan lines after the NEW SCHEMES marker if present; else scan all.
@@ -231,30 +242,31 @@ function parseNsr(lines: string[]): UniverseData["nsr"] {
   const totalSchemes = rows.reduce((a, r) => a + r.count, 0);
   const totalMobilisedCr = round2(rows.reduce((a, r) => a + r.mobilisedCr, 0));
 
-  // Reconcile against AMFI's printed NSR grand total so a missed/duplicated/
-  // mis-parsed NSR row can't silently produce a wrong "N new schemes launched…"
-  // caption. The NSR grand total is the LAST "Grand Total" line in the document
-  // (the universe grand total appears earlier). Its format varies by month:
-  // "Grand Total (A+B) 6" (schemes only) or "Grand Total 5 370" (schemes +
-  // mobilised) — so the schemes count is always checked, mobilised only when
-  // printed. A line with >2 numeric columns is the universe grand total, meaning
-  // the NSR total is absent — treated as drift and thrown, matching the loud
-  // universe-reconciliation behaviour.
-  const gtLines = lines.filter((l) => /^\s*Grand Total\b/.test(l.trim()));
-  const nsrGt = gtLines[gtLines.length - 1];
-  const gtNums = nsrGt ? nums(nsrGt.trim()) : [];
-  if (!nsrGt || gtNums.length === 0 || gtNums.length > 2) {
-    throw new Error("AMFI NSR reconciliation failed: printed NSR grand total row not found");
-  }
-  if (gtNums[0] !== totalSchemes) {
-    throw new Error(
-      `AMFI NSR reconciliation failed: rows sum ${totalSchemes} schemes != printed NSR grand total ${gtNums[0]}`,
+  // Reconcile against AMFI's printed NSR sub-totals ("Sub total A/B") so a
+  // missed/duplicated/mis-parsed NSR row can't silently produce a wrong
+  // "N new schemes launched…" caption. The sub-total lines carry a clean
+  // "<count> <mobilised>" pair and are the reliable cross-check; the NSR grand
+  // total is unusable — its numbers wrap onto adjacent visual lines and its
+  // single trailing value is schemes some months, mobilised others, or absent.
+  // These sub-totals only appear in months that print them (others show a lone
+  // grand total); when absent, reconciliation is skipped rather than blocking
+  // the report. The universe "Sub Total - I/II/III" rows are NOT matched here —
+  // the [AB] class after the label excludes them.
+  const nsrSubtotals = lines
+    .map((l) => l.trim())
+    .filter((l) => /^Sub\s*Total\s+["“]?[AB]["”]?/i.test(l))
+    .map((l) => nums(l))
+    .filter((n) => n.length >= 2);
+  if (nsrSubtotals.length > 0) {
+    const st = nsrSubtotals.reduce(
+      (a, n) => ({ schemes: a.schemes + n[n.length - 2], mob: round2(a.mob + n[n.length - 1]) }),
+      { schemes: 0, mob: 0 },
     );
-  }
-  if (gtNums.length === 2 && Math.abs(gtNums[1] - totalMobilisedCr) > 0.5) {
-    throw new Error(
-      `AMFI NSR reconciliation failed: rows sum ${totalMobilisedCr} mobilised != printed ${gtNums[1]}`,
-    );
+    if (st.schemes !== totalSchemes || Math.abs(st.mob - totalMobilisedCr) > 0.5) {
+      throw new Error(
+        `AMFI NSR reconciliation failed: rows sum ${totalSchemes} schemes / ${totalMobilisedCr} Cr != printed sub-totals ${st.schemes} / ${st.mob}`,
+      );
+    }
   }
   return { rows, totalSchemes, totalMobilisedCr };
 }

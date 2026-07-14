@@ -48,15 +48,27 @@ assert.equal(um.grandTotal.aumCr, 13813.72);
 assert.equal(um.grandTotal.netFlowCr, 1395.81);
 console.log("OK amfiUniverse dash-nil");
 
-// ── NSR reconciliation guard ─────────────────────────────────────────────
-// Printed NSR grand total ("Grand Total (A+B) 6") must match the summed rows.
-assert.equal(u.nsr.totalSchemes, 6);                   // already reconciled above
-const nsrBroken = text.replace("Grand Total (A+B)                               6",
-                               "Grand Total (A+B)                               7");
-assert.throws(() => parseUniverseText(nsrBroken, "June 2026"), /NSR reconciliation/i);
-// May prints a mobilised total too ("Grand Total 5 370") — mutate it → throws.
-const mayNsrBroken = may.replace("Grand Total 5 370", "Grand Total 5 999");
-assert.throws(() => parseUniverseText(mayNsrBroken, "May 2026"), /NSR reconciliation/i);
+// ── March 2026: varying Sub Total III suffix + NSR sub-total reconciliation ──
+// March prints NSR "Sub total A/B" lines and wraps the AAA category's trailing
+// "Fund" onto the next visual line — the AAA new-scheme row must still be caught.
+const mar = readFileSync(join(process.cwd(), "tests/fixtures/amfi-mar2026.txt"), "utf8");
+const umar = parseUniverseText(mar, "March 2026");
+assert.equal(umar.grandTotal.schemes, 14);
+assert.equal(umar.grandTotal.aumCr, 10620.45);
+assert.equal(umar.nsr.rows.length, 3);                 // Equity + AAA(wrapped "Fund") + Hybrid
+assert.equal(umar.nsr.totalSchemes, 3);                // reconciled vs Sub total A(1)+B(2)
+assert.equal(umar.nsr.totalMobilisedCr, 205);          // 40 + 115 + 50
+// Break a printed sub-total → NSR reconciliation must throw.
+const marNsrBroken = mar.replace('Sub total "B" 2 165', 'Sub total "B" 9 165');
+assert.throws(() => parseUniverseText(marNsrBroken, "March 2026"), /NSR reconciliation/i);
+
+// ── April 2026: Sub Total - III printed as "(i+ii)" (variable member suffix) ──
+const apr = readFileSync(join(process.cwd(), "tests/fixtures/amfi-apr2026.txt"), "utf8");
+const uapr = parseUniverseText(apr, "April 2026");
+assert.equal(uapr.grandTotal.schemes, 16);
+assert.equal(uapr.grandTotal.aumCr, 12329.05);
+assert.equal(uapr.nsr.totalSchemes, 2);                // Equity(1) + AAA(1), vs Sub Total A(1)+B(1)
+assert.equal(uapr.nsr.totalMobilisedCr, 162);
 
 // ── column-identity guard ────────────────────────────────────────────────
 // gross inflow must be >= net flow; a shifted column that lands net above gross throws.

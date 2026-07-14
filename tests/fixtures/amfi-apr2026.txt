@@ -1,0 +1,44 @@
+Name of the Mutual Fund: All
+SIF MCR for April 2026
+Net Inflow
+Funds Repurchase/ Net Assets
+(+ve)/Outflo Average Net
+Mobilized for Redemption Net Assets No. of Under
+w (-ve) for Assets Under
+No. of the period for the Under segregated Management
+No. of Folios the period Management
+Schemes as (Since April period (Since Management portfolios in segregated
+Sr Scheme Name as on April (Since April for the
+on April 30, 01, 2026 To April 01, as on April created as on portfolio as
+30, 2026 01, 2026 To month April
+2026 April 30, 2026 To April 30, 2026 (INR April 30, on April 30,
+April 30, 2026 (INR in
+2026) (INR in 30, 2026) in crore) 2026 2026 (INR in
+2026) (INR in crore)
+crore) (INR in crore) crore)
+crore)
+A Equity Oriented Investment Strategies
+Equity Long-Short Fund 5 8,772 270.20 13.26 256.94 1,415.85 1,209.71 0.00 0.00
+Equity Ex-Top 100 Long-Short Fund 2 13,935 227.82 6.52 221.30 1,758.07 1,611.32 0.00 0.00
+Sector Rotation Long-Short Fund 0 0 0.00 0.00 0.00 0.00 0.00 0.00 0.00
+Sub Total - I (i+ii+iii) 7 22,707 498.02 19.78 478.23 3,173.92 2,821.03 0.00 0.00
+B Debt Oriented Investment Strategies
+Debt Long-Short Fund 0 0 0.00 0.00 0.00 0.00 0.00 0.00 0.00
+Sectoral Debt Long-Short Fund 0 0 0.00 0.00 0.00 0.00 0.00 0.00 0.00
+Sub Total - II (i+ii) 0 0 0.00 0.00 0.00 0.00 0.00 0.00 0.00
+C Hybrid Investment Strategies
+Active Asset Allocator Long-Short Fund 2 467 89.87 0.10 89.78 221.78 167.86 0.00 0.00
+Hybrid Long-Short Fund 7 26,922 815.79 165.12 650.67 8,933.36 8,544.01 0.00 0.00
+Sub Total - III (i+ii) 9 27,389 905.66 165.21 740.44 9,155.13 8,711.87 0.00 0.00
+Grand Total 16 50,096 1,403.68 185.00 1,218.68 12,329.05 11,532.89 0.00 0.00
+SIF Monthly Report for April -2026
+Category of the Scheme Name of the Schemes No. of Funds mobilized
+Schemes (In Crs.)
+A. Equity Oriented Investment Strategies
+Equity Long-Short Fund Sapphire Equity Long-Short SIF 1 121
+Sub Total "A" 1 121
+B. Hybrid Investment Strategies
+Active Asset Allocator Long-Short Fund qsif Active Asset Allocator Long-Short Fund 1 41
+Sub Total "B" 1 41
+Grand Total (A+B) 162
+2
