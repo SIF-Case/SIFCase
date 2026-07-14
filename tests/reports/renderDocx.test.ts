@@ -26,6 +26,11 @@ const text = new PizZip(buf).file("word/document.xml")!.asText();
 assert.ok(text.includes("27"));                       // snapshot number rendered
 assert.ok(text.includes("Equity Long-Short"));        // category row rendered
 assert.ok(text.includes("comprised 27 active schemes"));
+// scalar tags added beyond the stale brief must actually render:
+assert.ok(text.includes("JUNE 2026"), "monthUpper");
+assert.ok(text.includes("17,858"), "snapshotAum");
+assert.ok(text.includes("3,782"), "snapshotNetFlow");
+assert.ok(text.includes("1,740.00"), "nsrMobilised");
 // fixed regulatory text survived untouched:
 assert.ok(text.includes("Minimum investment in equity and equity related instruments"));
 assert.ok(text.includes("SEBI Mandatory Standard Disclaimer"));
