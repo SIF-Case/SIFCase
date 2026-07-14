@@ -11,14 +11,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
 
-  await connectDB();
   const { slug } = await params;
   
-  // Dynamic handling for any report slug
-  const report = await PerformanceReport.findOne({ slug, published: true }).lean();
+  // Hardcoded known reports (no database needed)
+  const knownReports: Record<string, { label: string; monthKey: string; slug: string }> = {
+    "may-2026": { label: "May 2026", monthKey: "2026-05", slug: "may-2026" },
+    "june-2026": { label: "June 2026", monthKey: "2026-06", slug: "june-2026" },
+  };
+  
+  const report = knownReports[slug];
   
   if (!report) {
-    return NextResponse.json({ error: "Report not found" }, { status: 404 });
+    return NextResponse.json({ 
+      error: "Report not found",
+      availableSlugs: Object.keys(knownReports)
+    }, { status: 404 });
   }
 
   try {
@@ -43,13 +50,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     });
   }
 
-  // Fallback to pdfUrl if file doesn't exist locally
-  if (report.pdfUrl) {
-    return NextResponse.redirect(report.pdfUrl);
-  }
-
-  console.error("PDF file not found at:", filePath);
   return NextResponse.json({ 
-    error: `PDF file not found. Please ensure the file is placed at public/reports/${fileName}` 
+    error: `PDF file not found`,
+    expectedPath: `public/reports/${fileName}`
   }, { status: 404 });
 }
