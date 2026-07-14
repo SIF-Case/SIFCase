@@ -153,9 +153,11 @@ function stripDrawing(embedId: string): void {
 // ===========================================================================
 
 // Cover title "JUNE 2026" is split JUN + E + " 2026" across three sz=52 runs.
+// The cover renders the month ALL-CAPS ("JUNE 2026"), so it uses a distinct
+// {monthUpper} tag rather than the mixed-case {monthLabel} used in the body.
 replaceOnce(
   `<w:r w:rsidRPr="00572EAD"><w:rPr><w:b/><w:bCs/><w:color w:val="1B7A5A"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>JUN</w:t></w:r><w:r w:rsidR="00C33E8D"><w:rPr><w:b/><w:bCs/><w:color w:val="1B7A5A"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>E</w:t></w:r><w:r w:rsidRPr="00572EAD"><w:rPr><w:b/><w:bCs/><w:color w:val="1B7A5A"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t xml:space="preserve"> 2026</w:t></w:r>`,
-  `<w:r w:rsidRPr="00572EAD"><w:rPr><w:b/><w:bCs/><w:color w:val="1B7A5A"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{monthLabel}</w:t></w:r>`,
+  `<w:r w:rsidRPr="00572EAD"><w:rPr><w:b/><w:bCs/><w:color w:val="1B7A5A"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{monthUpper}</w:t></w:r>`,
 );
 
 // Cover subtitle "...as of 30th Jun 2026 (Source: AMFI)." — asOfLong is split
@@ -266,6 +268,15 @@ assertRow(11, "Mobilised");
   [13, 14, 15].forEach((i) => deleteRow(ROWS[i]));
 }
 
+// --- §02 NSR header fix: the AMC column actually holds a scheme {count}
+// (AMFI NSR data has no AMC), so rename ONLY this table's header cell text
+// "AMC" -> "Count". The paraId 521277E1 is unique to the NSR header cell, so
+// this does not touch the "AMC" headers in the performance tables. ---
+replaceOnce(
+  `<w:p w14:paraId="521277E1" w14:textId="77777777" w:rsidR="00763431" w:rsidRDefault="00000000"><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="17"/><w:szCs w:val="17"/></w:rPr><w:t>AMC</w:t></w:r></w:p>`,
+  `<w:p w14:paraId="521277E1" w14:textId="77777777" w:rsidR="00763431" w:rsidRDefault="00000000"><w:r><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/><w:sz w:val="17"/><w:szCs w:val="17"/></w:rPr><w:t>Count</w:t></w:r></w:p>`,
+);
+
 // Nine-column performance-table column tags (equity / hybrid / comprehensive).
 const perfTags = (loop: string): string[] => [
   `{#perf.${loop}}{schemeName}`,
@@ -329,10 +340,23 @@ assertRow(92, "1M %");
 }
 
 // ===========================================================================
+// 4b) NSR CAPTION — replace month-varying literals with tags
+// ===========================================================================
+// The caption is a single contiguous run whose "6" (scheme count) and
+// "1,740.00" (mobilised total) are June's literals — a May report would show
+// them wrongly. Tag both (and the inline "June 2026" -> {monthLabel}) so the
+// caption is fully dynamic. Done BEFORE the global "June 2026" step below.
+replaceOnce(
+  `<w:r><w:t>6 new schemes launched in June 2026, raising ₹1,740.00 Cr. Source: AMFI NSR data.</w:t></w:r>`,
+  `<w:r><w:t xml:space="preserve">{universe.nsr.totalSchemes} new schemes launched in {monthLabel}, raising ₹{nsrMobilised} Cr. Source: AMFI NSR data.</w:t></w:r>`,
+);
+
+// ===========================================================================
 // 5) REMAINING MONTH LITERALS
 // ===========================================================================
-// After the prose replacement removed the §02 overview occurrence, the only
-// remaining raw "June 2026" strings are the two AMFI source captions.
+// After the prose replacement removed the §02 overview occurrence and the NSR
+// caption above consumed its own "June 2026", the only remaining raw
+// "June 2026" string is the AMFI monthly-report source caption.
 {
   const before = xml;
   xml = xml.split("June 2026").join("{monthLabel}");
