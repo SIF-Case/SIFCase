@@ -48,6 +48,22 @@ assert.equal(um.grandTotal.aumCr, 13813.72);
 assert.equal(um.grandTotal.netFlowCr, 1395.81);
 console.log("OK amfiUniverse dash-nil");
 
+// ── NSR reconciliation guard ─────────────────────────────────────────────
+// Printed NSR grand total ("Grand Total (A+B) 6") must match the summed rows.
+assert.equal(u.nsr.totalSchemes, 6);                   // already reconciled above
+const nsrBroken = text.replace("Grand Total (A+B)                               6",
+                               "Grand Total (A+B)                               7");
+assert.throws(() => parseUniverseText(nsrBroken, "June 2026"), /NSR reconciliation/i);
+// May prints a mobilised total too ("Grand Total 5 370") — mutate it → throws.
+const mayNsrBroken = may.replace("Grand Total 5 370", "Grand Total 5 999");
+assert.throws(() => parseUniverseText(mayNsrBroken, "May 2026"), /NSR reconciliation/i);
+
+// ── column-identity guard ────────────────────────────────────────────────
+// gross inflow must be >= net flow; a shifted column that lands net above gross throws.
+const colBroken = text.replace("333.20        2,225.36", "933.20        2,225.36");
+assert.throws(() => parseUniverseText(colBroken, "June 2026"), /column-identity/i);
+console.log("OK amfiUniverse guards");
+
 // ── pdfjs extraction path ──────────────────────────────────────────────
 import { extractPdfLines } from "@/lib/reports/amfiUniverse";
 (async () => {

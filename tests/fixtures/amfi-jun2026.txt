@@ -13,3 +13,4 @@ Equity Ex-Top 100 Long-Short Fund               Altiva Equity Ex- Top 100 Long -
 Equity Long-Short Fund                          iSIF Equity Long-Short Fund                            1         212
 Active Asset Allocator Long-Short Fund          iSIF Active Asset Allocator Long-Short Fund            1         478
 Hybrid Long-Short Fund                          Platinum Hybrid Long-Short Fund, RedHex Hybrid Long-   2         712
+Grand Total (A+B)                               6

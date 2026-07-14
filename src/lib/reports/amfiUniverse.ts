@@ -61,6 +61,21 @@ export function parseUniverseText(text: string, monthLabel: string): UniverseDat
   const gtn = nums(gtLine);
   const grandTotal: UniverseCategory = { key: "grand_total", label: "Grand Total", ...rowFrom(gtn) };
 
+  // Column-identity sanity check. The category→field mapping in rowFrom is
+  // positional, so the sum-reconciliation below cannot detect a whole-table
+  // column insertion/reorder (every row, including the totals, shifts alike and
+  // still sums). This invariant — funds mobilised (gross) >= net inflow, since
+  // net = mobilised - repurchase and repurchase >= 0 — catches a shift that
+  // lands net and gross in the wrong columns. Full identity still relies on the
+  // human reference-report cross-check.
+  for (const c of [...categories, grandTotal]) {
+    if (c.grossInflowCr + 0.005 < c.netFlowCr) {
+      throw new Error(
+        `AMFI parse: column-identity check failed for "${c.label}" — gross inflow ${c.grossInflowCr} < net flow ${c.netFlowCr} (likely a shifted/reordered column)`,
+      );
+    }
+  }
+
   // Reconcile: sum of the 6 categories must equal grand total (schemes, folios, aum, gross, net).
   const sum = categories.reduce(
     (a, c) => ({
@@ -135,7 +150,9 @@ function round2(n: number): number { return Math.round(n * 100) / 100; }
 // and ordering left-to-right. Produces one string per visual line — the shape
 // parseUniverseText expects.
 export async function extractPdfLines(data: Uint8Array): Promise<string> {
-  const doc = await getDocument({ data, useWorkerFetch: false, useSystemFonts: true }).promise;
+  const loadingTask = getDocument({ data, useWorkerFetch: false, useSystemFonts: true });
+  const doc = await loadingTask.promise;
+  try {
   const out: string[] = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
@@ -162,11 +179,16 @@ export async function extractPdfLines(data: Uint8Array): Promise<string> {
     }
   }
   return out.join("\n");
+  } finally {
+    // Release pdfjs parse state; without this each report request leaks memory.
+    await loadingTask.destroy();
+  }
 }
 
 export async function fetchUniverse(toDate: string): Promise<UniverseData> {
   const meta = monthMetaFromDate(toDate);
-  const res = await fetch(meta.amfiUrl, { cache: "no-store" } as RequestInit);
+  // Cap the AMFI fetch so a stalled portal can't hold the report request open.
+  const res = await fetch(meta.amfiUrl, { cache: "no-store", signal: AbortSignal.timeout(30_000) } as RequestInit);
   if (!res.ok) {
     throw new Error(`AMFI report for ${meta.monthLabel} unavailable (HTTP ${res.status}) at ${meta.amfiUrl}`);
   }
@@ -208,5 +230,31 @@ function parseNsr(lines: string[]): UniverseData["nsr"] {
   }
   const totalSchemes = rows.reduce((a, r) => a + r.count, 0);
   const totalMobilisedCr = round2(rows.reduce((a, r) => a + r.mobilisedCr, 0));
+
+  // Reconcile against AMFI's printed NSR grand total so a missed/duplicated/
+  // mis-parsed NSR row can't silently produce a wrong "N new schemes launched…"
+  // caption. The NSR grand total is the LAST "Grand Total" line in the document
+  // (the universe grand total appears earlier). Its format varies by month:
+  // "Grand Total (A+B) 6" (schemes only) or "Grand Total 5 370" (schemes +
+  // mobilised) — so the schemes count is always checked, mobilised only when
+  // printed. A line with >2 numeric columns is the universe grand total, meaning
+  // the NSR total is absent — treated as drift and thrown, matching the loud
+  // universe-reconciliation behaviour.
+  const gtLines = lines.filter((l) => /^\s*Grand Total\b/.test(l.trim()));
+  const nsrGt = gtLines[gtLines.length - 1];
+  const gtNums = nsrGt ? nums(nsrGt.trim()) : [];
+  if (!nsrGt || gtNums.length === 0 || gtNums.length > 2) {
+    throw new Error("AMFI NSR reconciliation failed: printed NSR grand total row not found");
+  }
+  if (gtNums[0] !== totalSchemes) {
+    throw new Error(
+      `AMFI NSR reconciliation failed: rows sum ${totalSchemes} schemes != printed NSR grand total ${gtNums[0]}`,
+    );
+  }
+  if (gtNums.length === 2 && Math.abs(gtNums[1] - totalMobilisedCr) > 0.5) {
+    throw new Error(
+      `AMFI NSR reconciliation failed: rows sum ${totalMobilisedCr} mobilised != printed ${gtNums[1]}`,
+    );
+  }
   return { rows, totalSchemes, totalMobilisedCr };
 }

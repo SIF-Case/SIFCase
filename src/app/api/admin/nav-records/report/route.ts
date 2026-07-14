@@ -28,7 +28,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Report generation failed";
-    const status = /AMFI/.test(msg) ? 502 : 500;
-    return NextResponse.json({ error: msg }, { status });
+    // AMFI-prefixed errors (source PDF unavailable / failed reconciliation) are
+    // actionable data-availability feedback for the admin, so surface them as
+    // 502. Anything else may carry DB/internal detail — log it server-side and
+    // return a generic message.
+    if (/AMFI/.test(msg)) {
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+    console.error(`[report] generation failed for toDate=${toDate}:`, e);
+    return NextResponse.json({ error: "Report generation failed" }, { status: 500 });
   }
 }
