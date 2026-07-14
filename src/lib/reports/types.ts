@@ -49,9 +49,57 @@ export interface Prose {
   highlightsIntro: string;
 }
 
+// ── Render-ready ("display") shapes ─────────────────────────────────────────
+// The docx template prints these fields verbatim — numbers are pre-formatted
+// (Indian-comma, signed, 2dp) strings, except the counts that must stay
+// numeric (schemes / totalSchemes) because the template does no arithmetic
+// on them but some call sites may still want a number type for clarity.
+export interface UniverseCategoryDisplay {
+  key: CategoryKey | "grand_total";
+  label: string;
+  schemes: number;
+  aumCr: string;
+  folios: string;
+  grossInflowCr: string;
+  netFlowCr: string;
+}
+
+export interface NsrSchemeDisplay {
+  category: string;
+  schemeNames: string;
+  count: number;
+  mobilisedCr: string;
+}
+
+export interface UniverseDisplay {
+  monthLabel: string;
+  categories: UniverseCategoryDisplay[];
+  grandTotal: UniverseCategoryDisplay;
+  nsr: { rows: NsrSchemeDisplay[]; totalSchemes: number; totalMobilisedCr: number };
+}
+
+export interface PerfRowDisplay {
+  schemeName: string;
+  shortCategory: string;
+  amc: string;
+  r1m: string; r3m: string; r6m: string; r1y: string; si: string;
+  since: string;
+}
+
+export interface PerformanceDisplay {
+  equity: PerfRowDisplay[]; hybrid: PerfRowDisplay[]; debt: PerfRowDisplay[];
+  comprehensive: PerfRowDisplay[];
+  top3: PerfRowDisplay[]; bottom3: PerfRowDisplay[];
+  totals: { schemes: number; positive: number; negative: number };
+}
+
 export interface ReportModel {
   monthLabel: string; monthShort: string; asOfLong: string; asOfShort: string; year: number;
-  universe: UniverseData;
-  perf: PerformanceData;
+  monthUpper: string;
+  snapshotAum: string;
+  snapshotNetFlow: string;
+  nsrMobilised: string;
+  universe: UniverseDisplay;
+  perf: PerformanceDisplay;
   prose: Prose;
 }
