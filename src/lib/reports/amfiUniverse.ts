@@ -13,10 +13,16 @@ const CATS: { key: CategoryKey; label: string; match: RegExp }[] = [
   { key: "debt_ls",            label: "Debt Long-Short",             match: /^Debt Long-Short Fund/i },
 ];
 
-// Extract all numeric tokens (handles "14,841" and "2,225.36") from a line.
+// Extract all column values from a line. Handles "14,841" and "2,225.36", and
+// AMFI's nil convention: a standalone "-" (whitespace/edge bounded) means zero.
+// This keeps column positions aligned when some cells are nil — active rows use
+// "-" only for the trailing segregated-portfolio columns, and fully-nil rows
+// (e.g. Debt Long-Short / Sub Total - II in months with no debt schemes) print
+// every cell as "-". A "-" attached to digits (a negative number) is matched by
+// the number alternatives, not this rule.
 function nums(line: string): number[] {
-  const m = line.match(/-?[\d,]+\.\d+|-?[\d,]+/g) ?? [];
-  return m.map((t) => Number(t.replace(/,/g, "")));
+  const m = line.match(/-?\d[\d,]*\.\d+|-?\d[\d,]*|(?<=\s|^)-(?=\s|$)/g) ?? [];
+  return m.map((t) => (t === "-" ? 0 : Number(t.replace(/,/g, ""))));
 }
 
 // AMFI column order after the label:
