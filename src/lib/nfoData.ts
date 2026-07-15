@@ -29,7 +29,7 @@ export interface NFOData {
   amcShort: string;
   avatar: string;
   name: string;
-  category: "Equity" | "Hybrid";
+  category: "Equity" | "Hybrid" | "Debt";
   structure: "Open-ended" | "Close-ended";
   objective: string;
   daysLeft: number;

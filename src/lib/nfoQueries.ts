@@ -16,7 +16,7 @@ function formatRupees(n: number): string {
 
 type NfoLean = {
   slug: string; amc: string; amcShort: string; avatar: string; name: string;
-  category: "Equity" | "Hybrid"; structure: "Open-ended" | "Close-ended"; objective: string;
+  category: "Equity" | "Hybrid" | "Debt"; structure: "Open-ended" | "Close-ended"; objective: string;
   openDate: Date; closeDate: Date; allotmentDate: Date | null; reopenDate: Date | null;
   minInvestment: number; subscriptionPrice: number; exitLoad: string; benchmark: string;
   riskLevel: string; riskColor: string;
