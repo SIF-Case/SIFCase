@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import PerformanceReport from "@/models/PerformanceReport";
 import FundHouse from "@/models/FundHouse";
 import { unstable_cache } from "next/cache";
+import { formatFundName } from "@/lib/utils";
 
 // ── Cache config ─────────────────────────────────────────────────────────────
 // All public data functions are wrapped with Next.js unstable_cache.
@@ -32,6 +33,10 @@ export interface SIFRow {
   schemeCode: string;
   name: string;
   fundName: string;
+  /** Raw, unformatted scheme fundName as stored in the DB. Used to join
+   *  funddetails (which stores the raw name); `fundName` is display-formatted
+   *  by formatFundName and must NOT be used as a join key. */
+  fundNameRaw: string;
   amc: string;
   companyName: string;
   brandName: string;
@@ -351,8 +356,9 @@ async function _getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string,
 
     rows.push({
       schemeCode: code,
-      name: s.schemeName as string,
-      fundName: (s.fundName as string) || (s.schemeName as string),
+      name: formatFundName(s.schemeName as string),
+      fundName: formatFundName((s.fundName as string) || (s.schemeName as string)),
+      fundNameRaw: (s.fundName as string) || (s.schemeName as string),
       amc: s.amc as string,
       companyName: (s.companyName as string) || (s.amc as string),
       brandName: (s.brandName as string) || "",
@@ -490,7 +496,10 @@ async function _getTopFunds(): Promise<FundRow[]> {
 
   // Batch fetch riskBand from funddetails
   const db = mongoose.connection.db!;
-  const fundNames = sorted.map((s) => s.fundName);
+  // Join on the RAW fundName — funddetails stores the unformatted name.
+  // Using the display-formatted fundName here silently drops riskBand/AUM/etc
+  // for any fund whose casing formatFundName rewrites (e.g. qsif -> qSIF).
+  const fundNames = sorted.map((s) => s.fundNameRaw);
   const detailsDocs = await db.collection("funddetails")
     .find({ fundName: { $in: fundNames } }, { projection: {
       fundName: 1, riskBand: 1, aumCurrent: 1, aumAggregate: 1, aumEnd: 1, terMax: 1, exitLoad: 1, factsheets: 1,
@@ -563,8 +572,8 @@ async function _getTopFunds(): Promise<FundRow[]> {
 
     return {
       schemeCode: s.schemeCode,
-      name: s.name,
-      fundName: s.fundName,
+      name: formatFundName(s.name),
+      fundName: formatFundName(s.fundName),
       amc: s.amc,
       companyName: s.companyName,
       strategy: s.strategy,
@@ -573,7 +582,7 @@ async function _getTopFunds(): Promise<FundRow[]> {
       nav: parseFloat(s.nav),
       navDate: s.navDate,
       isin: s.isin,
-      aum: aumByName.get(s.fundName) ?? (s as any).aum ?? null,
+      aum: aumByName.get(s.fundNameRaw) ?? (s as any).aum ?? null,
       returns: {
         "1M": s.return1m ? parseFloat(s.return1m) : null,
         "3M": s.return3m ? parseFloat(s.return3m) : null,
@@ -592,35 +601,35 @@ async function _getTopFunds(): Promise<FundRow[]> {
       drawdowns,
       sparklines,
       sparklineDates,
-      riskBand: riskBandByName.get(s.fundName) ?? null,
-      expenseRatio: detailsByFundName.get(s.fundName)?.terMax ?? null,
-      exitLoad: detailsByFundName.get(s.fundName)?.exitLoad ?? null,
-      factsheetUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "Factsheet")?.url ?? null,
-      schemeInfoDocumentUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "KIM")?.url ?? null,
-      portfolioDisclosureUrl: detailsByFundName.get(s.fundName)?.factsheets?.find((f: any) => f.documentType === "XLS - Summary Document")?.url ?? null,
+      riskBand: riskBandByName.get(s.fundNameRaw) ?? null,
+      expenseRatio: detailsByFundName.get(s.fundNameRaw)?.terMax ?? null,
+      exitLoad: detailsByFundName.get(s.fundNameRaw)?.exitLoad ?? null,
+      factsheetUrl: detailsByFundName.get(s.fundNameRaw)?.factsheets?.find((f: any) => f.documentType === "Factsheet")?.url ?? null,
+      schemeInfoDocumentUrl: detailsByFundName.get(s.fundNameRaw)?.factsheets?.find((f: any) => f.documentType === "KIM")?.url ?? null,
+      portfolioDisclosureUrl: detailsByFundName.get(s.fundNameRaw)?.factsheets?.find((f: any) => f.documentType === "XLS - Summary Document")?.url ?? null,
       option: s.option,
-      benchmarkName: detailsByFundName.get(s.fundName)?.benchmarkName || null,
-      benchmarkRiskBand: normaliseRiskBandEarly(detailsByFundName.get(s.fundName)?.benchmarkRiskBand),
-      fundManagers: detailsByFundName.get(s.fundName)?.fundManagers ?? [],
-      inceptionDate: detailsByFundName.get(s.fundName)?.inceptionDate || null,
-      minInvestment: detailsByFundName.get(s.fundName)?.minInvestment ?? null,
-      additionalInvestment: detailsByFundName.get(s.fundName)?.additionalInvestment ?? null,
-      schemeCategory: detailsByFundName.get(s.fundName)?.schemeCategory || null,
-      schemeNature: detailsByFundName.get(s.fundName)?.schemeNature || null,
-      redemptionFrequency: detailsByFundName.get(s.fundName)?.redemptionFrequency || null,
-      navCutoffTime: detailsByFundName.get(s.fundName)?.navCutoffTime || null,
-      redemptionPayoutDays: detailsByFundName.get(s.fundName)?.redemptionPayoutDays || null,
-      taxationSummary: detailsByFundName.get(s.fundName)?.taxationSummary || null,
-      suitableFor: detailsByFundName.get(s.fundName)?.suitableFor || null,
-      notSuitableFor: detailsByFundName.get(s.fundName)?.notSuitableFor || null,
-      sponsorName: detailsByFundName.get(s.fundName)?.sponsorName || null,
-      trusteeName: detailsByFundName.get(s.fundName)?.trusteeName || null,
-      registrarName: detailsByFundName.get(s.fundName)?.registrarName || null,
-      fundamentals: detailsByFundName.get(s.fundName)?.fundamentals ?? null,
-      concentration: detailsByFundName.get(s.fundName)?.concentration ?? null,
-      marketCapWeightage: detailsByFundName.get(s.fundName)?.marketCapWeightage ?? null,
-      assetAllocation: detailsByFundName.get(s.fundName)?.assetAllocation ?? [],
-      topHoldings: detailsByFundName.get(s.fundName)?.topHoldings ?? [],
+      benchmarkName: detailsByFundName.get(s.fundNameRaw)?.benchmarkName || null,
+      benchmarkRiskBand: normaliseRiskBandEarly(detailsByFundName.get(s.fundNameRaw)?.benchmarkRiskBand),
+      fundManagers: detailsByFundName.get(s.fundNameRaw)?.fundManagers ?? [],
+      inceptionDate: detailsByFundName.get(s.fundNameRaw)?.inceptionDate || null,
+      minInvestment: detailsByFundName.get(s.fundNameRaw)?.minInvestment ?? null,
+      additionalInvestment: detailsByFundName.get(s.fundNameRaw)?.additionalInvestment ?? null,
+      schemeCategory: detailsByFundName.get(s.fundNameRaw)?.schemeCategory || null,
+      schemeNature: detailsByFundName.get(s.fundNameRaw)?.schemeNature || null,
+      redemptionFrequency: detailsByFundName.get(s.fundNameRaw)?.redemptionFrequency || null,
+      navCutoffTime: detailsByFundName.get(s.fundNameRaw)?.navCutoffTime || null,
+      redemptionPayoutDays: detailsByFundName.get(s.fundNameRaw)?.redemptionPayoutDays || null,
+      taxationSummary: detailsByFundName.get(s.fundNameRaw)?.taxationSummary || null,
+      suitableFor: detailsByFundName.get(s.fundNameRaw)?.suitableFor || null,
+      notSuitableFor: detailsByFundName.get(s.fundNameRaw)?.notSuitableFor || null,
+      sponsorName: detailsByFundName.get(s.fundNameRaw)?.sponsorName || null,
+      trusteeName: detailsByFundName.get(s.fundNameRaw)?.trusteeName || null,
+      registrarName: detailsByFundName.get(s.fundNameRaw)?.registrarName || null,
+      fundamentals: detailsByFundName.get(s.fundNameRaw)?.fundamentals ?? null,
+      concentration: detailsByFundName.get(s.fundNameRaw)?.concentration ?? null,
+      marketCapWeightage: detailsByFundName.get(s.fundNameRaw)?.marketCapWeightage ?? null,
+      assetAllocation: detailsByFundName.get(s.fundNameRaw)?.assetAllocation ?? [],
+      topHoldings: detailsByFundName.get(s.fundNameRaw)?.topHoldings ?? [],
     };
   });
 
@@ -661,12 +670,11 @@ async function _getTickerNavs(): Promise<TickerNav[]> {
 
     // Use fundName (clean brand name) when available, else strip plan/option suffixes from schemeName
     const rawName = (s.fundName as string) || (s.schemeName as string);
-    const name = rawName
+    const name = formatFundName(rawName
       .replace(/- Growth.*$/i, "")
       .replace(/- Regular Plan.*$/i, "")
       .replace(/- Direct Plan.*$/i, "")
-      .trim()
-      .toUpperCase();
+      .trim());
 
     items.push({
       label: name,
@@ -755,7 +763,7 @@ async function _getMonthlyHeatmapData(monthsBack = 7): Promise<{
 
     funds.push({
       schemeCode: code,
-      name: s.schemeName as string,
+      name: formatFundName(s.schemeName as string),
       strategy: s.strategy as string,
       category: strategyToCategory(s.strategy as string),
       months: monthReturns,
@@ -1034,7 +1042,7 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
 
   return {
     schemeCode,
-    name: scheme.schemeName as string,
+    name: formatFundName(scheme.schemeName as string),
     fundName: fundNameValue,
     isin,
     amc: scheme.amc as string,

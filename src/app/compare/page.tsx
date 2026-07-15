@@ -10,7 +10,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Compare SIFs — SIFcase",
-  description: "Compare up to 4 Specialized Investment Funds side by side. Source-verified NAV, returns, risk metrics, and strategy — no guessed data.",
+  description: "Compare up to 4 Specialized Investment Funds side by side. Source-verified NAV, returns, risk metrics, and strategy",
 };
 
 type Props = { searchParams: Promise<{ funds?: string }> };

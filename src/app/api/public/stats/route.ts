@@ -6,9 +6,8 @@ import { getSnapshotStats } from "@/lib/sifData";
 export async function GET() {
   const stats = await getSnapshotStats();
   return NextResponse.json({
-    // All Regular-plan scheme rows — Growth, IDCW, IDCW Reinvestment counted
-    // separately, matching how the admin schemes list counts "funds".
-    totalFunds: stats.totalRegular,
+    // Only Regular Growth schemes counted
+    totalFunds: stats.totalGrowthRegular,
     uniqueAMCs: stats.uniqueAMCs,
   });
 }

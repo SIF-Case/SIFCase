@@ -3,8 +3,9 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import type { FundDetail, PeriodKey } from "@/lib/sifData";
 import { toCumulative } from "@/lib/categoryAverages";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
-type ChartPeriod = "1M" | "3M" | "6M" | "1Y" | "All";
+type ChartPeriod = "1M" | "3M" | "6M" | "1Y" | "All" | "Custom";
 const CHART_PERIODS: ChartPeriod[] = ["1M", "3M", "6M", "1Y", "All"];
 
 function subMonthsClient(date: Date, months: number): Date {
@@ -68,15 +69,18 @@ export function FundDetailPanel({
   const [showCategoryAvg, setShowCategoryAvg] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; idx: number } | null>(null);
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
 
   const W = 800, H = 220, PL = 48, PR = 12, PT = 16, PB = 30;
 
-  const visible = useMemo(
-    () => getSlice(fund.navHistory, chartPeriod),
-    [fund.navHistory, chartPeriod]
-  );
+  const visible = useMemo(() => {
+    if (chartPeriod === "Custom" && customRange) {
+      return fund.navHistory.filter((h) => h.date >= customRange.start && h.date <= customRange.end);
+    }
+    return getSlice(fund.navHistory, chartPeriod);
+  }, [fund.navHistory, chartPeriod, customRange]);
 
-  const periodKey: PeriodKey = chartPeriod === "All" ? "SI" : (chartPeriod as PeriodKey);
+  const periodKey: PeriodKey = chartPeriod === "All" || chartPeriod === "Custom" ? "SI" : (chartPeriod as PeriodKey);
 
   const RISK_ROWS: { label: string; value: string; cls: string }[] = [
     {
@@ -204,7 +208,7 @@ export function FundDetailPanel({
             {CHART_PERIODS.map((p) => (
               <button
                 key={p}
-                onClick={() => { setChartPeriod(p); setTooltip(null); }}
+                onClick={() => { setChartPeriod(p); setCustomRange(null); setTooltip(null); }}
                 className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium text-center transition-colors ${
                   chartPeriod === p
                     ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
@@ -214,6 +218,21 @@ export function FundDetailPanel({
                 {p}
               </button>
             ))}
+            <DateRangePicker
+              minDate={fund.navHistory[0]?.date}
+              maxDate={fund.navHistory[fund.navHistory.length - 1]?.date}
+              isActive={chartPeriod === "Custom"}
+              onApply={(start, end) => {
+                setCustomRange({ start, end });
+                setChartPeriod("Custom");
+                setTooltip(null);
+              }}
+              onClear={() => {
+                setCustomRange(null);
+                setChartPeriod("All");
+                setTooltip(null);
+              }}
+            />
           </div>
         </div>
       </div>

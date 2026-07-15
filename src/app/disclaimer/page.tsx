@@ -54,18 +54,12 @@ export default async function DisclaimerPage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="bg-white border-b border-rule pt-10 pb-10">
-        <div className="max-w-[760px] mx-auto px-6 lg:px-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-4.5 h-4.5 text-primary" strokeWidth={1.75} />
-            </div>
-            <span className="text-[11px] font-mono uppercase tracking-widest text-primary">Legal</span>
-          </div>
-          <h1 className="text-[36px] sm:text-[44px] font-bold tracking-[-0.8px] text-heading mb-3 leading-tight">
+      <section className="pt-12 pb-6">
+        <div className="max-w-[1000px] mx-auto px-6 lg:px-8">
+          <h1 className="text-[36px] sm:text-[44px] font-bold tracking-[-0.8px] text-heading mb-3 text-balance text-balance leading-tight">
             Disclaimer
           </h1>
-          <p className="text-[15px] text-body leading-relaxed max-w-[600px]">
+          <p className="text-[16px] text-body leading-relaxed max-w-[700px] text-pretty">
             Please read this disclaimer carefully before using SIFCase. By accessing this platform,
             you agree to the terms set out below.
           </p>
@@ -76,31 +70,31 @@ export default async function DisclaimerPage() {
       </section>
 
       {/* Content */}
-      <section className="py-12">
-        <div className="max-w-[760px] mx-auto px-6 lg:px-8">
+      <section className="pb-16 pt-6">
+        <div className="max-w-[1000px] mx-auto px-6 lg:px-8">
           <div className="space-y-8">
             {SECTIONS.map(({ title, body }, i) => (
               <div key={title} className="bg-white rounded-[16px] border border-rule shadow-card p-6">
                 <div className="flex items-start gap-3 mb-3">
-                  <span className="text-[11px] font-mono text-faint mt-1 w-5 flex-shrink-0">
+                  <span className="text-[12px] font-mono text-[#098B91] mt-1 w-5 flex-shrink-0">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <h2 className="text-[15px] font-semibold text-heading">{title}</h2>
+                  <h2 className="text-[16px] font-semibold text-[#098B91] text-balance">{title}</h2>
                 </div>
-                <p className="text-[13.5px] text-body leading-[1.7] pl-8">{body}</p>
+                <p className="text-[14px] text-body leading-[1.7] text-pretty text-pretty pl-8">{body}</p>
               </div>
             ))}
           </div>
 
           {/* Contact note */}
           <div className="mt-10 rounded-[16px] border border-rule bg-white p-6 flex items-start gap-4">
-            <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" strokeWidth={1.75} />
+            <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" strokeWidth={1.75} aria-hidden="true" />
             <div>
-              <p className="text-[13.5px] font-semibold text-heading mb-1">Questions about this disclaimer?</p>
+              <p className="text-[14px] font-semibold text-heading mb-1 text-balance">Questions about this disclaimer?</p>
               <p className="text-[13px] text-body leading-relaxed">
                 Reach us at{" "}
-                <a href="mailto:Smita.sahai@aurevawealth.com" className="text-primary hover:underline">
-                  Smita.sahai@aurevawealth.com
+                <a href="mailto:smita.sahai@aurevawealth.com" className="text-primary hover:underline">
+                  smita.sahai@aurevawealth.com
                 </a>{" "}
                 or write to us at Awfis, B Wing 6F, Supreme Business Park, Hiranandani Gardens, Powai, Mumbai 400076.
               </p>

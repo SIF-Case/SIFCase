@@ -5,10 +5,16 @@ import { useEffect, useState } from "react";
 import { Wallet, FileText, PieChart, Shield, Landmark, TrendingUp, CheckCircle2 } from "lucide-react";
 
 function AnimatedNumber({ value, prefix = "", suffix = "" }: { value: number | null, prefix?: string, suffix?: string }) {
-  const [displayValue, setDisplayValue] = useState(0);
+  const [displayValue, setDisplayValue] = useState(value ?? 0);
 
   useEffect(() => {
     if (value === null) return;
+    
+    // Check if user prefers reduced motion
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplayValue(value);
+      return;
+    }
     
     let startTimestamp: number | null = null;
     const duration = 2000;

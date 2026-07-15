@@ -229,6 +229,7 @@ export default function NavRecordsPage() {
   const [loading, setLoading]         = useState(false);
   const [data, setData]               = useState<ApiResponse | null>(null);
   const [exporting, setExporting]     = useState(false);
+  const [reporting, setReporting]     = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── fetch ───────────────────────────────────────────────────────────────
@@ -331,6 +332,33 @@ export default function NavRecordsPage() {
     }
   }
 
+  // ── Report export ──────────────────────────────────────────────────────
+  async function downloadReport() {
+    setReporting(true);
+    try {
+      const res = await fetch(`/api/admin/nav-records/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toDate, plan, option }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Report failed");
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const name = /filename="([^"]+)"/.exec(cd)?.[1] || `SIF_Monthly_Report.docx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Report generation failed");
+    } finally {
+      setReporting(false);
+    }
+  }
+
   // ── render ─────────────────────────────────────────────────────────────
   const schemes = data?.schemes ?? [];
   const catAvg  = data?.categoryAverages ?? {};
@@ -364,6 +392,14 @@ export default function NavRecordsPage() {
           >
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={downloadReport}
+            disabled={reporting || loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-[10px] border border-primary text-primary text-[13px] font-semibold hover:bg-primary/5 disabled:opacity-60 transition-colors"
+          >
+            {reporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {reporting ? "Building…" : "Download Report"}
           </button>
           <button
             onClick={downloadCSV}

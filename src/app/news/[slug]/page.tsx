@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = article.seoTitle || article.title;
   const description = article.metaDescription || article.excerpt;
   const ogImg = article.ogImage || article.coverDesktop;
-  const url = `https://sifcase.in/news/${slug}`;
+  const url = `https://sifcase.com/news/${slug}`;
 
   return {
     title: `${title} — SIFcase`,
@@ -84,7 +84,7 @@ export default async function NewsArticlePage({ params }: Props) {
     ? new Date(article.publishedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
-  const pageUrl = `https://sifcase.in/news/${slug}`;
+  const pageUrl = `https://sifcase.com/news/${slug}`;
   const ogImg = article.ogImage || article.coverDesktop;
 
   const jsonLd = {
