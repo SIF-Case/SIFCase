@@ -34,6 +34,9 @@ assert.ok(text.includes("1,740.00"), "nsrMobilised");
 // fixed regulatory text survived untouched:
 assert.ok(text.includes("Minimum investment in equity and equity related instruments"));
 assert.ok(text.includes("SEBI Mandatory Standard Disclaimer"));
+// per-value percent colouring applied — strong (>+3%) vs positive (0..+3%) distinguished:
+assert.ok(text.includes('w:val="1A6E3A"'), "strong dark green (+18.57%/+5.31%/+5.07%)");
+assert.ok(text.includes('w:val="27AE60"'), "positive green (+2.43%)");
 // no leftover unfilled tags:
 assert.ok(!/\{[#\/]?(universe|perf|prose|monthLabel|monthShort|asOf)/.test(text));
 console.log("OK renderDocx");
