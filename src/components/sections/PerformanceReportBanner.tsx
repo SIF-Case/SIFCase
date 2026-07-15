@@ -84,17 +84,12 @@ function ReportPreviewCard({
             Get scheme-by-scheme returns for all {report.data?.funds.length ?? 21} SIFs, free.
           </p>
           
-          <div className="flex items-center justify-center gap-3 w-full">
-            <div className="flex-1 h-11 border border-gray-200 rounded-[10px] bg-white shadow-sm flex items-center px-4 cursor-text overflow-hidden" onClick={onUnlock}>
-              <span className="text-[15px] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">name@company.com</span>
-            </div>
-            <button 
-              onClick={onUnlock}
-              className="h-11 px-5 bg-white border border-gray-200 rounded-[10px] text-[15px] font-medium text-[#0f172a] hover:bg-gray-50 transition-colors whitespace-nowrap shadow-sm"
-            >
-              Unlock report
-            </button>
-          </div>
+          <button 
+            onClick={onUnlock}
+            className="h-11 px-8 bg-[#0E9F8E] text-white rounded-[10px] text-[15px] font-medium hover:bg-[#0D8E7F] transition-colors whitespace-nowrap shadow-sm"
+          >
+            Create account
+          </button>
         </div>
       </div>
     </div>

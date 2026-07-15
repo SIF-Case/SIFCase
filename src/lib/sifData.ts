@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import PerformanceReport from "@/models/PerformanceReport";
 import FundHouse from "@/models/FundHouse";
 import { unstable_cache } from "next/cache";
+import { formatFundName } from "@/lib/utils";
 
 // ── Cache config ─────────────────────────────────────────────────────────────
 // All public data functions are wrapped with Next.js unstable_cache.
@@ -351,8 +352,8 @@ async function _getSIFsWithReturns(plan?: "Regular" | "Direct", option?: string,
 
     rows.push({
       schemeCode: code,
-      name: s.schemeName as string,
-      fundName: (s.fundName as string) || (s.schemeName as string),
+      name: formatFundName(s.schemeName as string),
+      fundName: formatFundName((s.fundName as string) || (s.schemeName as string)),
       amc: s.amc as string,
       companyName: (s.companyName as string) || (s.amc as string),
       brandName: (s.brandName as string) || "",
@@ -563,8 +564,8 @@ async function _getTopFunds(): Promise<FundRow[]> {
 
     return {
       schemeCode: s.schemeCode,
-      name: s.name,
-      fundName: s.fundName,
+      name: formatFundName(s.name),
+      fundName: formatFundName(s.fundName),
       amc: s.amc,
       companyName: s.companyName,
       strategy: s.strategy,
@@ -661,12 +662,11 @@ async function _getTickerNavs(): Promise<TickerNav[]> {
 
     // Use fundName (clean brand name) when available, else strip plan/option suffixes from schemeName
     const rawName = (s.fundName as string) || (s.schemeName as string);
-    const name = rawName
+    const name = formatFundName(rawName
       .replace(/- Growth.*$/i, "")
       .replace(/- Regular Plan.*$/i, "")
       .replace(/- Direct Plan.*$/i, "")
-      .trim()
-      .toUpperCase();
+      .trim());
 
     items.push({
       label: name,
@@ -755,7 +755,7 @@ async function _getMonthlyHeatmapData(monthsBack = 7): Promise<{
 
     funds.push({
       schemeCode: code,
-      name: s.schemeName as string,
+      name: formatFundName(s.schemeName as string),
       strategy: s.strategy as string,
       category: strategyToCategory(s.strategy as string),
       months: monthReturns,
@@ -1034,7 +1034,7 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
 
   return {
     schemeCode,
-    name: scheme.schemeName as string,
+    name: formatFundName(scheme.schemeName as string),
     fundName: fundNameValue,
     isin,
     amc: scheme.amc as string,

@@ -315,20 +315,21 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
             color={watching ? "#14b7a3" : "#000"}
           />
         </button>
-        <a
-          href="#"
+        <button
+          type="button"
           onClick={handleInvestClick}
-          className="flex-1 text-center text-white text-[12px] font-[500] transition-opacity hover:opacity-90"
+          className="flex-1 text-center text-white text-[12px] font-[500] transition-opacity hover:opacity-90 cursor-pointer"
           style={{
             padding: "6px 16px",
             borderRadius: 24,
             background: "#3b8bb1",
             textDecoration: "none",
             whiteSpace: "nowrap",
+            border: "none",
           }}
         >
           Invest Now
-        </a>
+        </button>
       </div>
     </div>
   );

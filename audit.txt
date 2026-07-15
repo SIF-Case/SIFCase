@@ -1,0 +1,296 @@
+SIFcase.com
+Full-site link and navigation audit
+Prepared for: Aureva Capital Private Limited     Date: 14 July 2026
+Every link reachable from the primary navigation, the footer, and one level of dynamic content (fund pages, fund-house pages, articles, NFOs) was fetched and reviewed. 40+ URLs were checked. Findings below are organized from most to least severe.
+1. Executive summary
+The content engine underneath SIFcase – fund detail pages, AMC profiles, NFO tracking, the SIF 101 learning hub, news, and monthly performance reports – is genuinely strong and deep. Where the site breaks down is its site infrastructure: of the 18 destinations linked from the footer alone, 14 currently return a completely blank page with no navigation, no error message, and no content. Four of these are core legal and regulatory pages – Privacy Policy, Terms of Use, SEBI Disclosure, and Grievance Redressal – which is a materially higher-stakes gap for a SEBI-regulated distribution platform than a typical broken link. In addition, article pages carry a canonical tag pointing to a different domain (sifcase.in instead of sifcase.com), which can fragment search rankings, and several conversion-critical elements (“Invest Now” buttons, social links, the ODR portal link) are unwired placeholders.
+2. Critical issues (fix first)
+2.1 Four of six Legal-footer pages are blank
+Privacy Policy (/privacy), Terms of Use (/terms), SEBI Disclosure (/sebi), and Grievance Redressal (/grievance) all return empty pages. Only Disclaimer (/disclaimer) and the external SCORES link work. For a platform operated by an AMFI-registered distributor handling investor data and SEBI-regulated products, a working privacy policy and a documented grievance process are baseline requirements, not nice-to-haves. The footer currently gives users a link that goes nowhere on exactly the pages they'd click when something goes wrong.
+2.2 Article canonical tags point to a different domain
+Both /read and /news article pages carry <link rel="canonical" href="https://sifcase.in/..."> – a .in domain, not sifcase.com. If sifcase.in is a live, separate property, search engines may consolidate ranking signal there instead of on the .com site being promoted everywhere else (nav, footer, entity details). If sifcase.in is not intentional, this is likely a leftover from a staging/domain migration and should be corrected across the templating layer, not page by page.
+2.3 Twelve additional nav/footer destinations are blank
+Beyond the legal pages: Market Dashboard, Performance (index), Research, Strategy, Learn, Calculators, Expert Connect, Contact, About, Partner, Sitemap, Accessibility, and Cookie Preferences all return empty pages. Three of these (Research, Strategy, Learn) are especially confusing because working content exists elsewhere for the same subject – see Section 5.
+2.4 Dead calls-to-action
+The “Invest Now” button on every homepage fund card links to “#”. All four social-follow icons (Twitter/X, LinkedIn, YouTube, WhatsApp) in the footer link to “#” on every single page. The “Online Dispute Resolution – SMART ODR Portal” link on the grievance element also points to “#”. None of these are cosmetic: the Invest Now button is the platform's core conversion action, and the ODR link sits next to a SEBI grievance disclosure.
+2.5 News section meta-description mislabels the product
+The /news page's meta description reads: “Stay updated with the latest news and developments in the Social Impact Fund industry.” SIF on this platform means Specialised Investment Fund throughout every other page – this is very likely a copy-paste or AI-generated-copy error that will surface in search results and social shares under the wrong product name.
+2.6 A live, closing-soon NFO links to a broken AMC page
+The Summit Equity Long-Short Fund NFO (Invesco Mutual Fund, 2 days left to subscribe at time of review) links to /fund-house/invesco, which is blank. Invesco is also absent from the 15-AMC directory at /fund-houses. A prospective investor trying to research the fund house behind a live, time-sensitive NFO hits a dead end.
+3. Full link inventory
+Status legend: 
+Working – content renders.   Loads shell, no content – nav/footer render but the main content area is a stuck loading state or empty in a non-JS fetch.   Blank / broken – nothing renders at all, not even the site shell.
+3.1 Primary navigation
+Link / label
+Destination
+Status
+Notes
+Home
+/
+Working
+Full homepage content renders.
+Explore Funds
+/sifs
+Loads shell, no content
+Fund list is client-rendered; static load shows only “Loading tracked SIFs…”.
+Fund Houses (dropdown)
+/fund-houses
+Working
+Rich directory of 15 AMCs with profiles.
+Compare
+/compare
+Working
+Tool shell loads; empty until funds are added.
+SIF 101
+/sif-101
+Working
+10-article learning hub with progress tracker.
+NFO
+/nfos
+Working
+Live NFO tracker with full scheme terms.
+Insights
+/read
+Working
+Article hub across 5 categories.
+News
+/news
+Working
+60+ articles; see Section 3.5 for a labeling error.
+Search (⌘K)
+in-page
+Loads shell, no content
+
+Loads but very slow 
+Cannot be verified without live JS; placeholder only.
+Login
+modal
+Loads shell, no content
+Phone-OTP modal appears sitewide; cannot verify OTP flow.
+
+3.2 Footer – Platform
+Link / label
+Destination
+Status
+Notes
+Explore SIFs
+/sifs
+Loads shell, no content
+Same as nav – client-rendered list.
+Compare funds
+/compare
+Working
+
+Fund houses
+/fund-houses
+Working
+
+Performance analytics
+/performance
+Blank / broken
+Blank page – no nav, no content, no error message.
+Market dashboard
+/dashboard
+Blank / broken
+Blank page.
+NFO tracker
+/nfos
+Working
+Duplicate of top-nav NFO link.
+
+3.3 Footer – Research
+Link / label
+Destination
+Status
+Notes
+Monthly reports
+/research
+Blank / broken
+Blank. Actual reports live at /performance/may-2026 etc., which is not linked from anywhere in the footer.
+Strategy notes
+/strategy
+Blank / broken
+Blank. Real strategy content lives at /read/subcategory/strategy, which works but isn’t what this link points to.
+SIF 101 guide
+/learn
+Blank / broken
+Blank. Real hub is at /sif-101, already in top nav – this appears to be a dead duplicate route.
+Tools & calculators
+/calculators
+Blank / broken
+Blank page.
+Insights
+/read
+Working
+Duplicate of top-nav Insights link.
+News
+/news
+Working
+Duplicate of top-nav News link.
+
+3.4 Footer – Invest
+Link / label
+Destination
+Status
+Notes
+Find my SIF
+/suitability
+Loads shell, no content
+Shell loads; question content stuck at “Loading questions…” in static render.
+Expert connect
+/advisor
+Blank / broken
+Blank page.
+Callback request
+/contact
+Blank / broken
+Blank page – no way to submit a callback request.
+About SIFcase
+/about
+Blank / broken
+Blank page – no company story/about content.
+Partner with us
+/partner
+Blank / broken
+Blank page.
+
+3.5 Footer – Legal
+Link / label
+Destination
+Status
+Notes
+Disclaimer
+/disclaimer
+Working
+Thorough, well-drafted; the strongest legal page on the site.
+Privacy policy
+/privacy
+Blank / broken
+Blank. No privacy policy reachable anywhere on the site.
+Terms of use
+/terms
+Blank / broken
+Blank. No terms of use reachable anywhere on the site.
+SEBI disclosure
+/sebi
+Blank / broken
+Blank. Required regulatory disclosure page is inaccessible.
+Grievance redressal
+/grievance
+Blank / broken
+Blank. Grievance process not documented anywhere except an email address in the footer.
+SCORES · SEBI
+scores.sebi.gov.in
+Working
+External link, correctly pointed.
+
+3.6 Footer – bottom bar & social
+Link / label
+Destination
+Status
+Notes
+Sitemap
+/sitemap
+Blank / broken
+Blank page.
+Accessibility
+/accessibility
+Blank / broken
+Blank page.
+Cookie preferences
+/cookies
+Blank / broken
+Blank page – no cookie controls or policy.
+Twitter/X, LinkedIn, YouTube, WhatsApp icons
+#
+Blank / broken
+All four social icons are placeholder “#” links, sitewide, on every page.
+Online Dispute Resolution – SMART ODR Portal
+#
+Blank / broken
+Placeholder link on a regulated grievance-escalation page element.
+
+3.7 Dynamic content samples
+One representative page was checked for each dynamic template (fund detail, AMC profile, article, NFO, performance report) to assess whether issues found on static pages also affect data-driven pages.
+Link / label
+Destination
+Status
+Notes
+Fund detail page
+/sifs/qsif-equity-long-short-fund-sif-3
+Working
+Excellent depth: NAV chart, category comparison, taxation, key facts, documents.
+AMC / fund-house page
+/fund-house/qsif
+Working
+Well built: manager bios, all schemes, disclaimer link.
+AMC page for an active NFO issuer
+/fund-house/invesco
+Blank / broken
+Blank. The live Summit Equity Long-Short Fund NFO (closing in 2 days) links here, and Invesco is also absent from the 15-AMC directory at /fund-houses.
+SIF 101 article
+/sif-101/specialised-investment-fund-sif-meaning-features-benefits-and-restrictions
+Working
+Clear, well-structured; see Section 5 on duplicate content vs. /read version.
+SIF 101 quiz
+/sif-101/quiz
+Loads shell, no content
+Stuck at “Loading quiz…” in static render – second unfinished-feeling quiz alongside /suitability.
+Read article
+/read/what-is-a-specialized-investment-fund-sif-meaning-features-benefits-and-restrictions
+Working
+Near-duplicate of the SIF 101 article above, different byline/date. Canonical tag points to sifcase.in, not sifcase.com.
+Read subcategory
+/read/subcategory/strategy
+Working
+Functions correctly – ironically the working version of the broken footer “Strategy notes” link.
+News article
+/news/sapphire-sifs-early-weeks...
+Working
+Well written; canonical tag also points to sifcase.in; published_time is one day ahead of the site’s current date.
+NFO detail page
+/nfos/summit-equity-long-short-fund
+Loads shell, no content
+Loads with strong structure, but Allotment date, Benchmark, Exit load and Fund management team fields render blank.
+Monthly performance report
+/performance/may-2026
+Working
+Full fund-by-fund return table; well executed – but not linked from the footer’s “Monthly reports.”
+4. Content and data-quality issues
+	•	Duplicate/near-duplicate articles under two taxonomies: the same “What is a SIF” topic exists at both /sif-101/specialised-investment-fund-sif-meaning-features-benefits-and-restrictions and /read/what-is-a-specialized-investment-fund-sif-meaning-features-benefits-and-restrictions, with different bylines, dates, and phrasing. This splits SEO value and gives users two inconsistent answers to the same question depending on which path they take.
+	•	The homepage stats block (Total AUM, AMCs Registered, Schemes, NFOs in Pipeline) rendered as all zeros in a non-JS fetch, consistent with a client-side counter animation. If JavaScript fails to load for any visitor, the first thing they see is “₹0 Cr Total AUM” – a bad first impression on a platform whose pitch is verified data.
+	•	NFO detail pages have several blank fields even though the page structure clearly expects values: Allotment date, Benchmark, and Exit load are blank on the Summit Equity Long-Short Fund page, and the “Fund management team” section renders with a header and no content.
+	•	A news article (Sapphire SIF's Early Weeks) carries a published_time of 2026-07-15, one day ahead of the site's current date at time of review – a minor but visible data-integrity slip on a page that otherwise looks polished.
+	•	Fund name capitalization is inconsistent across the site: “qsif” (lowercase) on fund and AMC pages versus “QSIF” (uppercase) in the homepage ticker, and similar inconsistency for iSIF/WSIF elsewhere. Minor, but the kind of detail a data-literate investor notices on a platform whose core claim is data accuracy.
+	•	The Principal Officer's email address appears as smita.sahai@aurevawealth.com on most pages and Smita.sahai@aurevawealth.com (capitalized) on the Disclaimer page – inconsistent, should be standardized.
+5. What works well
+It's worth being clear about what's already strong, so effort isn't spent re-solving problems that don't exist:
+	•	Fund detail pages (/sifs/[slug]) are excellent: NAV history, category-relative performance, Sharpe/drawdown/volatility, taxation treatment, key facts from the KIM/ISID, and clear compare/contact actions all in one place.
+	•	AMC / fund-house pages (/fund-house/[slug]) pair a well-written platform narrative with a live roster of every scheme the AMC runs, each with its own return and risk snapshot.
+	•	The NFO tracker (/nfos and /nfos/[slug]) is genuinely useful and India-SIF-specific – it explains PAN-level aggregation, accredited-investor exemptions, and the block-vs-debit mechanics that a generic fund platform wouldn't bother with.
+	•	The SIF 101 learning hub (/sif-101) is a thoughtful onboarding device: beginner/intermediate/core tagging, a progress tracker, and short, well-written articles.
+	•	The Disclaimer page (/disclaimer) is the strongest legal page on the site – clear sectioning, explicit “we are not a SEBI Investment Advisor” disclosure, and full entity/registration detail.
+	•	The monthly performance report (/performance/may-2026) is a clean, complete fund-by-fund table with category context – exactly the kind of asset a distributor should be able to point sophisticated clients to.
+6. Persona impact
+6.1 First-time investor
+A newcomer landing on the homepage meets Sharpe ratios and drawdown percentages before any plain-language framing, and the SIF 101 hub that would help them isn't surfaced from the hero section. From there, if they try to go deeper via the footer, the odds are roughly 2-in-3 that any given link (Research, Strategy notes, Calculators, About, Contact) leads to a blank page – which reads as “this site is broken,” not “this section isn't for me yet.” That's a credibility problem specifically for the audience least equipped to shrug it off.
+6.2 Seasoned investor
+The core research tooling – fund pages, comparison, NFO terms, performance reports – will satisfy this audience well; the depth and India-SIF-specific detail (PAN aggregation, accredited-investor carve-outs, risk-band mechanics) is a real differentiator. But this is also the audience most likely to check Privacy Policy, Terms, and Grievance Redressal before committing ₹10L+, and all three are blank. For someone evaluating whether to trust the platform with money, that's a harder credibility hit than it would be for a casual browser.
+7. Prioritized recommendations
+P0 – before any further marketing push
+	•	Build or restore /privacy, /terms, /sebi, and /grievance. These are not optional pages for a SEBI-regulated distributor.
+	•	Fix the canonical tag on /read and /news article templates so it points to sifcase.com, not sifcase.in.
+	•	Wire up the “Invest Now” buttons and the ODR portal link to real destinations, or temporarily disable/relabel them rather than leaving “#”.
+	•	Correct the /news meta description (“Social Impact Fund” → “Specialised Investment Fund”).
+P1 – next sprint
+	•	Either build out /research, /strategy, /learn, /calculators, /dashboard, /performance, /advisor, /contact, /about, /partner, /sitemap, /accessibility, /cookies, or repoint their footer links to the working pages that already cover the same ground (e.g. point “Strategy notes” at /read/subcategory/strategy, point “Monthly reports” at /performance/may-2026 or a working index).
+	•	Fix /fund-house/invesco and add Invesco to the main AMC directory – it currently has a live NFO with no working fund-house profile behind it.
+	•	Consolidate the duplicate “What is a SIF” content between /sif-101 and /read into one canonical version, cross-linked rather than duplicated.
+	•	Fill in the blank Allotment date, Benchmark, Exit load, and Fund management team fields on NFO detail pages.
+P2 – polish
+	•	Standardize fund-name and email capitalization across ticker, cards, and detail pages.
+	•	Add a fallback/skeleton state for the homepage stats block so a slow or blocked script doesn't show “₹0 Cr”.
+	•	Resolve the two overlapping, unfinished quiz features (/suitability and /sif-101/quiz) into one clear “find my fund” journey.
+	•	Correct the future-dated article publish timestamp.
+
+Methodology note: this audit was performed via static HTTP fetches of each URL (no JavaScript execution), so pages that are correctly built as client-rendered single-page views may show as “loads shell, no content” here even if they work normally in a browser. Pages marked “blank / broken” returned no content and no site shell at all under the same method, which is a stronger signal of an actual broken route. A follow-up pass with a live browser is recommended to confirm the P0 items before engineering time is spent.

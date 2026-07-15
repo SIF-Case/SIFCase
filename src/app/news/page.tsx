@@ -11,7 +11,7 @@ import { getTickerNavs } from "@/lib/sifData";
 
 export const metadata = {
   title: "Latest SIF News - SIFcase",
-  description: "Stay updated with the latest news and developments in the Social Impact Fund industry.",
+  description: "Stay updated with the latest news and developments in the Specialised Investment Fund industry.",
 };
 
 async function getPublishedNews(brand?: string) {
@@ -66,7 +66,7 @@ export default async function NewsPage({ searchParams }: Props) {
           <p className="text-[16px] text-[#64748B]">
             {brand
               ? `Latest news and developments for ${brand}.`
-              : "Stay updated with the latest news and developments in the Social Impact Fund industry."}
+              : "Stay updated with the latest news and developments in the Specialised Investment Fund industry."}
           </p>
           {brand && (
             <Link

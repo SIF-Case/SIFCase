@@ -1,6 +1,7 @@
 import { connectDB } from "./mongodb";
 import Nfo from "@/models/Nfo";
 import type { NFOData } from "./nfoData";
+import { formatFundName } from "@/lib/utils";
 
 // NFOs "close within this many days" are flagged as closing soon on the public site.
 const CLOSING_SOON_DAYS = 7;
@@ -32,7 +33,7 @@ function toNFOData(doc: NfoLean): NFOData & { minInvestmentValue: number } {
     amc: doc.amc,
     amcShort: doc.amcShort,
     avatar: doc.avatar,
-    name: doc.name,
+    name: formatFundName(doc.name),
     category: doc.category,
     structure: doc.structure,
     objective: doc.objective,

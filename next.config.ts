@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/read/what-is-a-specialized-investment-fund-sif-meaning-features-benefits-and-restrictions",
+        destination: "/sif-101/specialised-investment-fund-sif-meaning-features-benefits-and-restrictions",
+        permanent: true,
+      },
+      {
+        source: "/suitability",
+        destination: "/sif-101/quiz",
+        permanent: false,
+      }
+    ];
+  },
 };
 
 export default nextConfig;

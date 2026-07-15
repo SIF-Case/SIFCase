@@ -327,7 +327,7 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                     </div>
                     <div className="nfo-cd-date-item" role="listitem">
                       <div className="nfo-cd-date-label">Allotment</div>
-                      <div className="nfo-cd-date-val">{nfo.allotmentDate}</div>
+                      <div className="nfo-cd-date-val">{nfo.allotmentDate || "TBA"}</div>
                     </div>
                     <div className="nfo-cd-date-item" role="listitem">
                       <div className="nfo-cd-date-label">Reopens</div>
@@ -363,8 +363,8 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                   </div>
                   <div className="nfo-terms-cell" role="listitem">
                     <div className="nfo-terms-cell-label">Exit load</div>
-                    <div className="nfo-terms-cell-val">{nfo.exitLoad.split(" ")[0]}</div>
-                    <div className="nfo-terms-cell-sub">If redeemed {nfo.exitLoad.split(" ").slice(1).join(" ")}</div>
+                    <div className="nfo-terms-cell-val">{nfo.exitLoad ? nfo.exitLoad.split(" ")[0] : "TBA"}</div>
+                    <div className="nfo-terms-cell-sub">{nfo.exitLoad ? `If redeemed ${nfo.exitLoad.split(" ").slice(1).join(" ")}` : "Subject to AMC terms"}</div>
                   </div>
                   <div className="nfo-terms-cell" role="listitem">
                     <div className="nfo-terms-cell-label">Lock-in period</div>
@@ -373,7 +373,7 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                   </div>
                   <div className="nfo-terms-cell" role="listitem">
                     <div className="nfo-terms-cell-label">Benchmark</div>
-                    <div className="nfo-terms-cell-val">{nfo.benchmark}</div>
+                    <div className="nfo-terms-cell-val">{nfo.benchmark || "TBA"}</div>
                     <div className="nfo-terms-cell-sub">Single-tier, SEBI mandated</div>
                   </div>
                   <div className="nfo-terms-cell" role="listitem">
@@ -547,32 +547,34 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
             </section>
 
             {/* Fund Managers */}
-            <section className="nfo-card-el" aria-labelledby="managers-title">
-              <div className="nfo-card-el-head">
-                <h2 className="nfo-card-el-title" id="managers-title">
-                  <Users size={16} aria-hidden="true" />
-                  Fund management team
-                </h2>
-              </div>
-              <div className="nfo-card-el-body">
-                <div className="nfo-managers-grid">
-                  {nfo.managers.map((m, idx) => (
-                    <div key={idx} className="nfo-manager-card">
-                      <div className="nfo-manager-top">
-                        <div className="nfo-manager-avatar" aria-hidden="true">
-                          {m.avatar}
-                        </div>
-                        <div>
-                          <div className="nfo-manager-name">{m.name}</div>
-                          <div className="nfo-manager-role">{m.role}</div>
-                        </div>
-                      </div>
-                      <div className="nfo-manager-cred">{m.cred}</div>
-                    </div>
-                  ))}
+            {nfo.managers && nfo.managers.length > 0 && (
+              <section className="nfo-card-el" aria-labelledby="managers-title">
+                <div className="nfo-card-el-head">
+                  <h2 className="nfo-card-el-title" id="managers-title">
+                    <Users size={16} aria-hidden="true" />
+                    Fund management team
+                  </h2>
                 </div>
-              </div>
-            </section>
+                <div className="nfo-card-el-body">
+                  <div className="nfo-managers-grid">
+                    {nfo.managers.map((m, idx) => (
+                      <div key={idx} className="nfo-manager-card">
+                        <div className="nfo-manager-top">
+                          <div className="nfo-manager-avatar" aria-hidden="true">
+                            {m.avatar}
+                          </div>
+                          <div>
+                            <div className="nfo-manager-name">{m.name}</div>
+                            <div className="nfo-manager-role">{m.role}</div>
+                          </div>
+                        </div>
+                        <div className="nfo-manager-cred">{m.cred}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* How to apply */}
             <section className="nfo-card-el" aria-labelledby="apply-process-title">
@@ -674,11 +676,11 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
               </div>
               <div className="nfo-apply-detail-row">
                 <span className="nfo-apply-detail-label">Allotment date</span>
-                <span className="nfo-apply-detail-val">{nfo.allotmentDate}</span>
+                <span className="nfo-apply-detail-val">{nfo.allotmentDate || "TBA"}</span>
               </div>
               <div className="nfo-apply-detail-row">
                 <span className="nfo-apply-detail-label">Exit load</span>
-                <span className="nfo-apply-detail-val">{nfo.exitLoad}</span>
+                <span className="nfo-apply-detail-val">{nfo.exitLoad || "TBA"}</span>
               </div>
               <div className="nfo-apply-detail-row">
                 <span className="nfo-apply-detail-label">Structure</span>

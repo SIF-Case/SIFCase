@@ -19,7 +19,7 @@ export function Footer() {
       {/* ── TOP: Newsletter + Social ── */}
       <div className="footer-top">
         <div className="newsletter-group">
-          <span className="nl-eyebrow">SIF Alerts</span>
+          {/* <span className="nl-eyebrow">SIF Alerts</span>
           <div className="nl-form">
             <input
               className="nl-input"
@@ -29,27 +29,27 @@ export function Footer() {
               onChange={(e) => setEmail(e.target.value)}
             />
             <button className="nl-btn">Get NFO &amp; NAV updates</button>
-          </div>
+          </div> */}
         </div>
         <div className="social-row">
           <span className="social-lbl">Follow</span>
-          <a className="soc" href="#" title="Twitter / X">
+          <a className="soc" href="https://twitter.com" target="_blank" rel="noopener noreferrer" title="Twitter / X">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.257 5.622 5.907-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
           </a>
-          <a className="soc" href="#" title="LinkedIn">
+          <a className="soc" href="https://linkedin.com" target="_blank" rel="noopener noreferrer" title="LinkedIn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
               <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" />
               <circle cx="4" cy="4" r="2" />
             </svg>
           </a>
-          <a className="soc" href="#" title="YouTube">
+          <a className="soc" href="https://youtube.com" target="_blank" rel="noopener noreferrer" title="YouTube">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58 2.78 2.78 0 001.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.96A29 29 0 0023 12a29 29 0 00-.46-5.58zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
             </svg>
           </a>
-          <a className="soc" href="#" title="WhatsApp">
+          <a className="soc" href="https://wa.me/" target="_blank" rel="noopener noreferrer" title="WhatsApp">
             <svg
               width="13"
               height="13"
@@ -125,16 +125,16 @@ export function Footer() {
           <div className="col-head">Research</div>
           <ul>
             <li>
-              <Link href="/research">Monthly reports</Link>
+              <Link href="/performance">Monthly reports</Link>
             </li>
             <li>
-              <Link href="/strategy">Strategy notes</Link>
+              <Link href="/read/subcategory/strategy">Strategy notes</Link>
             </li>
             <li>
-              <Link href="/learn">SIF 101 guide</Link>
+              <Link href="/sif-101">SIF 101 guide</Link>
             </li>
             <li>
-              <Link href="/calculators">Tools &amp; calculators</Link>
+              <Link href="/sif-101/quiz">Tools &amp; suitability</Link>
             </li>
             <li>
               <Link href="/read">Insights</Link>
@@ -153,16 +153,16 @@ export function Footer() {
               <Link href="/suitability">Find my SIF</Link>
             </li>
             <li>
-              <Link href="/advisor">Expert connect</Link>
+              <a href="mailto:support@sifcase.com">Expert connect</a>
             </li>
             <li>
-              <Link href="/contact">Callback request</Link>
+              <a href="mailto:support@sifcase.com">Callback request</a>
             </li>
             <li>
               <Link href="/about">About SIFcase</Link>
             </li>
             <li>
-              <Link href="/partner">Partner with us</Link>
+              <a href="mailto:support@sifcase.com">Partner with us</a>
             </li>
           </ul>
         </div>
@@ -183,9 +183,7 @@ export function Footer() {
             <li>
               <Link href="/sebi">SEBI disclosure</Link>
             </li>
-            <li>
-              <Link href="/grievance">Grievance redressal</Link>
-            </li>
+
             <li>
               <a
                 href="https://scores.sebi.gov.in"
@@ -275,7 +273,7 @@ export function Footer() {
             </a>
             <br />
             Online Dispute Resolution:{" "}
-            <a href="#" target="_blank" rel="noopener noreferrer">
+            <a href="https://smartodr.in/login" target="_blank" rel="noopener noreferrer">
               SMART ODR Portal
             </a>
           </div>
@@ -296,9 +294,9 @@ export function Footer() {
           © 2026 SIFcase by Aureva Capital · All rights reserved
         </div>
         <div className="bottom-links">
-          <Link href="/sitemap">Sitemap</Link>
-          <Link href="/accessibility">Accessibility</Link>
-          <Link href="/cookies">Cookie preferences</Link>
+          <Link href="/sitemap.xml">Sitemap</Link>
+          <Link href="/">Accessibility</Link>
+          <Link href="/privacy">Cookie preferences</Link>
         </div>
         <div className="india-seal">
           <div className="flag">
