@@ -1233,9 +1233,14 @@ export interface LatestReportSummary {
 
 /** Latest published monthly report plus its live-computed performance data, for the homepage banner. */
 async function _getLatestPublishedReport(): Promise<LatestReportSummary | null> {
-  await connectDB();
-  const report = await PerformanceReport.findOne({ published: true }).sort({ monthKey: -1 }).lean();
-  if (!report) return null;
+  // HARDCODED: June 2026 Report (no database needed)
+  const report = {
+    monthKey: "2026-06",
+    slug: "june-2026",
+    label: "June 2026",
+    summary: "Comprehensive performance analysis of all Specialised Investment Funds for June 2026.",
+    niftyReturn: null,
+  };
 
   const data = await getMonthlyPerformanceData(report.monthKey);
 
