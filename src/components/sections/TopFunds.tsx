@@ -8,6 +8,7 @@ import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist"
 import { AuthModal } from "@/components/auth/AuthModal";
 import { trackActivity } from "@/components/UserTracker";
 import { fundHref } from "@/lib/slugify";
+import { FundCTAModal } from "@/components/ui/FundCTAModal";
 
 const FILTERS = ["All", "Hybrid", "Equity"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -166,6 +167,7 @@ function Sparkline({ data, dates, id }: { data: number[]; dates: string[]; id: s
 function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: PeriodKey; onRequireAuth: (reason: string) => void }) {
   const periodRet = fund.returns?.[period] ?? null;
   const { watching, toggle, loading, loggedIn } = useWatchlist(fund.schemeCode);
+  const [ctaOpen, setCtaOpen] = useState(false);
 
   function handleWatchClick() {
     if (!loggedIn) {
@@ -177,14 +179,8 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
   }
 
   function handleInvestClick(e: React.MouseEvent) {
-    if (!loggedIn) {
-      e.preventDefault();
-      onRequireAuth("invest in this fund");
-      return;
-    }
     e.preventDefault();
-    trackActivity("Invest", `Expressed interest in investing in: ${fund.fundName || fund.name}`);
-    alert(`Thank you for your interest in ${fund.fundName || fund.name}. We have recorded your interest, and our advisory team will contact you shortly.`);
+    setCtaOpen(true);
   }
 
   const fmtRet = (v: number | null | undefined) =>
@@ -331,6 +327,12 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
           Invest Now
         </button>
       </div>
+      <FundCTAModal
+        open={ctaOpen}
+        onClose={() => setCtaOpen(false)}
+        fund={{ fundName: fund.fundName || fund.name, schemeCode: fund.schemeCode, strategy: fund.strategy }}
+        minInvestment={null}
+      />
     </div>
   );
 }

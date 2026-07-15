@@ -8,8 +8,10 @@ import { useCompareTray } from "@/components/ui/CompareTray";
 import { RiskMeter, RISK_LABELS } from "@/components/ui/RiskMeter";
 import { cn } from "@/lib/utils";
 import { fundHref } from "@/lib/slugify";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
-const CHART_PERIODS: PeriodKey[] = ["1M", "3M", "SI"];
+type ChartPeriod = "1M" | "3M" | "6M" | "1Y" | "SI" | "Custom";
+const CHART_PERIODS: ChartPeriod[] = ["1M", "3M", "6M", "1Y", "SI"];
 
 function computeVolatility(navs: number[]): number | null {
   if (navs.length < 15) return null;
@@ -89,11 +91,18 @@ function MetricItem({ label, value, negative }: { label: string; value: string; 
 
 // ─── NAV mini-chart (styled to match FundDetailPanel's chart language) ────────
 
+function fmtAxisDate(dateStr: string, spanDays: number): string {
+  const d = new Date(dateStr);
+  if (spanDays <= 60) return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  if (spanDays <= 730) return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-US", { year: "numeric" });
+}
+
 function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [tip, setTip] = useState<{ x: number; y: number; idx: number } | null>(null);
 
-  const W = 480, H = 120, PL = 40, PR = 8, PT = 10, PB = 18;
+  const W = 800, H = 220, PL = 48, PR = 12, PT = 16, PB = 30;
 
   const { linePath, areaPath, pts, chartMin, chartMax } = useMemo(() => {
     if (data.length < 2) return { linePath: "", areaPath: "", pts: [] as { x: number; y: number }[], chartMin: 0, chartMax: 0 };
@@ -110,17 +119,20 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
   }, [data]);
 
   const handleMove = useCallback(
-    (e: React.MouseEvent<SVGSVGElement>) => {
+    (e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) => {
       const svg = svgRef.current;
       if (!svg || pts.length < 2) return;
       const rect = svg.getBoundingClientRect();
-      const rawX = ((e.clientX - rect.left) / rect.width) * W;
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const rawX = ((clientX - rect.left) / rect.width) * W;
       const frac = (rawX - PL) / (W - PL - PR);
       const idx = Math.min(pts.length - 1, Math.max(0, Math.round(frac * (pts.length - 1))));
       setTip({ x: pts[idx].x, y: pts[idx].y, idx });
     },
     [pts]
   );
+
+  const tipAnchorRight = tip ? tip.x > W * 0.65 : false;
 
   if (data.length < 2) {
     return <div className="h-full flex items-center justify-center text-[12px] text-faint">Insufficient data</div>;
@@ -133,8 +145,12 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
         className="w-full h-full cursor-crosshair overflow-visible"
+        style={{ touchAction: "none" }}
         onMouseMove={handleMove}
         onMouseLeave={() => setTip(null)}
+        onTouchStart={handleMove}
+        onTouchMove={handleMove}
+        onTouchEnd={() => setTip(null)}
       >
         <defs>
           <linearGradient id="nav-mini-grad" x1="0" y1="0" x2="0" y2="1">
@@ -143,27 +159,133 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
           </linearGradient>
         </defs>
 
-        {/* Gridlines */}
-        {Array.from({ length: 3 }, (_, i) => {
-          const v = chartMin + ((chartMax - chartMin || 0.01) * i) / 2;
-          const y = PT + ((chartMax - v) / (chartMax - chartMin || 0.01)) * (H - PT - PB);
-          return (
-            <g key={i}>
-              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="#E2E8F0" strokeWidth="1" strokeDasharray={i === 1 ? "3 3" : undefined} />
-              <text x={PL - 6} y={y + 3} fontSize="9" fill="#94A3B8" textAnchor="end">
-                ₹{v.toFixed(2)}
-              </text>
-            </g>
-          );
-        })}
+        {/* Y-axis gridlines + labels */}
+        {(() => {
+          const TICKS = 4;
+          return Array.from({ length: TICKS + 1 }, (_, i) => {
+            const v = chartMin + ((chartMax - chartMin || 0.01) * i) / TICKS;
+            const y = PT + ((chartMax - v) / (chartMax - chartMin || 0.01)) * (H - PT - PB);
+            return (
+              <g key={i}>
+                <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="#E2E8F0" strokeWidth="1" strokeDasharray={i === 0 || i === TICKS ? undefined : "3 3"} />
+                <text x={PL - 6} y={y + 3} fontSize="9" fill="#94A3B8" textAnchor="end">
+                  ₹{v.toFixed(4)}
+                </text>
+              </g>
+            );
+          });
+        })()}
+
+        {/* X-axis ticks + date labels */}
+        {(() => {
+          const MAX_LABELS = 14;
+          const spanDays =
+            (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) /
+            (1000 * 60 * 60 * 24);
+
+          const firstIdxByLabel: number[] = [];
+          let lastLabel = "";
+          dates.forEach((d, idx) => {
+            const label = fmtAxisDate(d, spanDays);
+            if (label !== lastLabel) {
+              firstIdxByLabel.push(idx);
+              lastLabel = label;
+            }
+          });
+
+          if (firstIdxByLabel.length < 2) return null;
+
+          const stride = Math.max(1, Math.ceil(firstIdxByLabel.length / MAX_LABELS));
+          const shownIdx = firstIdxByLabel.filter((_, i) => i % stride === 0);
+          if (shownIdx[shownIdx.length - 1] !== firstIdxByLabel[firstIdxByLabel.length - 1]) {
+            shownIdx.push(firstIdxByLabel[firstIdxByLabel.length - 1]);
+          }
+
+          const MIN_DIST = 60;
+          const finalIdxs = [shownIdx[0]];
+          for (let i = 1; i < shownIdx.length - 1; i++) {
+            const x = PL + (shownIdx[i] / (dates.length - 1)) * (W - PL - PR);
+            const lastX = PL + (finalIdxs[finalIdxs.length - 1] / (dates.length - 1)) * (W - PL - PR);
+            if (x - lastX >= MIN_DIST) {
+              finalIdxs.push(shownIdx[i]);
+            }
+          }
+          if (shownIdx.length > 1) {
+            const lastIdx = shownIdx[shownIdx.length - 1];
+            const lastX = PL + (lastIdx / (dates.length - 1)) * (W - PL - PR);
+            while (finalIdxs.length > 0) {
+              const prevX = PL + (finalIdxs[finalIdxs.length - 1] / (dates.length - 1)) * (W - PL - PR);
+              if (lastX - prevX < MIN_DIST) {
+                finalIdxs.pop();
+              } else {
+                break;
+              }
+            }
+            finalIdxs.push(lastIdx);
+          }
+          const count = finalIdxs.length;
+
+          return finalIdxs.map((idx, i) => {
+            const x = PL + (idx / (dates.length - 1)) * (W - PL - PR);
+            const label = fmtAxisDate(dates[idx], spanDays);
+            return (
+              <g key={i}>
+                <line x1={x} y1={H - PB} x2={x} y2={H - PB + 4} stroke="#CBD5E1" strokeWidth="1" />
+                <text
+                  x={x}
+                  y={H - 6}
+                  fontSize="9"
+                  fill="#94A3B8"
+                  textAnchor={i === 0 ? "start" : i === count - 1 ? "end" : "middle"}
+                >
+                  {label}
+                </text>
+              </g>
+            );
+          });
+        })()}
 
         <path d={areaPath} fill="url(#nav-mini-grad)" />
         <path d={linePath} fill="none" stroke="#0E9F8E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
         {tip && (
           <>
+            {/* Vertical crosshair */}
             <line x1={tip.x} y1={PT} x2={tip.x} y2={H - PB} stroke="#94A3B8" strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.6" />
-            <circle cx={tip.x} cy={tip.y} r="3.5" fill="white" stroke="#0E9F8E" strokeWidth="2" />
+            {/* Horizontal crosshair */}
+            <line x1={PL} y1={tip.y} x2={W - PR} y2={tip.y} stroke="#94A3B8" strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.6" />
+            
+            {/* Y-axis value badge */}
+            {(() => {
+              const v = data[tip.idx];
+              const label = `₹${v.toFixed(4)}`;
+              const boxW = label.length * 5.6 + 10;
+              return (
+                <g>
+                  <rect x={2} y={tip.y - 8} width={boxW} height={16} rx={3} fill="#0E9F8E" />
+                  <text x={2 + boxW / 2} y={tip.y + 3} fontSize="9" fontWeight="700" fill="white" textAnchor="middle">
+                    {label}
+                  </text>
+                </g>
+              );
+            })()}
+            
+            {/* X-axis date badge */}
+            {(() => {
+              const label = dates[tip.idx].slice(5);
+              const boxW = label.length * 5.6 + 10;
+              const bx = Math.min(Math.max(tip.x - boxW / 2, PL), W - PR - boxW);
+              return (
+                <g>
+                  <rect x={bx} y={H - PB} width={boxW} height={14} rx={3} fill="#0E9F8E" />
+                  <text x={bx + boxW / 2} y={H - PB + 10} fontSize="9" fontWeight="700" fill="white" textAnchor="middle">
+                    {label}
+                  </text>
+                </g>
+              );
+            })()}
+            
+            <circle cx={tip.x} cy={tip.y} r="4" fill="white" stroke="#0E9F8E" strokeWidth="2" />
           </>
         )}
       </svg>
@@ -172,9 +294,11 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
         <div
           className="pointer-events-none absolute z-10 bg-heading text-white text-[11px] font-semibold rounded-lg px-2.5 py-1.5 shadow-premium whitespace-nowrap"
           style={{
-            bottom: `${H - tip.y + 10}px`,
-            left: `${Math.min(Math.max((tip.x / W) * 100, 12), 88)}%`,
-            transform: "translateX(-50%)",
+            bottom: `${H - tip.y + 12}px`,
+            ...(tipAnchorRight
+              ? { right: `${(1 - tip.x / W) * 100}%` }
+              : { left: `${(tip.x / W) * 100}%` }),
+            transform: tipAnchorRight ? "translateX(0)" : "translateX(-50%)",
           }}
         >
           <p className="nums">₹{data[tip.idx].toFixed(4)}</p>
@@ -186,12 +310,32 @@ function NavMiniChart({ data, dates }: { data: number[]; dates: string[] }) {
 }
 
 export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?: boolean }) {
-  const [period, setPeriod] = useState<PeriodKey>("SI");
+  const [period, setPeriod] = useState<ChartPeriod>("SI");
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | null>(null);
   const { has, toggle } = useCompareTray();
   const inTray = has(fund.schemeCode);
 
-  const spark = fund.sparklines[period];
-  const sparkDates = fund.sparklineDates[period];
+  const { spark, sparkDates } = useMemo(() => {
+    if (period === "Custom" && customRange) {
+      const idxs: number[] = [];
+      const siDates = fund.sparklineDates.SI;
+      for (let i = 0; i < siDates.length; i++) {
+        if (siDates[i] >= customRange.start && siDates[i] <= customRange.end) {
+          idxs.push(i);
+        }
+      }
+      return {
+        spark: idxs.map(i => fund.sparklines.SI[i]),
+        sparkDates: idxs.map(i => fund.sparklineDates.SI[i])
+      };
+    }
+    const pk = period as PeriodKey;
+    return {
+      spark: fund.sparklines[pk] || fund.sparklines.SI,
+      sparkDates: fund.sparklineDates[pk] || fund.sparklineDates.SI
+    };
+  }, [period, customRange, fund.sparklines, fund.sparklineDates]);
+
   const ytd = computeYTD(fund.sparklines.SI, fund.sparklineDates.SI);
   const volatility = computeVolatility(fund.sparklines.SI);
   const riskBand = fund.riskBand;
@@ -239,26 +383,39 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
 
       {/* NAV chart */}
       <div className="px-5 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-          <span className="text-[10.5px] sm:text-[12px] font-semibold uppercase tracking-wider text-muted">NAV History · Source: AMFI</span>
-          <div className="flex items-center gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 mt-6 gap-3">
+          <p className="text-[11px] font-medium text-[#6B8299] tracking-wider">NAV HISTORY · SOURCE: AMFI</p>
+          <div className="flex items-center gap-1 flex-wrap">
             {CHART_PERIODS.map((p) => (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => { setPeriod(p); setCustomRange(null); }}
                 className={cn(
                   "px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors",
                   period === p
                     ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
-                    : "bg-white border-[#E2E8EE] text-[#6B8299] hover:text-[#3D5166]"
+                    : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
                 )}
               >
                 {p}
               </button>
             ))}
+            <DateRangePicker
+              minDate={fund.sparklineDates.SI[0]}
+              maxDate={fund.sparklineDates.SI[fund.sparklineDates.SI.length - 1]}
+              isActive={period === "Custom"}
+              onApply={(start, end) => {
+                setCustomRange({ start, end });
+                setPeriod("Custom");
+              }}
+              onClear={() => {
+                setCustomRange(null);
+                setPeriod("SI");
+              }}
+            />
           </div>
         </div>
-        <div className="h-[120px]">
+        <div className="h-[220px]">
           <NavMiniChart data={spark} dates={sparkDates} />
         </div>
       </div>

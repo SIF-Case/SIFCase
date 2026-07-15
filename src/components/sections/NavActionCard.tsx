@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { FundCTAModal } from "@/components/ui/FundCTAModal";
+import { useCompareTray } from "@/components/ui/CompareTray";
 import type { FundDetail, FundDetailsData } from "@/lib/sifData";
 
 function fmtInr(n: number | null): string {
@@ -32,6 +33,8 @@ export function NavActionCard({
   className?: string;
 }) {
   const [ctaOpen, setCtaOpen] = useState(false);
+  const { toggle, has } = useCompareTray();
+  const added = has(fund.schemeCode);
 
   return (
     <div className={`rounded-[14px] border border-white/[0.07] bg-[#0E2A47] p-5 ${className ?? ""}`}>
@@ -60,9 +63,9 @@ export function NavActionCard({
           { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—") },
           { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
         ].map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between py-2 border-b border-white/[0.07] last:border-0">
-            <span className="text-[13px] text-white/[0.42]">{label}</span>
-            <span className="text-[13px] font-medium text-white">{value}</span>
+          <div key={label} className="flex items-start justify-between gap-4 py-2 border-b border-white/[0.07] last:border-0">
+            <span className="text-[13px] text-white/[0.42] shrink-0">{label}</span>
+            <span className="text-[13px] font-medium text-white text-right">{value}</span>
           </div>
         ))}
       </div>
@@ -75,13 +78,13 @@ export function NavActionCard({
         >
           Invest Online
         </button>
-        <Link
-          href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
+        <button
+          onClick={() => toggle(fund.schemeCode)}
           className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
         >
-          <Plus className="size-3.5" />
-          Add to compare
-        </Link>
+          {added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
+          {added ? "Added to compare" : "Add to compare"}
+        </button>
       </div>
 
       <FundCTAModal

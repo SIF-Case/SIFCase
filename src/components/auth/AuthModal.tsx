@@ -368,8 +368,7 @@ export function AuthModal({ open, onClose, reason }: Props) {
               disabled={loading}
               className="w-full h-10 rounded-[10px] bg-primary text-white text-[13.5px] font-semibold hover:bg-primary-hover disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
-              Continue
+              {loading ? <Loader2 className="size-4 animate-spin"/> : "Continue"}
             </button>
           </div>
         )}

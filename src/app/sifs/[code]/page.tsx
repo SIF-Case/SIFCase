@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { Providers } from "@/app/providers";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { NavActionCard } from "@/components/sections/NavActionCard";
 import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
@@ -311,7 +312,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
     .toUpperCase();
 
   return (
-    <>
+    <Providers funds={allFunds}>
       <Navbar />
 
       {/* ── Breadcrumb ──────────────────────────────────────────────────────── */}
@@ -488,7 +489,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               </section>
 
               {/* ── Performance tabs card ─────────────────────────────────── */}
-              <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">
+              <div className="bg-white rounded-[14px] border border-[#E2E8EE]">
                 <FundTabs
                   performance={
                     <div className="p-5">
@@ -668,33 +669,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               </div>
 
               {/* ── Speak to RM ───────────────────────────────────────────── */}
-              <div className="bg-[#0C3B54] rounded-[14px] border border-white/[0.08] p-5">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="size-10 rounded-full bg-[#0E9F8E] flex items-center justify-center shrink-0">
-                    <span className="text-white text-[13px] font-bold">SK</span>
-                  </div>
-                  <div>
-                    <div className="text-[14px] font-semibold text-white">Speak to your Relationship Manager</div>
-                    <div className="text-[12px] text-white/50 mt-0.5">
-                      Get details on this fund or understand if it suits your portfolio
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <button className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.315 13.132a1 1 0 0 1 .244-.894C3.472 11.023 4 9.5 4 9A5 5 0 1 1 14 9c0 .5.528 2.023 1.441 3.238a1 1 0 0 1-.39 1.558l-2.56.749a1 1 0 0 0-.487.35l-.266.35a1.5 1.5 0 0 1-2.476 0l-.266-.35a1 1 0 0 0-.487-.35l-2.56-.748a1 1 0 0 1-.654-.665z" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    WhatsApp
-                  </button>
-                  <button className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] border border-white/20 bg-white/10 text-white text-[13px] hover:bg-white/15 transition-colors">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M10.374 12.426c.155.071.33.087.495.046a.812.812 0 0 0 .415-.274l.266-.35a1.5 1.5 0 0 1 1.2-.598H15a1.5 1.5 0 0 1 1.5 1.5V15A1.5 1.5 0 0 1 15 16.5C11.42 16.5 7.986 15.078 5.454 12.546 2.922 10.014 1.5 6.58 1.5 3A1.5 1.5 0 0 1 3 1.5h2.25a1.5 1.5 0 0 1 1.5 1.5v2.25a1.5 1.5 0 0 1-.848 1.35l-.351.263a.812.812 0 0 0-.274.416.812.812 0 0 0 .046.495C6.605 9.72 8.291 11.404 10.374 12.426z" stroke="white" strokeWidth="0.67" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    Call RM
-                  </button>
-                  <button className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M6 1.5v3M12 1.5v3M14.25 3H3.75A1.5 1.5 0 0 0 2.25 4.5V15A1.5 1.5 0 0 0 3.75 16.5h10.5A1.5 1.5 0 0 0 15.75 15V4.5A1.5 1.5 0 0 0 14.25 3zM2.25 7.5h13.5" stroke="white" strokeWidth="0.71" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    Schedule a Call
-                  </button>
-                </div>
-              </div>
+
 
               {/* ── Disclaimer ────────────────────────────────────────────── */}
               <div className="flex items-start gap-3 p-4 bg-[#F8FAFB] rounded-[10px] border border-[#E2E8EE]">
@@ -936,6 +911,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
       </div>
 
       <Footer />
-    </>
+    </Providers>
   );
 }

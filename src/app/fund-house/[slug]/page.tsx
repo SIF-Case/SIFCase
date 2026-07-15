@@ -3,7 +3,7 @@ export const revalidate = 3600;
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Info, FileText, Users } from "lucide-react";
+import { Info, FileText, Users, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
@@ -128,6 +128,13 @@ export default async function FundHousePage({ params }: Props) {
         {/* HERO */}
         <div style={{ background: "#004C61" }} className="text-white">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-[50px] pt-7 sm:pt-9 pb-7">
+            {/* Back link */}
+            <div className="mb-6">
+              <Link href="/fund-houses" className="inline-flex items-center gap-1.5 text-[13px] text-white/70 hover:text-white transition-colors font-medium">
+                <ArrowLeft className="size-3.5" /> AMC Directory
+              </Link>
+            </div>
+            
             <div className="flex items-start gap-4 mb-4">
               <FundHouseLogo logoUrl={fundHouse.logoUrl} brandName={fundHouse.brandName} />
               <div className="flex flex-col gap-1 pt-1">
@@ -215,10 +222,10 @@ export default async function FundHousePage({ params }: Props) {
                   ].map(([label, value], i, arr) => (
                     <div
                       key={label}
-                      className={`flex items-center justify-between py-[9px] ${i !== arr.length - 1 ? "border-b border-rule" : ""}`}
+                      className={`flex items-start justify-between gap-4 py-[9px] ${i !== arr.length - 1 ? "border-b border-rule" : ""}`}
                     >
-                      <span className="text-[14px] text-muted">{label}</span>
-                      <span className="text-[14px] font-semibold text-heading">{value}</span>
+                      <span className="text-[14px] text-muted shrink-0 mt-[1px]">{label}</span>
+                      <span className="text-[14px] font-semibold text-heading text-right">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -275,7 +282,7 @@ export default async function FundHousePage({ params }: Props) {
                 <h2 className="text-[21px] font-extrabold text-heading tracking-tight">Funds Available</h2>
               </div>
               <Link href="/sifs" className="inline-flex items-center gap-1 text-[14px] font-semibold text-primary hover:text-primary-hover">
-                View all SIFs →
+                View all other SIFs →
               </Link>
             </div>
 
@@ -341,10 +348,10 @@ export default async function FundHousePage({ params }: Props) {
                         <span className="text-[11px] text-faint">
                           {a.publishedAt
                             ? new Date(a.publishedAt).toLocaleDateString("en-IN", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
                             : ""}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary group-hover:gap-2 transition-all">

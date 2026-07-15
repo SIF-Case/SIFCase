@@ -330,13 +330,36 @@ export function FundDetailPanel({
                   // arbitrary evenly-spaced subset by position.
                   const stride = Math.max(1, Math.ceil(firstIdxByLabel.length / MAX_LABELS));
                   const shownIdx = firstIdxByLabel.filter((_, i) => i % stride === 0);
-                  // Always include the last label so the range's end date is visible.
                   if (shownIdx[shownIdx.length - 1] !== firstIdxByLabel[firstIdxByLabel.length - 1]) {
                     shownIdx.push(firstIdxByLabel[firstIdxByLabel.length - 1]);
                   }
-                  const count = shownIdx.length;
 
-                  return shownIdx.map((idx, i) => {
+                  // Anti-collision: enforce minimum pixel distance (e.g., 60px)
+                  const MIN_DIST = 60;
+                  const finalIdxs = [shownIdx[0]];
+                  for (let i = 1; i < shownIdx.length - 1; i++) {
+                    const x = PL + (shownIdx[i] / (visible.length - 1)) * (W - PL - PR);
+                    const lastX = PL + (finalIdxs[finalIdxs.length - 1] / (visible.length - 1)) * (W - PL - PR);
+                    if (x - lastX >= MIN_DIST) {
+                      finalIdxs.push(shownIdx[i]);
+                    }
+                  }
+                  if (shownIdx.length > 1) {
+                    const lastIdx = shownIdx[shownIdx.length - 1];
+                    const lastX = PL + (lastIdx / (visible.length - 1)) * (W - PL - PR);
+                    while (finalIdxs.length > 0) {
+                      const prevX = PL + (finalIdxs[finalIdxs.length - 1] / (visible.length - 1)) * (W - PL - PR);
+                      if (lastX - prevX < MIN_DIST) {
+                        finalIdxs.pop();
+                      } else {
+                        break;
+                      }
+                    }
+                    finalIdxs.push(lastIdx);
+                  }
+                  const count = finalIdxs.length;
+
+                  return finalIdxs.map((idx, i) => {
                     const x = PL + (idx / (visible.length - 1)) * (W - PL - PR);
                     const label = fmtAxisDate(visible[idx].date, spanDays);
                     return (

@@ -135,17 +135,6 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
         .nfo-sif-callout-title { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 3px; }
         .nfo-sif-callout-body { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
 
-        /* ── Asset Allocation Bands ─────────────────────────────────────── */
-        .nfo-alloc-row { margin-bottom: 1rem; }
-        .nfo-alloc-row:last-child { margin-bottom: 0; }
-        .nfo-alloc-row-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-        .nfo-alloc-name { font-size: 13px; font-weight: 500; color: var(--text-1); }
-        .nfo-alloc-range { font-size: 12.5px; color: var(--text-3); font-weight: 500; }
-        .nfo-alloc-bar-track { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; position: relative; }
-        .nfo-alloc-bar-fill { height: 100%; border-radius: 5px; }
-        .nfo-alloc-legend { display: flex; gap: 1.25rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
-        .nfo-alloc-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
-        .nfo-alloc-legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
         /* ── Restriction List ───────────────────────────────────────────── */
         .nfo-restriction-list { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -178,7 +167,8 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
         .nfo-process-step-detail:first-child { padding-left: 0; }
         .nfo-process-step-detail:last-child { padding-right: 0; }
         .nfo-process-step-num-detail { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; margin-bottom: 0.75rem; position: relative; z-index: 2; }
-        .nfo-process-step-detail::after { content: ''; position: absolute; top: 15px; left: calc(50% + 15px); width: calc(100% - 15px); height: 1.5px; background: var(--border); z-index: 1; }
+        .nfo-process-step-detail::after { content: ''; position: absolute; top: 15px; left: 2.875rem; right: -1rem; height: 1.5px; background: var(--border); z-index: 1; }
+        .nfo-process-step-detail:first-child::after { left: 1.875rem; }
         .nfo-process-step-detail:last-child::after { display: none; }
         .nfo-process-step-title-detail { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
         .nfo-process-step-desc-detail { font-size: 12px; color: var(--text-3); line-height: 1.5; }
@@ -440,41 +430,224 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
               <div className="nfo-card-el-head">
                 <h2 className="nfo-card-el-title" id="alloc-title">
                   <BarChart3 size={16} aria-hidden="true" />
-                  Asset allocation mandate
+                  SEBI Asset allocation mandate ({nfo.category})
                 </h2>
               </div>
-              <div className="nfo-card-el-body">
-                {nfo.allocationBands.map((band, idx) => (
-                  <div key={idx} className="nfo-alloc-row">
-                    <div className="nfo-alloc-row-head">
-                      <span className="nfo-alloc-name">{band.name}</span>
-                      <span className="nfo-alloc-range">{band.range}</span>
+              <div className="nfo-card-el-body-flush overflow-x-auto pb-4">
+                {nfo.category === 'Equity' && (
+                  <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                    <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                      <tr>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Instrument / Asset Class</th>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Min %</th>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Max %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Equity &amp; Equity ETFs / Instruments (Long)</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Min 80%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Short via Unhedged Derivatives (Max)</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 25%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Debt &amp; Money Market Securities</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 35%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cash &amp; Cash Equivalents</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 10%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Single Stock Derivative Exposure</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 10% of NAV</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cumulative Gross Exposure</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100% of NAV</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+
+                {nfo.category === 'Debt' && (
+                  <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                    <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                      <tr>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Instrument / Asset Class</th>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Min %</th>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Max %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Debt Securities (G-Sec, SDL, Corporate Bonds)</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Min 65%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Money Market Instruments</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 35%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Short via Debt Derivatives (Unhedged Max)</td>
+                        <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 25%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Single Sector Maximum Exposure</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 75%</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Single Issuer (AAA-rated)</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 20% of NAV</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cumulative Gross Exposure</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                        <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100% of NAV</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+
+                {nfo.category === 'Hybrid' && (
+                  <div className="flex flex-col gap-6 mt-2">
+                    <div>
+                      <h3 className="px-6 pt-3 pb-3 text-[13px] font-semibold text-[var(--text-1)] tracking-wide">Active Asset Allocator — Allocation Ranges</h3>
+                      <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                        <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)", borderTop: "1px solid var(--border)" }}>
+                          <tr>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Instrument / Asset Class</th>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Min %</th>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Max %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Equity, Equity Derivatives (Long &amp; Short)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 80%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Debt Instruments (Bonds, G-Sec, SDL)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 80%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>REITs / InvITs</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 20%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Commodity Derivatives</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 10%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Short via Derivatives (Unhedged Max)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 25%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cumulative Gross Exposure</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100% of NAV</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="nfo-alloc-bar-track">
-                      <div
-                        className="nfo-alloc-bar-fill"
-                        style={{ width: `${band.percent}%`, background: band.color }}
-                      ></div>
+
+                    <div>
+                      <h3 className="px-6 pt-2 pb-3 text-[13px] font-semibold text-[var(--text-1)] tracking-wide">Hybrid Long-Short — Allocation Ranges</h3>
+                      <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                        <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)", borderTop: "1px solid var(--border)" }}>
+                          <tr>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Instrument / Asset Class</th>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Min %</th>
+                            <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Max %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Equity &amp; Related Instruments (Minimum)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Min 25%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 75%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Debt Instruments (Minimum)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Min 25%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 75%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Short via Derivatives in Eq + Debt (Max)</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 25%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cash &amp; Cash Equivalents</td>
+                            <td style={{ padding: "12px 24px", color: "var(--success)" }}>0%</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 20%</td>
+                          </tr>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <td style={{ padding: "12px 24px", color: "var(--text-1)" }}>Cumulative Gross Exposure</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-3)" }}>—</td>
+                            <td style={{ padding: "12px 24px", color: "var(--text-2)" }}>Max 100% of NAV</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                ))}
-                <div className="nfo-alloc-legend">
-                  {nfo.allocationBands.map((band, idx) => (
-                    <div key={idx} className="nfo-alloc-legend-item">
-                      <span
-                        className="nfo-alloc-legend-dot"
-                        style={{ background: band.color }}
-                        aria-hidden="true"
-                      ></span>
-                      {band.name.split(" (")[0].split(" &")[0]}
-                    </div>
-                  ))}
-                </div>
+                )}
+
+                {nfo.category !== 'Equity' && nfo.category !== 'Hybrid' && nfo.category !== 'Debt' && (
+                  <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                    <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                      <tr>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "left" }}>Instruments</th>
+                        <th style={{ padding: "12px 24px", fontWeight: 600, color: "var(--text-2)", textAlign: "right" }}>Indicative Allocation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nfo.allocationBands.map((band, idx) => (
+                        <tr key={idx} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "12px 24px", color: "var(--text-1)", fontWeight: 500 }}>{band.name}</td>
+                          <td style={{ padding: "12px 24px", color: "var(--text-2)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{band.range}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
+
             </section>
 
+            {/* SIF Concentration Limits Callout */}
+            <div className="nfo-sif-callout mt-4">
+              <div className="nfo-sif-callout-icon" aria-hidden="true">
+                <Shield size={16} />
+              </div>
+              <div>
+                <div className="nfo-sif-callout-title">Standard SIF Concentration Limits</div>
+                <div className="nfo-sif-callout-body">
+                  Regardless of strategy, all SIFs are subject to concentration limits, capping equity allocation to 15% in a single security, fixed-income exposure to 20% (up to 25% with board approval) in a single issuer, and REIT/InvIT exposure to 20%. Cumulative gross exposure across all markets cannot exceed 100% of net assets, prohibiting leverage at the net level.
+                </div>
+              </div>
+            </div>
+
             {/* Strategy */}
-            <section className="nfo-card-el" aria-labelledby="strategy-title">
+            <section className="nfo-card-el mt-6" aria-labelledby="strategy-title">
               <div className="nfo-card-el-head">
                 <h2 className="nfo-card-el-title" id="strategy-title">
                   <Activity size={16} aria-hidden="true" />
@@ -693,14 +866,6 @@ export function NFODetailClient({ nfo }: { nfo: NFOData }) {
                 onClick={handleApply}
               >
                 Apply for this NFO
-              </button>
-              
-              <button
-                className={`nfo-btn-s ${compared ? "active" : ""}`}
-                aria-label="Add to compare"
-                onClick={() => setCompared((prev) => !prev)}
-              >
-                {compared ? "✓ Added to compare" : "+ Add to compare"}
               </button>
 
               <div className="nfo-apply-note">

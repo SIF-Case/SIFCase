@@ -24,6 +24,7 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
     if (activeFilter === "Closing soon") return nfo.isClosingSoon;
     return true;
   });
+  const filteredClosingSoonNfos = filteredNfos.filter((n) => n.isClosingSoon);
 
   const toggleCompare = (slug: string) => {
     setComparedSlugs((prev) =>
@@ -196,9 +197,14 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
           margin-bottom: 1.125rem; position: relative; z-index: 2;
         }
         .nfo-process-step::after {
-          content: ''; position: absolute; top: 18px; left: calc(50% + 18px); width: calc(100% - 18px);
+          /* Circles are left-aligned (not centered), so the connector must
+             start at this step's own circle edge (1.25rem padding + 2.25rem
+             circle) and reach into the next step's left padding — not a
+             calc(50% + ...) offset, which assumed a centered circle. */
+          content: ''; position: absolute; top: 18px; left: 3.5rem; right: -1.25rem;
           height: 1.5px; background: var(--border); z-index: 1;
         }
+        .nfo-process-step:first-child::after { left: 2.25rem; }
         .nfo-process-step:last-child::after { display: none; }
         .nfo-process-step-title { font-size: 14.5px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
         .nfo-process-step-desc { font-size: 13px; color: var(--text-3); line-height: 1.6; }
@@ -304,13 +310,19 @@ export function NFOListClient({ nfos }: { nfos: (NFOData & { minInvestmentValue:
             </div>
           </div>
 
-          {closingSoonNfos.length > 0 && (
+          {filteredClosingSoonNfos.length > 0 && (
             <div className="nfo-alert-strip" role="status">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 6v6l4 2" />
               </svg>
-              {closingSoonNfos.length} NFO{closingSoonNfos.length > 1 ? "s" : ""} close{closingSoonNfos.length > 1 ? "" : "s"} soon — {closingSoonNfos.map((n) => `${n.name} (${n.closeDate})`).join(", ")}
+              {filteredClosingSoonNfos.length} NFO{filteredClosingSoonNfos.length > 1 ? "s" : ""} close{filteredClosingSoonNfos.length > 1 ? "" : "s"} soon — {filteredClosingSoonNfos.map((n) => `${n.name} (${n.closeDate})`).join(", ")}
+            </div>
+          )}
+
+          {filteredNfos.length === 0 && (
+            <div className="nfo-alert-strip" role="status" style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text-3)" }}>
+              No open NFOs match this filter right now.
             </div>
           )}
 

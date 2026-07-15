@@ -140,6 +140,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const [sortAsc, setSortAsc] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [strategyFilter, setStrategyFilter] = useState("All");
+  const [amcFilter, setAmcFilter] = useState("All");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
@@ -154,6 +155,10 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     ["All", ...Array.from(new Set(funds.map((f) => f.strategy))).sort()],
     [funds]);
 
+  const amcs = useMemo(() =>
+    ["All", ...Array.from(new Set(funds.map((f) => f.amc))).sort()],
+    [funds]);
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc((a) => !a);
     else { setSortKey(key); setSortAsc(false); }
@@ -164,6 +169,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     let list = funds.filter((f) => {
       if (category !== "All" && f.category !== category) return false;
       if (strategyFilter !== "All" && f.strategy !== strategyFilter) return false;
+      if (amcFilter !== "All" && f.amc !== amcFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         return f.name.toLowerCase().includes(q) || f.amc.toLowerCase().includes(q) || f.strategy.toLowerCase().includes(q);
@@ -186,7 +192,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     });
 
     return list;
-  }, [funds, search, period, category, strategyFilter, sortKey, sortAsc]);
+  }, [funds, search, period, category, strategyFilter, amcFilter, sortKey, sortAsc]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -302,7 +308,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
 
         {/* Extended filters */}
         {showFilters && (
-          <div className="px-4 py-3 border-b border-rule flex flex-wrap items-center gap-3">
+          <div className="px-4 py-3 border-b border-rule flex flex-wrap items-start gap-6">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Strategy</p>
               <div className="flex flex-wrap gap-1.5">
@@ -313,6 +319,19 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted mb-1.5">Fund House</p>
+              <select 
+                value={amcFilter}
+                onChange={(e) => { setAmcFilter(e.target.value); setPage(1); }}
+                className="h-8 px-2.5 text-[12px] font-medium rounded-[6px] border border-rule bg-surface text-heading outline-none focus:border-primary transition-colors cursor-pointer"
+              >
+                {amcs.map(a => (
+                  <option key={a} value={a}>{a === "All" ? "All Fund Houses" : a}</option>
+                ))}
+              </select>
             </div>
           </div>
         )}
