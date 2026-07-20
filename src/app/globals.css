@@ -1089,7 +1089,10 @@ button, a, [role="button"], input, select {
 }
 .nav-col ul { list-style: none; }
 .nav-col ul li { margin-bottom: 8px; }
-.nav-col ul li a {
+/* button included so action items (e.g. Callback request, which opens a modal
+   rather than navigating) sit flush with the navigation links around them */
+.nav-col ul li a,
+.nav-col ul li button {
   font-size: 12.5px;
   color: var(--text-secondary);
   text-decoration: none;
@@ -1097,8 +1100,15 @@ button, a, [role="button"], input, select {
   align-items: center;
   gap: 6px;
   transition: color .12s;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.nav-col ul li a:hover { color: var(--text-primary); }
+.nav-col ul li a:hover,
+.nav-col ul li button:hover { color: var(--text-primary); }
 .pill-new {
   font-size: 9px; font-weight: 600;
   background: rgba(26,138,138,.15);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { openCallbackRequest } from "@/components/ui/CallbackPopup";
 
 export function Footer() {
   const [email, setEmail] = useState("");
@@ -134,9 +135,6 @@ export function Footer() {
               <Link href="/sif-101">SIF 101 guide</Link>
             </li>
             <li>
-              <Link href="/sif-101/quiz">Tools &amp; suitability</Link>
-            </li>
-            <li>
               <Link href="/read">Insights</Link>
             </li>
             <li>
@@ -150,13 +148,9 @@ export function Footer() {
           <div className="col-head">Invest</div>
           <ul>
             <li>
-              <Link href="/suitability">Find my SIF</Link>
-            </li>
-            <li>
-              <a href="mailto:support@sifcase.com">Expert connect</a>
-            </li>
-            <li>
-              <a href="mailto:support@sifcase.com">Callback request</a>
+              <button type="button" onClick={openCallbackRequest}>
+                Callback request
+              </button>
             </li>
             <li>
               <Link href="/about">About SIFcase</Link>
@@ -295,7 +289,6 @@ export function Footer() {
         </div>
         <div className="bottom-links">
           <Link href="/sitemap.xml">Sitemap</Link>
-          <Link href="/">Accessibility</Link>
           <Link href="/privacy">Cookie preferences</Link>
         </div>
         <div className="india-seal">

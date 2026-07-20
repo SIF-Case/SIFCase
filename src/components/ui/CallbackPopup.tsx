@@ -5,6 +5,15 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { X, Phone, User, Mail, MessageSquare, Check } from "lucide-react";
 
+// The popup is mounted once globally in app/layout.tsx and owns its own state,
+// so callers can't pass props to open it. This event is the bridge: dispatch it
+// from anywhere (e.g. the footer's "Callback request") to open the form.
+export const CALLBACK_REQUEST_EVENT = "sifcase:open-callback";
+
+export function openCallbackRequest() {
+  window.dispatchEvent(new CustomEvent(CALLBACK_REQUEST_EVENT));
+}
+
 export function CallbackPopup() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -51,6 +60,19 @@ export function CallbackPopup() {
 
     return () => clearTimeout(timer);
   }, [pathname, session]);
+
+  // An explicit request always opens, ignoring the 2-day dismissal above — the
+  // user asked for it. Resets any previous submission so they get a fresh form
+  // rather than a stale thank-you screen.
+  useEffect(() => {
+    function handleRequest() {
+      setIsSubmitted(false);
+      setErrorMsg("");
+      setIsOpen(true);
+    }
+    window.addEventListener(CALLBACK_REQUEST_EVENT, handleRequest);
+    return () => window.removeEventListener(CALLBACK_REQUEST_EVENT, handleRequest);
+  }, []);
 
   const handleDismiss = () => {
     if (typeof window !== "undefined") {
