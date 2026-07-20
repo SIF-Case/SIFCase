@@ -6,6 +6,7 @@
     { "path": "/api/cron/fetch-news", "schedule": "0 2 * * *"   },
     { "path": "/api/cron/fetch-aum",  "schedule": "0 4 * * *"   },
     { "path": "/api/cron/fetch-nfos", "schedule": "0 5 * * *"   },
-    { "path": "/api/cron/unpublish-expired-nfos", "schedule": "0 6 * * *" }
+    { "path": "/api/cron/unpublish-expired-nfos", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/sync-fund-details", "schedule": "0 7 * * *" }
   ]
 }
