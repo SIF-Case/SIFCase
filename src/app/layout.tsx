@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { Analytics } from "@vercel/analytics/next";
 import { UserTracker } from "@/components/UserTracker";
 import { CallbackPopup } from "@/components/ui/CallbackPopup";
+import { PhoneGate } from "@/components/auth/PhoneGate";
 import "./globals.css";
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
           <UserTracker />
           <CallbackPopup />
           {children}
+          <PhoneGate />
           <Analytics />
         </SessionProvider>
       </body>

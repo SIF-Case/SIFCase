@@ -2,11 +2,10 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
-import { consumeEmailOtp, consumePhoneOtp, consumeLoginToken } from "@/lib/otp";
+import { consumeEmailOtp } from "@/lib/otp";
 import { logClientActivity } from "@/lib/activityLogger";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -41,21 +40,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       id: "email-otp",
       credentials: {
-        phone: { label: "Phone" },
+        email: { label: "Email" },
         otp: { label: "OTP" },
       },
       async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.otp) return null;
-        const result = await consumeEmailOtp({
-          purpose: "login",
-          key: credentials.phone as string,
-          otp: credentials.otp as string,
-        });
+        if (!credentials?.email || !credentials?.otp) return null;
+        const email = (credentials.email as string).trim().toLowerCase();
+        const result = await consumeEmailOtp({ purpose: "login", key: email, otp: credentials.otp as string });
         if (!result.ok) return null;
         await connectDB();
-        const user = await User.findOne({ email: result.email });
-        if (!user) return null;
-        if (!user.emailVerified) {
+        let user = await User.findOne({ email });
+        if (!user) {
+          // New user: email is verified here; phone is collected afterwards by the
+          // mandatory phone gate (no phone on the account yet).
+          user = await User.create({ email, emailVerified: new Date(), name: email.split("@")[0] });
+          try {
+            await logClientActivity(user._id.toString(), "Create User", "Registered user account via Email OTP");
+          } catch (err) {
+            console.error("Email OTP sign up client logger error:", err);
+          }
+        } else if (!user.emailVerified) {
           user.emailVerified = new Date();
           await user.save();
         }
@@ -64,59 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name ?? null,
           email: user.email ?? null,
           image: user.image ?? null,
-        };
-      },
-    }),
-    Credentials({
-      id: "phone-otp",
-      credentials: {
-        phone: { label: "Phone" },
-        otp: { label: "OTP" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.otp) return null;
-        const phone = credentials.phone as string;
-        const result = await consumePhoneOtp(phone, credentials.otp as string);
-        if (!result.ok) return null;
-        await connectDB();
-        let user = await User.findOne({ phone });
-        if (!user) {
-          user = await User.create({ phone, name: phone });
-          try {
-            await logClientActivity(user._id.toString(), "Create User", "Registered user account via Phone/SMS Login");
-          } catch (err) {
-            console.error("Phone sign up client logger error:", err);
-          }
-        }
-        return {
-          id: user._id.toString(),
-          name: user.name ?? phone,
-          email: user.email ?? null,
-          image: user.image ?? null,
-          phone,
-        };
-      },
-    }),
-    Credentials({
-      id: "phone-post-link",
-      credentials: {
-        phone: { label: "Phone" },
-        loginToken: { label: "Login Token" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.loginToken) return null;
-        const phone = credentials.phone as string;
-        const result = await consumeLoginToken(phone, credentials.loginToken as string);
-        if (!result.ok) return null;
-        await connectDB();
-        const user = await User.findOne({ phone });
-        if (!user) return null;
-        return {
-          id: user._id.toString(),
-          name: user.name ?? phone,
-          email: user.email ?? null,
-          image: user.image ?? null,
-          phone,
+          phone: user.phone ?? undefined,
         };
       },
     }),
@@ -125,46 +77,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ account, profile }) {
       if (account?.provider === "google" && profile?.email) {
         await connectDB();
-        const cookieStore = await cookies();
-        const linkingPhone = cookieStore.get("linking_phone")?.value;
-
-        if (linkingPhone) {
-          // Link Google to phone number (for new user registration flow)
-          let phoneUser = await User.findOne({ phone: linkingPhone });
-          
-          if (!phoneUser) {
-            // Create new user with phone + Google email
-            phoneUser = await User.create({
-              phone: linkingPhone,
-              email: profile.email,
-              googleId: profile.sub as string | undefined,
-              image: (profile as { picture?: string }).picture ?? undefined,
-              emailVerified: new Date(),
-              name: profile.name ?? undefined,
-            });
-            
-            try {
-              await logClientActivity(phoneUser._id.toString(), "Create User", "Registered user account via Phone + Google");
-            } catch (err) {
-              console.error("Google link sign up client logger error:", err);
-            }
-          } else if (!phoneUser.email) {
-            // Update existing phone-only user with Google email
-            phoneUser.email = profile.email;
-            phoneUser.googleId = profile.sub as string | undefined;
-            phoneUser.image = (profile as { picture?: string }).picture ?? phoneUser.image;
-            phoneUser.emailVerified = new Date();
-            if (phoneUser.name === phoneUser.phone) {
-              phoneUser.name = profile.name ?? phoneUser.name;
-            }
-            await phoneUser.save();
-          }
-          
-          cookieStore.delete("linking_phone");
-          return true;
-        }
-
-        // Normal Google sign-in flow (for returning users)
+        // Create the account if new, or backfill googleId on an existing email
+        // account. Phone (if missing) is collected afterwards by the phone gate.
         const existing = await User.findOne({ email: profile.email });
         if (!existing) {
           const newUser = await User.create({
@@ -194,6 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.name = dbUser.name ?? token.name;
           token.email = dbUser.email ?? token.email;
           token.picture = dbUser.image ?? token.picture;
+          token.phone = dbUser.phone ?? token.phone;
           token.isAdmin = !!dbUser.isAdmin;
           token.role = dbUser.role ? String(dbUser.role) : undefined;
         }
@@ -218,6 +133,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (dbUser) {
           token.id = (dbUser._id as { toString(): string }).toString();
           if (dbUser.name) token.name = dbUser.name;
+          token.phone = dbUser.phone ?? undefined;
           token.isAdmin = !!dbUser.isAdmin;
           token.role = dbUser.role ? String(dbUser.role) : undefined;
         }

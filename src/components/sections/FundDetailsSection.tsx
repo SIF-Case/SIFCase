@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LabelList,
 } from "recharts";
-import { FileText, Download, Search, Users, TrendingUp, TrendingDown, Building2, BarChart2, CheckCircle2, XCircle, ArrowLeftRight, Compass } from "lucide-react";
+import { FileText, Download, Search, Users, TrendingUp, TrendingDown, Building2, BarChart2, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
 import type { FundDetailsData } from "@/lib/sifData";
 
 // ─── Colour palette ────────────────────────────────────────────────────────────
@@ -457,24 +457,6 @@ function IndustryChart({ data }: { data: { industry: string; percentage: number 
   );
 }
 
-// ─── Rating class pie chart ────────────────────────────────────────────────────
-
-function RatingPieChart({ data }: { data: { ratingClass: string; percentage: number }[] }) {
-  return (
-    <ResponsiveContainer width="100%" height={260} minWidth={0}>
-      <PieChart>
-        <Pie data={data} dataKey="percentage" nameKey="ratingClass" cx="50%" cy="50%" outerRadius={90}
-          label={({ name, value }) => `${name} ${Number(value).toFixed(1)}%`}
-          labelLine={false}>
-          {data.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-        </Pie>
-        <Tooltip formatter={(v) => [`${Number(v).toFixed(2)}%`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-        <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: 11 }} />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function FundDetailsSection({ details }: { details: FundDetailsData }) {
@@ -623,32 +605,6 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                       ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── RATING CLASS ALLOCATION ────────────────────────────────────── */}
-      {details.portfolioByRatingClass?.length > 0 && (
-        <SectionCard label="Portfolio" title="Debt Allocation">
-          <div className="bg-white border border-rule rounded-[18px] shadow-card overflow-hidden">
-            <div className="grid md:grid-cols-[1fr_300px] divide-y md:divide-y-0 md:divide-x divide-rule">
-              <div className="p-6">
-                <RatingPieChart data={details.portfolioByRatingClass} />
-              </div>
-              <div className="divide-y divide-rule">
-                {[...details.portfolioByRatingClass]
-                  .sort((a, b) => b.percentage - a.percentage)
-                  .map((row, i) => (
-                    <div key={i} className="px-4 py-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="size-2.5 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-[12px] text-body">{row.ratingClass}</span>
-                      </div>
-                      <span className="text-[13px] font-bold tabular text-heading">{row.percentage.toFixed(2)}%</span>
-                    </div>
-                  ))}
               </div>
             </div>
           </div>
@@ -820,55 +776,6 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
         </SectionCard>
       )}
 
-      {/* ── CATEGORY RANKS ───────────────────────────────────────────────── */}
-      {details.categoryRanks?.length > 0 && (
-        <SectionCard label="Performance" title="Category rank">
-          <div className="flex flex-wrap gap-3">
-            {details.categoryRanks.map((r, i) => (
-              <div key={i} className="bg-white border border-rule rounded-[14px] px-4 py-3 flex flex-col gap-1 min-w-[110px]">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-muted">{r.timeframe}</span>
-                <span className="text-[18px] font-bold text-heading tabular">#{r.rankInCategory}</span>
-                {r.annualizedReturn != null && (
-                  <span className="text-[11px] text-muted tabular">
-                    {r.annualizedReturn.toFixed(2)}% vs {r.categoryAverage != null ? `${r.categoryAverage.toFixed(2)}%` : "—"} cat avg
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── RISK METRIC CONCLUSIONS ──────────────────────────────────────── */}
-      {details.riskMetricsConclusions && (
-        <SectionCard label="Risk" title="Risk metric conclusions">
-          <div className="grid sm:grid-cols-2 gap-4">
-            {([
-              ["Returns", details.riskMetricsConclusions.returns],
-              ["Standard Deviation", details.riskMetricsConclusions.riskStandardDeviation],
-              ["Sharpe Ratio", details.riskMetricsConclusions.sharpRatio],
-              ["Sortino Ratio", details.riskMetricsConclusions.sortinoRatio],
-              ["Beta", details.riskMetricsConclusions.beta],
-            ] as const).filter(([, g]) => g.info || g.timeframes?.length > 0).map(([label, group]) => (
-              <div key={label} className="bg-white border border-rule rounded-[18px] shadow-card p-5">
-                <p className="text-[13px] font-bold text-heading mb-1.5">{label}</p>
-                {group.info && <p className="text-[11.5px] text-muted leading-relaxed mb-3">{group.info}</p>}
-                {group.timeframes?.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {group.timeframes.map((t, i) => (
-                      <span key={i} className="text-[11px] bg-surface border border-rule rounded-full px-2.5 py-1">
-                        <span className="font-mono uppercase text-muted mr-1">{t.timeframe}</span>
-                        <span className="font-semibold text-heading">{t.conclusion}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
       {/* ── PEERS ─────────────────────────────────────────────────────────── */}
       {details.peers?.length > 0 && (
         <SectionCard label="Comparison" title="Peer funds">
@@ -895,25 +802,6 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                 ))}
               </tbody>
             </table>
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── MORE FUNDS FROM THIS AMC ─────────────────────────────────────── */}
-      {details.amcOtherFunds && details.amcOtherFunds.schemeList?.length > 0 && (
-        <SectionCard label="AMC" title={`More funds from ${details.amcOtherFunds.companyName}`}>
-          <div className="bg-white border border-rule rounded-[18px] shadow-card divide-y divide-rule">
-            {details.amcOtherFunds.schemeList.slice(0, 12).map((s, i) => (
-              <div key={i} className="px-5 py-3 flex items-center justify-between gap-3">
-                <span className="text-[12.5px] text-body truncate">{s.schemeShortName || s.schemeName}</span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {["1y", "3y", "7y", "10y"].filter(p => s.returns?.[p]).map(p => (
-                    <span key={p} className="text-[11px] tabular text-muted">{p}: <span className="font-semibold text-heading">{s.returns[p]}%</span></span>
-                  ))}
-                  <span className="text-[11px] text-muted tabular">{s.aum ? `${s.aum} Cr` : ""}</span>
-                </div>
-              </div>
-            ))}
           </div>
         </SectionCard>
       )}
@@ -986,18 +874,9 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
       )}
 
       {/* ── WHERE DOES THIS FUND FIT FOR YOU ───────────────────────────── */}
-      {(details.howItWorks || details.mfEquivalent || details.portfolioFit) && (
+      {(details.mfEquivalent || details.portfolioFit) && (
         <SectionCard label="Where Does This Fund Fit For You?" title="Understanding the fund's role in your portfolio">
           <div className="space-y-4">
-            {details.howItWorks && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Compass className="size-4 text-primary" strokeWidth={2} />
-                  <h3 className="text-[14px] font-bold text-heading">How this fund works</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.howItWorks}</p>
-              </div>
-            )}
             {details.mfEquivalent && (
               <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
                 <div className="flex items-center gap-2 mb-2.5">

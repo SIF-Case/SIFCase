@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import EmailOtp, { type EmailOtpPurpose } from "@/models/EmailOtp";
 import PhoneOtp from "@/models/PhoneOtp";
-import LoginToken from "@/models/LoginToken";
 import { sendOtpEmail } from "@/lib/mailer";
 import { sendOtpSms } from "@/lib/sms";
 
@@ -142,45 +141,3 @@ export async function consumePhoneOtp(phone: string, otp: string): Promise<Phone
   return { ok: true };
 }
 
-const LOGIN_TOKEN_TTL_MS = 2 * 60 * 1000; // 2 minutes
-
-/**
- * Issue a single-use login token after email verification.
- * The token is stored hashed and expires in 2 minutes.
- */
-export async function issueLoginToken(phone: string): Promise<string> {
-  await connectDB();
-  const raw = crypto.randomBytes(32).toString("hex");
-  const tokenHash = await bcrypt.hash(raw, 10);
-  await LoginToken.findOneAndUpdate(
-    { phone },
-    { tokenHash, expiresAt: new Date(Date.now() + LOGIN_TOKEN_TTL_MS) },
-    { upsert: true },
-  );
-  return raw;
-}
-
-type TokenConsumeResult = { ok: true } | { ok: false; reason: "not-found" | "expired" | "mismatch" };
-
-/**
- * Consume (validate + delete) a login token.
- */
-export async function consumeLoginToken(phone: string, token: string): Promise<TokenConsumeResult> {
-  await connectDB();
-  const record = await LoginToken.findOne({ phone });
-  if (!record) return { ok: false, reason: "not-found" };
-
-  if (record.expiresAt.getTime() < Date.now()) {
-    await record.deleteOne();
-    return { ok: false, reason: "expired" };
-  }
-
-  const valid = await bcrypt.compare(token, record.tokenHash);
-  if (!valid) {
-    await record.deleteOne(); // Single-use: delete on any attempt
-    return { ok: false, reason: "mismatch" };
-  }
-
-  await record.deleteOne();
-  return { ok: true };
-}

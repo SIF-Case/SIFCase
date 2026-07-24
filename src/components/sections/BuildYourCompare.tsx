@@ -14,6 +14,13 @@ import {
 } from "recharts";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
 import { useCompareTray } from "@/components/ui/CompareTray";
+import { HelpTip } from "@/components/ui/HelpTip";
+import {
+  COMPARE_VIEW_HELP,
+  COMPARE_PERIOD_HELP,
+  COMPARE_FUND_TAG_HELP,
+  COMPARE_ADD_FUND_HELP,
+} from "@/lib/controlHelp";
 
 type View = "Cumulative" | "Drawdown" | "Rolling" | "Volatility";
 
@@ -189,64 +196,82 @@ export function BuildYourCompare({ funds }: Props) {
         {/* Nav bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-[40px] p-4 sm:p-[24px_22px] self-stretch bg-[#ecf4f1] border-b-[1.25px] border-white">
           <div className="flex items-center gap-[4.36px] p-[4.36px] rounded-[24px] bg-white w-full sm:max-w-[348px] box-border">
-            {(["Cumulative", "Drawdown", "Rolling", "Volatility"] as const).map((type) => (
-              <button
+            {(["Cumulative", "Drawdown", "Rolling", "Volatility"] as const).map((type, i, arr) => (
+              <HelpTip
                 key={type}
-                className={`flex-1 flex items-center justify-center py-[7px] px-1.5 sm:px-[13px] rounded-[24px] border-none text-[11px] sm:text-[13px] font-medium cursor-pointer whitespace-nowrap transition-all duration-150 ${
-                  type === view
-                    ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
-                    : "bg-transparent text-[#6b7280] hover:text-primary"
-                }`}
-                onClick={() => setView(type)}
+                {...COMPARE_VIEW_HELP[type]}
+                align={i === 0 ? "left" : i === arr.length - 1 ? "right" : "center"}
+                className="flex-1"
               >
-                {type}
-              </button>
+                <button
+                  className={`w-full flex items-center justify-center py-[7px] px-1.5 sm:px-[13px] rounded-[24px] border-none text-[11px] sm:text-[13px] font-medium cursor-pointer whitespace-nowrap transition-all duration-150 ${
+                    type === view
+                      ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                      : "bg-transparent text-[#6b7280] hover:text-primary"
+                  }`}
+                  onClick={() => setView(type)}
+                >
+                  {type}
+                </button>
+              </HelpTip>
             ))}
           </div>
 
           <div className="flex items-center gap-[4.36px] p-[4px] rounded-[24px] bg-white w-full sm:max-w-[237px] box-border">
-            {periods.map((p) => (
-              <button
+            {periods.map((p, i, arr) => (
+              <HelpTip
                 key={p}
-                className={`flex-1 flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150 ${
-                  p === period
-                    ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
-                    : "bg-transparent text-[#6b7280] hover:text-primary"
-                }`}
-                onClick={() => setPeriod(p)}
+                {...COMPARE_PERIOD_HELP[p]}
+                align={i === 0 ? "left" : i === arr.length - 1 ? "right" : "center"}
+                className="flex-1"
               >
-                {p}
-              </button>
+                <button
+                  className={`w-full flex items-center justify-center py-[7px] px-[13px] rounded-[24px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150 ${
+                    p === period
+                      ? "bg-primary text-white shadow-[0_1.25px_3.74px_0_rgba(0,0,0,0.1),_0_1.25px_2.49px_-1.25px_rgba(0,0,0,0.1)]"
+                      : "bg-transparent text-[#6b7280] hover:text-primary"
+                  }`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p}
+                </button>
+              </HelpTip>
             ))}
           </div>
         </div>
 
         {/* Fund tags */}
         <div className={`relative z-40 flex items-center gap-2 p-[14px_22px_10px] pb-[14px] no-scrollbar flex-nowrap sm:flex-wrap border-b border-[#f1f2f4] [-webkit-overflow-scrolling:touch] ${
-          addOpen ? "overflow-visible" : "overflow-x-auto overflow-y-visible"
+          /* sm+ wraps instead of scrolling, so overflow stays visible there and
+             lets the control tooltips escape the row. */
+          addOpen ? "overflow-visible" : "overflow-x-auto overflow-y-visible sm:overflow-visible"
         }`}>
           {selected.map((f, i) => (
-            <div key={f.schemeCode} className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151] shrink-0">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-              <span className="text-[12px] font-medium text-[#374151] whitespace-nowrap">{shortName(f.name)}</span>
-              <button
-                onClick={() => setPicked(picked.filter((id) => id !== f.schemeCode))}
-                className="flex items-center justify-center bg-transparent border-none cursor-pointer text-[#9ca3af] hover:text-[#374151] p-0 transition-colors"
-                aria-label={`Remove ${f.name}`}
-              >
-                <X className="size-2.5" />
-              </button>
-            </div>
+            <HelpTip key={f.schemeCode} {...COMPARE_FUND_TAG_HELP} align="left" className="shrink-0">
+              <div className="flex items-center gap-[6px] py-[6px] px-[10px] rounded-[24px] border-[1.25px] border-[#e5e7eb] bg-white text-[12px] font-medium text-[#374151] shrink-0">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
+                <span className="text-[12px] font-medium text-[#374151] whitespace-nowrap">{shortName(f.name)}</span>
+                <button
+                  onClick={() => setPicked(picked.filter((id) => id !== f.schemeCode))}
+                  className="flex items-center justify-center bg-transparent border-none cursor-pointer text-[#9ca3af] hover:text-[#374151] p-0 transition-colors"
+                  aria-label={`Remove ${f.name}`}
+                >
+                  <X className="size-2.5" />
+                </button>
+              </div>
+            </HelpTip>
           ))}
           {picked.length < 5 && (
             <div className="relative shrink-0 z-[100]">
-              <button
-                onClick={() => setAddOpen((o) => !o)}
-                className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-primary hover:text-primary cursor-pointer transition-all"
-              >
-                <Plus className="size-3" />
-                Add fund
-              </button>
+              <HelpTip {...COMPARE_ADD_FUND_HELP} align="left">
+                <button
+                  onClick={() => setAddOpen((o) => !o)}
+                  className="flex items-center gap-[5px] py-[6px] px-[12px] rounded-[24px] border-[1.5px] border-dashed border-[#9ca3af] bg-transparent text-[12px] font-medium text-[#6b7280] hover:border-primary hover:text-primary cursor-pointer transition-all"
+                >
+                  <Plus className="size-3" />
+                  Add fund
+                </button>
+              </HelpTip>
               {addOpen && (
                 <>
                   <div 

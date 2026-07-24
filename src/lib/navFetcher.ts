@@ -13,7 +13,15 @@ export interface FetchResult {
   fetched: number;
   filtered: number;
   upserted: number;
+  /** SIFScheme rows whose empty/"-" ISIN was backfilled from the NAV txt. */
+  isinBackfilled: number;
   errors: string[];
+}
+
+// The NAV txt marks an absent ISIN as "-". Treat that and blanks as "no ISIN".
+function cleanIsin(raw: string | undefined): string | null {
+  const v = raw?.trim();
+  return v && v !== "-" ? v : null;
 }
 
 const NAV_TXT_URL = "https://portal.amfiindia.com/spages/SIF_NAVAll.txt";
@@ -34,7 +42,7 @@ function parseNavDate(raw: string): Date {
 export async function fetchAndStoreSIFNav(): Promise<FetchResult> {
   await connectDB();
 
-  const result: FetchResult = { fetched: 0, filtered: 0, upserted: 0, errors: [] };
+  const result: FetchResult = { fetched: 0, filtered: 0, upserted: 0, isinBackfilled: 0, errors: [] };
 
   let text: string;
   try {
@@ -111,6 +119,36 @@ export async function fetchAndStoreSIFNav(): Promise<FetchResult> {
       },
     });
 
+    // Backfill ISINs on rows that already exist with a missing/"-" ISIN. The
+    // $setOnInsert above only fires for brand-new rows, so without this an
+    // existing scheme with a bad ISIN stays broken forever. Only fills when the
+    // txt actually has an ISIN and the stored one is empty — never overwrites a
+    // good value.
+    const growth = cleanIsin(isinGrowth);
+    if (growth) {
+      schemeOps.push({
+        updateOne: {
+          filter: {
+            schemeCode: code,
+            $or: [{ isinGrowth: "" }, { isinGrowth: "-" }, { isinGrowth: null }, { isinGrowth: { $exists: false } }],
+          },
+          update: { $set: { isinGrowth: growth } },
+        },
+      });
+    }
+    const reinvest = cleanIsin(isinReinvestment);
+    if (reinvest) {
+      schemeOps.push({
+        updateOne: {
+          filter: {
+            schemeCode: code,
+            $or: [{ isinReinvestment: "" }, { isinReinvestment: "-" }, { isinReinvestment: null }, { isinReinvestment: { $exists: false } }],
+          },
+          update: { $set: { isinReinvestment: reinvest } },
+        },
+      });
+    }
+
     navOps.push({
       updateOne: {
         filter: { schemeCode: code, navDate },
@@ -131,7 +169,11 @@ export async function fetchAndStoreSIFNav(): Promise<FetchResult> {
   }
 
   try {
-    if (schemeOps.length > 0) await SIFScheme.bulkWrite(schemeOps, { ordered: false });
+    if (schemeOps.length > 0) {
+      const schemeResult = await SIFScheme.bulkWrite(schemeOps, { ordered: false });
+      // modifiedCount covers the backfill $set ops (inserts increment upsertedCount).
+      result.isinBackfilled = schemeResult.modifiedCount;
+    }
     if (navOps.length > 0) {
       const navResult = await SIFNav.bulkWrite(navOps, { ordered: false });
       result.upserted = navResult.upsertedCount;

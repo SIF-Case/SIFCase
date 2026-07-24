@@ -16,36 +16,35 @@ export interface IFundDetails extends Document {
   benchmarkDetails: string;
   assetAllocation: { assetClass: string; percentage: number }[];
   portfolioByIndustry: { industry: string; percentage: number; marketValue?: number | null; change1M?: number | null }[];
-  portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string; marketValue?: number | null; change1M?: number | null }[];
   factsheets: { url: string; filename: string; documentType?: string; uploadedAt: Date }[];
   // Fund Structure
   schemeCategory: string;
-  schemeNature: string;
   inceptionDate: string;
-  planCodes: { planName: string; isin: string }[];
   // Redemption & Liquidity
   redemptionFrequency: string;
-  navCutoffTime: string;
-  redemptionPayoutDays: string;
-  redemptionNoticePeriod: string;
-  penalInterestRate: string;
-  // Investment Limits
-  panInvestmentThreshold: string;
-  accreditedInvestorMinInvestment: number | null;
-  sipDetails: { frequency: string; minAmount: number; minInstallments: number }[];
+  // ── AMFI SSD / TER provenance ────────────────────────────────────────────
+  /** AMFI scheme_id ("S-10"); "" until the mapping phase resolves it. */
+  schemeId: string;
+  /** Whether AMFI publishes an SSD for this scheme — surfaced in admin. */
+  ssdAvailability: "available" | "not_published" | "unchecked";
+  ssdLastSeenAt: Date | null;
+  ssdCheckedAt: Date | null;
+  ssdMissReason: string;
+  /** Free text from the SSD ("Debt & Money Market Instruments - 35 % to 65%"). */
+  statedAssetAllocation: string;
+  /** Per-plan TER split from the AMFI TER feed. */
+  terBreakdown: {
+    terYear: string;
+    terDate: string;
+    regular: { ber: string; brokerageCost: string; transactionCost: string; statutoryLevies: string; ter: string };
+    direct: { ber: string; brokerageCost: string; transactionCost: string; statutoryLevies: string; ter: string };
+  } | null;
+  terLastSyncedAt: Date | null;
   // Expenses & Taxation
   terMax: string;
   terSlabs: { aumSlab: string; ter: string }[];
   taxationSummary: string;
-  // Asset Allocation Ranges
-  assetAllocationRanges: { assetClass: string; min: number; max: number }[];
-  // Derivatives & Risk Controls
-  grossExposureLimit: string;
-  derivativesRestrictions: string;
-  // Strategy Detail
-  derivativeStrategies: { name: string; description: string }[];
-  alphaGenerationApproach: string;
   // Fund Administration
   sponsorName: string;
   amcName: string;
@@ -59,12 +58,10 @@ export interface IFundDetails extends Document {
   bearMarket: string;
   sidewaysMarket: string;
   // Fund Fit
-  howItWorks: string;
   mfEquivalent: string;
   portfolioFit: string;
   // ── finapi.upvaly.com sync (owned exclusively by sync-isin route) ─────────
   isin: string;
-  externalSchemeCode: string;
   marketCapWeightage: { largeCap: number | null; midCap: number | null; smallCap: number | null; others: number | null } | null;
   concentration: {
     numberOfHoldings: number | null;
@@ -81,13 +78,6 @@ export interface IFundDetails extends Document {
     dividendYield: number | null; categoryAverageDividendYield: number | null;
     roe: number | null; categoryAverageRoe: number | null;
   } | null;
-  riskMetricsConclusions: {
-    returns: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    riskStandardDeviation: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    sharpRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    sortinoRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    beta: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-  } | null;
   rollingReturns: {
     timeframe: string; averageReturn: number | null; medianReturn: number | null;
     minReturn: number | null; minPeriod: string; maxReturn: number | null; maxPeriod: string;
@@ -100,7 +90,6 @@ export interface IFundDetails extends Document {
     companyName: string;
     schemeList: { schemeCode: string; isin: string; schemeName: string; schemeShortName: string; morningstarRating?: number; aum: string; returns: Record<string, string> }[];
   } | null;
-  lastSyncedFromFinApi: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,36 +111,34 @@ const FundDetailsSchema = new Schema<IFundDetails>(
     benchmarkDetails: { type: String, default: "" },
     assetAllocation: [{ assetClass: String, percentage: Number }],
     portfolioByIndustry: [{ industry: String, percentage: Number, marketValue: Number, change1M: Number }],
-    portfolioByRatingClass: [{ ratingClass: String, percentage: Number }],
     topHoldings: [{ name: String, percentage: Number, sector: String, rating: String, marketValue: Number, change1M: Number }],
     factsheets: [{ url: String, filename: String, documentType: String, uploadedAt: { type: Date, default: Date.now } }],
     // Fund Structure
     schemeCategory: { type: String, default: "" },
-    schemeNature: { type: String, default: "" },
     inceptionDate: { type: String, default: "" },
-    planCodes: [{ planName: String, isin: String }],
     // Redemption & Liquidity
     redemptionFrequency: { type: String, default: "" },
-    navCutoffTime: { type: String, default: "" },
-    redemptionPayoutDays: { type: String, default: "" },
-    redemptionNoticePeriod: { type: String, default: "" },
-    penalInterestRate: { type: String, default: "" },
-    // Investment Limits
-    panInvestmentThreshold: { type: String, default: "" },
-    accreditedInvestorMinInvestment: { type: Number, default: null },
-    sipDetails: [{ frequency: String, minAmount: Number, minInstallments: Number }],
+    // ── AMFI SSD / TER provenance ──────────────────────────────────────────
+    schemeId: { type: String, default: "", index: true },
+    ssdAvailability: { type: String, default: "unchecked" },
+    ssdLastSeenAt: { type: Date, default: null },
+    ssdCheckedAt: { type: Date, default: null },
+    ssdMissReason: { type: String, default: "" },
+    statedAssetAllocation: { type: String, default: "" },
+    terBreakdown: {
+      type: {
+        terYear: String,
+        terDate: String,
+        regular: { ber: String, brokerageCost: String, transactionCost: String, statutoryLevies: String, ter: String },
+        direct: { ber: String, brokerageCost: String, transactionCost: String, statutoryLevies: String, ter: String },
+      },
+      default: null,
+    },
+    terLastSyncedAt: { type: Date, default: null },
     // Expenses & Taxation
     terMax: { type: String, default: "" },
     terSlabs: [{ aumSlab: String, ter: String }],
     taxationSummary: { type: String, default: "" },
-    // Asset Allocation Ranges
-    assetAllocationRanges: [{ assetClass: String, min: Number, max: Number }],
-    // Derivatives & Risk Controls
-    grossExposureLimit: { type: String, default: "" },
-    derivativesRestrictions: { type: String, default: "" },
-    // Strategy Detail
-    derivativeStrategies: [{ name: String, description: String }],
-    alphaGenerationApproach: { type: String, default: "" },
     // Fund Administration
     sponsorName: { type: String, default: "" },
     amcName: { type: String, default: "" },
@@ -162,12 +149,10 @@ const FundDetailsSchema = new Schema<IFundDetails>(
     bullMarket: { type: String, default: "" },
     bearMarket: { type: String, default: "" },
     sidewaysMarket: { type: String, default: "" },
-    howItWorks: { type: String, default: "" },
     mfEquivalent: { type: String, default: "" },
     portfolioFit: { type: String, default: "" },
     // ── finapi.upvaly.com sync ─────────────────────────────────────────────
     isin: { type: String, default: "", index: true },
-    externalSchemeCode: { type: String, default: "" },
     marketCapWeightage: {
       type: { largeCap: Number, midCap: Number, smallCap: Number, others: Number },
       default: null,
@@ -193,16 +178,6 @@ const FundDetailsSchema = new Schema<IFundDetails>(
       },
       default: null,
     },
-    riskMetricsConclusions: {
-      type: {
-        returns: { info: String, timeframes: [{ timeframe: String, conclusion: String }] },
-        riskStandardDeviation: { info: String, timeframes: [{ timeframe: String, conclusion: String }] },
-        sharpRatio: { info: String, timeframes: [{ timeframe: String, conclusion: String }] },
-        sortinoRatio: { info: String, timeframes: [{ timeframe: String, conclusion: String }] },
-        beta: { info: String, timeframes: [{ timeframe: String, conclusion: String }] },
-      },
-      default: null,
-    },
     rollingReturns: [{
       timeframe: String, averageReturn: Number, medianReturn: Number,
       minReturn: Number, minPeriod: String, maxReturn: Number, maxPeriod: String,
@@ -218,7 +193,6 @@ const FundDetailsSchema = new Schema<IFundDetails>(
       },
       default: null,
     },
-    lastSyncedFromFinApi: { type: Date, default: null },
   },
   { timestamps: true },
 );

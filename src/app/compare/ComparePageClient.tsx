@@ -23,7 +23,6 @@ const SECTION_ROWS: {
       { label: "Plan",          key: (f) => ({ text: f.plan }) },
       { label: "Option",        key: (f) => ({ text: f.option || "—" }) },
       { label: "Scheme Category", key: (f) => ({ text: f.schemeCategory || "—" }) },
-      { label: "Scheme Nature",   key: (f) => ({ text: f.schemeNature || "—" }) },
       { label: "Inception Date",  key: (f) => ({ text: f.inceptionDate || "—" }) },
       { label: "Benchmark",       key: (f) => ({ text: f.benchmarkName || "—" }) },
       { label: "Fund Manager(s)", key: (f) => ({ text: f.fundManagers.length ? f.fundManagers.map((m) => m.name).join(", ") : "—" }) },
@@ -86,8 +85,6 @@ const SECTION_ROWS: {
     section: "Redemption & Suitability",
     rows: [
       { label: "Redemption Frequency", key: (f) => ({ text: f.redemptionFrequency || "—" }) },
-      { label: "NAV Cutoff Time",      key: (f) => ({ text: f.navCutoffTime || "—" }) },
-      { label: "Redemption Payout",    key: (f) => ({ text: f.redemptionPayoutDays || "—" }) },
       { label: "Suitable For",         key: (f) => ({ text: f.suitableFor || "—" }) },
       { label: "Not Suitable For",     key: (f) => ({ text: f.notSuitableFor || "—" }) },
     ],

@@ -20,11 +20,6 @@ interface FinApiRank {
   rankInCategory: string;
 }
 
-interface FinApiRiskConclusion {
-  info: string;
-  timeframes: { timeframe: string; conclusion: string }[];
-}
-
 interface FinApiHolding {
   name: string;
   sector?: string;
@@ -101,13 +96,6 @@ export interface FinApiFundData {
     dividendYield: string; categoryAverageDividendYield: string;
     roe: string; categoryAverageRoe: string;
   };
-  riskMetrics: {
-    returns: FinApiRiskConclusion;
-    riskStandardDeviation: FinApiRiskConclusion;
-    sharpRatio: FinApiRiskConclusion;
-    sortinoRatio: FinApiRiskConclusion;
-    beta: FinApiRiskConclusion;
-  };
   holdings: FinApiHolding[];
   sectors: FinApiSector[];
   peers: FinApiPeer[];
@@ -144,7 +132,9 @@ export async function fetchFundByIsin(isin: string): Promise<FinApiFundData> {
 
 function toNumOrNull(v: string | number | null | undefined): number | null {
   if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : parseFloat(v);
+  // finapi returns grouped strings like "5,544.97" — strip commas/spaces before
+  // parsing, else parseFloat stops at the first comma ("5,544.97" -> 5).
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[,\s]/g, ""));
   return Number.isNaN(n) ? null : n;
 }
 
@@ -167,14 +157,12 @@ export function mapFinApiToFundDetails(raw: FinApiFundData): Partial<IFundDetail
   const mc = raw.portfolio?.marketCapWeightage;
   const conc = raw.portfolio?.concentration;
   const f = raw.fundamentals;
-  const rm = raw.riskMetrics;
 
   return {
     amcName: raw.companyName ?? "",
     benchmarkName: raw.benchmarkIndex ?? "",
     exitLoad: raw.exitLoadMessage ?? "",
     schemeCategory: raw.schemeCategoryLabel || raw.schemeCategory || "",
-    schemeNature: raw.schemeCategory ?? "",
     schemeType: raw.schemeStructure ?? "",
     inceptionDate: raw.inceptionDate ?? "",
     aumCurrent: toNumOrNull(raw.aum),
@@ -196,14 +184,7 @@ export function mapFinApiToFundDetails(raw: FinApiFundData): Partial<IFundDetail
       marketValue: toNumOrNull(h.marketValue),
       change1M: toNumOrNull(h.change1M),
     })),
-    // finapi returns one plan/option per ISIN call — record this row; other plan
-    // variants only get added if/when their own ISIN is synced separately.
-    planCodes: raw.planName && raw.isinDivPayoutOrGrowth
-      ? [{ planName: `${raw.planName}${raw.optionName ? ` - ${raw.optionName}` : ""}`, isin: raw.isinDivPayoutOrGrowth }]
-      : [],
-
     isin: raw.isinDivPayoutOrGrowth ?? raw.isinDivPayout ?? "",
-    externalSchemeCode: raw.schemeCode ?? "",
     marketCapWeightage: mc
       ? {
           largeCap: toNumOrNull(mc.largeCap),
@@ -229,15 +210,6 @@ export function mapFinApiToFundDetails(raw: FinApiFundData): Partial<IFundDetail
           priceToCashFlow: toNumOrNull(f.priceToCashFlow), categoryAveragePriceToCashFlow: toNumOrNull(f.categoryAveragePriceToCashFlow),
           dividendYield: toNumOrNull(f.dividendYield), categoryAverageDividendYield: toNumOrNull(f.categoryAverageDividendYield),
           roe: toNumOrNull(f.roe), categoryAverageRoe: toNumOrNull(f.categoryAverageRoe),
-        }
-      : null,
-    riskMetricsConclusions: rm
-      ? {
-          returns: { info: rm.returns?.info ?? "", timeframes: rm.returns?.timeframes ?? [] },
-          riskStandardDeviation: { info: rm.riskStandardDeviation?.info ?? "", timeframes: rm.riskStandardDeviation?.timeframes ?? [] },
-          sharpRatio: { info: rm.sharpRatio?.info ?? "", timeframes: rm.sharpRatio?.timeframes ?? [] },
-          sortinoRatio: { info: rm.sortinoRatio?.info ?? "", timeframes: rm.sortinoRatio?.timeframes ?? [] },
-          beta: { info: rm.beta?.info ?? "", timeframes: rm.beta?.timeframes ?? [] },
         }
       : null,
     rollingReturns: (raw.rollingReturns ?? []).map((r) => ({
@@ -285,6 +257,5 @@ export function mapFinApiToFundDetails(raw: FinApiFundData): Partial<IFundDetail
           })),
         }
       : null,
-    lastSyncedFromFinApi: new Date(),
   };
 }

@@ -20,8 +20,7 @@ import type { IFundDetails } from "@/models/FundDetails";
 //
 // Still grouped by fundName and written once per fund: one fund legitimately has
 // two Regular/Growth ISINs, and writing per ISIN would make the second clobber
-// the first's planCodes — the hazard /api/admin/fund-details/sync-isin guards
-// against for a single manual sync.
+// the first's scalar fields.
 
 export interface FundDetailsSyncResult {
   funds: number;
@@ -130,12 +129,15 @@ async function groupIsinsByFund(): Promise<{
  * that were already fresh — so full coverage holds even under repeated truncation.
  */
 async function orderByStaleness(fundNames: string[]): Promise<string[]> {
+  // Staleness rides on the schema's own `updatedAt` rather than a dedicated
+  // lastSyncedFromFinApi column. Caveat: an admin edit also bumps updatedAt, so a
+  // hand-edited fund reads as fresh and goes to the back of the queue for a day.
   const docs = await FundDetails.find(
     { fundName: { $in: fundNames } },
-    { fundName: 1, lastSyncedFromFinApi: 1, _id: 0 },
-  ).lean<{ fundName: string; lastSyncedFromFinApi?: Date }[]>();
+    { fundName: 1, updatedAt: 1, _id: 0 },
+  ).lean<{ fundName: string; updatedAt?: Date }[]>();
 
-  const syncedAt = new Map(docs.map((d) => [d.fundName, d.lastSyncedFromFinApi?.getTime() ?? 0]));
+  const syncedAt = new Map(docs.map((d) => [d.fundName, d.updatedAt?.getTime() ?? 0]));
   return [...fundNames].sort((a, b) => (syncedAt.get(a) ?? 0) - (syncedAt.get(b) ?? 0));
 }
 
@@ -169,13 +171,6 @@ export async function syncAllFundDetailsFromFinApi(
 
     const isins = byFund.get(fundName) ?? [];
     let base: Partial<IFundDetails> | null = null;
-    const planCodesByIsin = new Map<string, { planName: string; isin: string }>();
-
-    // Existing plan variants must survive: finapi only ever returns the plan for
-    // the ISIN queried, so anything synced previously is invisible to this run.
-    const existing = await FundDetails.findOne({ fundName }, { planCodes: 1, _id: 0 })
-      .lean<{ planCodes?: { planName: string; isin: string }[] } | null>();
-    for (const pc of existing?.planCodes ?? []) planCodesByIsin.set(pc.isin, pc);
 
     for (const isin of isins) {
       if (Date.now() - startedAt > timeBudgetMs) break;
@@ -194,7 +189,6 @@ export async function syncAllFundDetailsFromFinApi(
         // First success wins the scalar fields — ISINs are ordered growth-first,
         // so the canonical plan decides AUM, TER, risk band and the rest.
         if (!base) base = mapped;
-        for (const pc of mapped.planCodes ?? []) planCodesByIsin.set(pc.isin, pc);
       } catch (err) {
         result.isinsFailed++;
         const msg = err instanceof Error ? err.message : String(err);
@@ -207,8 +201,6 @@ export async function syncAllFundDetailsFromFinApi(
       result.skipped++;
       continue;
     }
-
-    base.planCodes = Array.from(planCodesByIsin.values());
 
     try {
       await FundDetails.findOneAndUpdate({ fundName }, { $set: base }, { upsert: true });

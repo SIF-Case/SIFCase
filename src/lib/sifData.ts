@@ -87,10 +87,7 @@ export interface FundRow {
   minInvestment: number | null;
   additionalInvestment: number | null;
   schemeCategory: string | null;
-  schemeNature: string | null;
   redemptionFrequency: string | null;
-  navCutoffTime: string | null;
-  redemptionPayoutDays: string | null;
   taxationSummary: string | null;
   suitableFor: string | null;
   notSuitableFor: string | null;
@@ -504,16 +501,23 @@ async function _getTopFunds(): Promise<FundRow[]> {
     .find({ fundName: { $in: fundNames } }, { projection: {
       fundName: 1, riskBand: 1, aumCurrent: 1, aumAggregate: 1, aumEnd: 1, terMax: 1, exitLoad: 1, factsheets: 1,
       benchmarkName: 1, benchmarkRiskBand: 1, fundManagers: 1, inceptionDate: 1, minInvestment: 1, additionalInvestment: 1,
-      schemeCategory: 1, schemeNature: 1, redemptionFrequency: 1, navCutoffTime: 1, redemptionPayoutDays: 1,
+      schemeCategory: 1, redemptionFrequency: 1,
       taxationSummary: 1, suitableFor: 1, notSuitableFor: 1, sponsorName: 1, trusteeName: 1, registrarName: 1,
       fundamentals: 1, concentration: 1, marketCapWeightage: 1, assetAllocation: 1, topHoldings: 1,
       _id: 0,
     } })
     .toArray();
+  // `_id: 0` only drops the top-level id — every subdocument in topHoldings,
+  // assetAllocation, fundamentals, concentration and marketCapWeightage keeps its
+  // own BSON ObjectId, which has a toJSON method and so cannot cross the Server →
+  // Client Component boundary. These docs end up on FundRow, which /sifs hands
+  // straight to <Providers funds={...}>, so they must be plain first. Same
+  // round-trip as _getFundDetailsForName below.
+  const plainDetailsDocs = JSON.parse(JSON.stringify(detailsDocs)) as Record<string, any>[];
   const riskBandByName = new Map<string, 1 | 2 | 3 | 4 | 5 | null>();
   const aumByName = new Map<string, number | null>();
   const detailsByFundName = new Map<string, any>();
-  for (const d of detailsDocs) {
+  for (const d of plainDetailsDocs) {
     riskBandByName.set(d.fundName as string, normaliseRiskBandEarly(d.riskBand));
     aumByName.set(d.fundName as string, d.aumCurrent ?? d.aumAggregate ?? d.aumEnd ?? null);
     detailsByFundName.set(d.fundName as string, d);
@@ -615,10 +619,7 @@ async function _getTopFunds(): Promise<FundRow[]> {
       minInvestment: detailsByFundName.get(s.fundNameRaw)?.minInvestment ?? null,
       additionalInvestment: detailsByFundName.get(s.fundNameRaw)?.additionalInvestment ?? null,
       schemeCategory: detailsByFundName.get(s.fundNameRaw)?.schemeCategory || null,
-      schemeNature: detailsByFundName.get(s.fundNameRaw)?.schemeNature || null,
       redemptionFrequency: detailsByFundName.get(s.fundNameRaw)?.redemptionFrequency || null,
-      navCutoffTime: detailsByFundName.get(s.fundNameRaw)?.navCutoffTime || null,
-      redemptionPayoutDays: detailsByFundName.get(s.fundNameRaw)?.redemptionPayoutDays || null,
       taxationSummary: detailsByFundName.get(s.fundNameRaw)?.taxationSummary || null,
       suitableFor: detailsByFundName.get(s.fundNameRaw)?.suitableFor || null,
       notSuitableFor: detailsByFundName.get(s.fundNameRaw)?.notSuitableFor || null,
@@ -834,6 +835,7 @@ function computeVolatility(records: { nav: number }[]): number | null {
 export interface FundDetailsData {
   riskBand: 1 | 2 | 3 | 4 | 5 | null;
   schemeType: string;
+  inceptionDate: string;
   exitLoad: string;
   aumCurrent: number | null;
   aumAggregate: number | null;
@@ -846,7 +848,6 @@ export interface FundDetailsData {
   benchmarkDetails: string;
   assetAllocation: { assetClass: string; percentage: number }[];
   portfolioByIndustry: { industry: string; percentage: number; marketValue?: number | null; change1M?: number | null }[];
-  portfolioByRatingClass: { ratingClass: string; percentage: number }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string; marketValue?: number | null; change1M?: number | null }[];
   factsheets: { url: string; filename: string; documentType?: string; uploadedAt: string }[];
   suitableFor: string;
@@ -854,12 +855,10 @@ export interface FundDetailsData {
   bullMarket: string;
   bearMarket: string;
   sidewaysMarket: string;
-  howItWorks: string;
   mfEquivalent: string;
   portfolioFit: string;
   // ── finapi.upvaly.com sync ─────────────────────────────────────────────
   isin: string;
-  externalSchemeCode: string;
   marketCapWeightage: { largeCap: number | null; midCap: number | null; smallCap: number | null; others: number | null } | null;
   concentration: {
     numberOfHoldings: number | null;
@@ -876,13 +875,6 @@ export interface FundDetailsData {
     dividendYield: number | null; categoryAverageDividendYield: number | null;
     roe: number | null; categoryAverageRoe: number | null;
   } | null;
-  riskMetricsConclusions: {
-    returns: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    riskStandardDeviation: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    sharpRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    sortinoRatio: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-    beta: { info: string; timeframes: { timeframe: string; conclusion: string }[] };
-  } | null;
   rollingReturns: {
     timeframe: string; averageReturn: number | null; medianReturn: number | null;
     minReturn: number | null; minPeriod: string; maxReturn: number | null; maxPeriod: string;
@@ -895,7 +887,6 @@ export interface FundDetailsData {
     companyName: string;
     schemeList: { schemeCode: string; isin: string; schemeName: string; schemeShortName: string; morningstarRating?: number; aum: string; returns: Record<string, string> }[];
   } | null;
-  lastSyncedFromFinApi: string | null;
 }
 
 const RISK_BAND_STRING_MAP: Record<string, 1 | 2 | 3 | 4 | 5> = {

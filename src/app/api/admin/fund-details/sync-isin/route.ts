@@ -41,16 +41,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // planCodes accumulate across syncs of different plan/option variants of the same
-    // fund (each finapi call only returns its own ISIN's plan) — merge instead of overwrite.
-    const existing = await FundDetails.findOne({ fundName: scheme.fundName }, { planCodes: 1 }).lean();
-    if (existing?.planCodes?.length || mapped.planCodes?.length) {
-      const byIsin = new Map<string, { planName: string; isin: string }>();
-      for (const pc of existing?.planCodes ?? []) byIsin.set(pc.isin, pc);
-      for (const pc of mapped.planCodes ?? []) byIsin.set(pc.isin, pc);
-      mapped.planCodes = Array.from(byIsin.values());
-    }
-
     await FundDetails.findOneAndUpdate(
       { fundName: scheme.fundName },
       { $set: mapped },

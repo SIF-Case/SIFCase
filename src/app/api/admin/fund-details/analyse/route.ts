@@ -46,15 +46,12 @@ export const FactsheetExtractionSchema = z.object({
   benchmarkDetails: z.string().nullable().describe("Benchmark composition description if any"),
   assetAllocation: z.array(AssetAllocationSchema).describe("Only category totals from asset class table, not individual stocks"),
   portfolioByIndustry: z.array(IndustrySchema).describe("All rows from industry/sector allocation section"),
-  portfolioByRatingClass: z.array(z.object({ ratingClass: z.string(), percentage: z.number() })).describe("Rating class allocation rows if present"),
   topHoldings: z.array(HoldingSchema).describe("All holdings including equity long, equity futures short (negative %), bonds, T-bills, G-Secs, cash"),
-  planCodes: z.array(z.object({ planName: z.string(), isin: z.string() })).describe("Plan/option names with their ISIN codes, e.g. 'Regular Growth' -> 'INF...'"),
   suitableFor: z.string().nullable().describe("Who this SIF is suitable for — describe target investor profile, minimum net-worth, risk appetite, investment horizon, and goals"),
   notSuitableFor: z.string().nullable().describe("Who this SIF is NOT suitable for — describe investor types that should avoid this fund"),
   bullMarket: z.string().nullable().describe("How this fund is expected to perform in bull markets and why, based on its strategy"),
   bearMarket: z.string().nullable().describe("How this fund is expected to perform in bear markets and why, based on its strategy"),
   sidewaysMarket: z.string().nullable().describe("How this fund is expected to perform in sideways/range-bound markets and why, based on its strategy"),
-  howItWorks: z.string().nullable().describe("Concise 2–4 sentence explanation of how the fund strategy works — long/short mechanics, instruments used, return drivers"),
   mfEquivalent: z.string().nullable().describe("Closest mutual fund category or comparable MF product for an investor familiar with mutual funds"),
   portfolioFit: z.string().nullable().describe("Where this fund fits in a diversified portfolio — e.g. satellite allocation, alternative/hedge sleeve, return enhancer"),
 });
@@ -65,21 +62,11 @@ export type FactsheetExtraction = z.infer<typeof FactsheetExtractionSchema>;
 
 export const KimExtractionSchema = z.object({
   schemeCategory: z.string().nullable().describe("Full SEBI scheme category, e.g. 'Specialised Investment Fund - Category III AIF, Hybrid Long-Short Strategy'"),
-  schemeNature: z.string().nullable().describe("Scheme nature, e.g. 'Open Ended' or 'Interval'"),
   inceptionDate: z.string().nullable().describe("Date of allotment / inception of the scheme"),
   redemptionFrequency: z.string().nullable().describe("Redemption window frequency, e.g. 'Every Monday and Wednesday of each week'"),
-  navCutoffTime: z.string().nullable().describe("NAV cut-off time for redemption requests, e.g. '3:00 p.m.'"),
-  redemptionPayoutDays: z.string().nullable().describe("Number of business days for redemption proceeds to be dispatched/paid, e.g. '3 business days'"),
-  redemptionNoticePeriod: z.string().nullable().describe("Advance notice period required before a redemption window, e.g. '15 days'"),
-  penalInterestRate: z.string().nullable().describe("Penal interest rate payable for delayed redemption payouts, e.g. '15% p.a.'"),
-  panInvestmentThreshold: z.string().nullable().describe("Minimum investment threshold at PAN/investor level across all strategies, e.g. '₹10,00,000 across all SIF strategies of the AMC'"),
-  accreditedInvestorMinInvestment: z.number().nullable().describe("Minimum investment amount in ₹ for accredited investors, as a number"),
   terMax: z.string().nullable().describe("Maximum Total Expense Ratio (TER), e.g. '2.25%'"),
   terSlabs: z.array(z.object({ aumSlab: z.string(), ter: z.string() })).describe("TER slab table rows, each with an AUM slab description and the corresponding TER"),
   taxationSummary: z.string().nullable().describe("Summary of taxation treatment applicable to investors in this fund — capital gains, holding periods, rates"),
-  assetAllocationRanges: z.array(z.object({ assetClass: z.string(), min: z.number(), max: z.number() })).describe("Permitted asset allocation ranges (min/max % of NAV) by asset class, from the Investment Pattern / Asset Allocation table"),
-  grossExposureLimit: z.string().nullable().describe("Maximum permitted gross exposure including derivatives, e.g. 'Up to 100% of NAV'"),
-  derivativesRestrictions: z.string().nullable().describe("Key restrictions on derivatives usage — e.g. CDS not permitted, unhedged exposure caps, overseas investment caps"),
   sponsorName: z.string().nullable().describe("Name of the scheme's sponsor"),
   amcName: z.string().nullable().describe("Name of the Asset Management Company / Investment Manager"),
   trusteeName: z.string().nullable().describe("Name of the trustee company"),
@@ -91,8 +78,6 @@ export type KimExtraction = z.infer<typeof KimExtractionSchema>;
 // ─── PPT — best-source fields (strategy narrative) ─────────────────────────────
 
 export const PptExtractionSchema = z.object({
-  derivativeStrategies: z.array(z.object({ name: z.string(), description: z.string() })).describe("Named derivative/hedging strategies the fund employs, each with a short description, e.g. 'Cash-Future Arbitrage', 'Index Hedging'"),
-  alphaGenerationApproach: z.string().nullable().describe("2–4 sentences on how the fund seeks to generate alpha beyond market beta — stock selection process, hedging philosophy, market-neutral techniques etc."),
 });
 
 export type PptExtraction = z.infer<typeof PptExtractionSchema>;
@@ -102,7 +87,6 @@ export type PptExtraction = z.infer<typeof PptExtractionSchema>;
 export const ExcelExtractionSchema = z.object({
   riskBand: z.number().int().min(1).max(5).nullable().describe("SEBI risk band as integer 1–5 extracted from 'Riskometer (as on Date)' row: 1=Low, 2=Low to Moderate, 3=Moderate, 4=Moderately High, 5=High. Look for text like 'Risk Level 1', 'Risk Level 2', etc. and extract the numeric value."),
   exitLoad: z.string().nullable().describe("Exit load information extracted from 'Exit Load (if applicable)' row. Extract the exact text value, e.g. 'Nil', '1% if redeemed within 30 days', etc."),
-  sipDetails: z.array(z.object({ frequency: z.string(), minAmount: z.number(), minInstallments: z.number() })).describe("SIP (Systematic Investment Plan) options — one row per distinct SIP option, each with its frequency, minimum amount, and minimum number of installments. The same frequency may appear in multiple rows with different minimum-installment counts. Empty array if not present in this document."),
 });
 
 export type ExcelExtraction = z.infer<typeof ExcelExtractionSchema>;
@@ -153,14 +137,13 @@ bearMarket: 2–3 sentences on how this fund performs in falling equity markets 
 
 sidewaysMarket: 2–3 sentences on performance in flat/range-bound markets.
 
-howItWorks: 2–4 sentences explaining the fund's long-short mechanics, key instruments, and return drivers.
 
 mfEquivalent: 1 sentence naming the closest mutual fund category (e.g. "Balanced Advantage Fund / Dynamic Asset Allocation Fund") and why.
 
 portfolioFit: 2–3 sentences on where this SIF fits in a diversified portfolio — satellite, alternative sleeve, hedge, etc.
 
 === JSON SCHEMA ===
-{"schemeType":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"portfolioByRatingClass":[{"ratingClass":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}],"suitableFor":string|null,"notSuitableFor":string|null,"bullMarket":string|null,"bearMarket":string|null,"sidewaysMarket":string|null,"howItWorks":string|null,"mfEquivalent":string|null,"portfolioFit":string|null}
+{"schemeType":string|null,"aumCurrent":number|null,"aumAggregate":number|null,"aumEnd":number|null,"minInvestment":number|null,"additionalInvestment":number|null,"fundManagers":[{"name":string,"designation":string}],"benchmarkName":string|null,"benchmarkRiskBand":string|null,"benchmarkDetails":string|null,"assetAllocation":[{"assetClass":string,"percentage":number}],"portfolioByIndustry":[{"industry":string,"percentage":number}],"topHoldings":[{"name":string,"percentage":number,"sector":string|null,"rating":string|null}],"suitableFor":string|null,"notSuitableFor":string|null,"bullMarket":string|null,"bearMarket":string|null,"sidewaysMarket":string|null,"mfEquivalent":string|null,"portfolioFit":string|null}
 
 === FACTSHEET TEXT ===
 `;
@@ -282,28 +265,17 @@ notSuitableFor: 2–3 sentences on who should NOT invest — e.g. risk-averse in
 bullMarket: 2–3 sentences on performance in rising equity markets, referencing the long book and short hedges.
 bearMarket: 2–3 sentences on performance in falling equity markets — does the short book provide downside protection?
 sidewaysMarket: 2–3 sentences on performance in flat / range-bound markets.
-howItWorks: 2–4 sentences explaining how the fund actually works for an investor. Lead with the two building blocks — the equity allocation (long-only stock portfolio, give the approximate %) and the debt/money-market allocation (give the approximate %, used for liquidity and as collateral for derivatives). Then describe the specific derivative/hedging overlays used within the equity sleeve (e.g. cash-futures arbitrage, covered calls, protective puts — name the ones actually used by this fund). End with the intended outcome of combining these (e.g. equity-like upside with smoother/cushioned returns, or additional income generation). Avoid generic jargon — ground every sentence in the fund's actual allocation numbers and strategies from this document.
 mfEquivalent: 1 sentence naming the closest mutual fund category an investor familiar with mutual funds would recognise (e.g. "Balanced Advantage Fund / Equity Savings Fund"), based on the fund's actual equity/debt/derivative mix, and briefly why it's the closest comparison.
 portfolioFit: 2–3 sentences on where this SIF fits in a diversified portfolio — frame it as a satellite or alternative sleeve (not a core holding replacement) for investors seeking equity participation with lower volatility via the hedging/derivative strategies described above.`;
 
 const KIM_PROMPT = `You are extracting regulatory and structural data from an Indian SIF (Specialized Investment Fund) Key Information Memorandum (KIM). Be precise and quote exact terms/numbers used in the document — do not paraphrase numeric values.
 
 schemeCategory: Full SEBI scheme category/classification as stated (e.g. "Specialised Investment Fund - Category III AIF, Hybrid Long-Short Strategy").
-schemeNature: Scheme nature — "Open Ended" or "Interval", as stated.
 inceptionDate: Date of allotment / inception of the scheme.
 redemptionFrequency: Redemption window frequency — which days of the week/month redemptions are processed (e.g. "Every Monday and Wednesday of each week").
-navCutoffTime: NAV cut-off time for redemption requests (e.g. "3:00 p.m.").
-redemptionPayoutDays: Number of business days within which redemption proceeds must be paid out after the redemption window (e.g. "3 business days").
-redemptionNoticePeriod: Advance notice period required before a redemption window opens (e.g. "15 days").
-penalInterestRate: Penal interest rate payable to investors for delayed redemption payouts (e.g. "15% p.a.").
-panInvestmentThreshold: Minimum investment threshold at investor/PAN level, especially any aggregate threshold across all SIF strategies of the AMC (e.g. "₹10,00,000 across all SIF strategies of the AMC").
-accreditedInvestorMinInvestment: Minimum investment amount in ₹ specifically for accredited investors, as a plain number (e.g. 10000).
 terMax: Maximum Total Expense Ratio (TER) permitted, as stated (e.g. "2.25%").
 terSlabs: Extract every row of the TER slab table — each row as { aumSlab, ter } where aumSlab describes the AUM range and ter is the corresponding expense ratio for that slab. Empty array if no slab table.
 taxationSummary: Summarise the taxation section — capital gains tax treatment, holding periods for short/long term classification, applicable tax rates for resident and non-resident investors. 3-6 sentences.
-assetAllocationRanges: Extract the Investment Pattern / Asset Allocation table giving PERMITTED RANGES (not actuals) — each row as { assetClass, min, max } with min/max as percentages of NAV. Include every asset class row (equity, debt, money market, derivatives, etc.).
-grossExposureLimit: Maximum permitted gross exposure including derivatives, as stated (e.g. "Up to 100% of NAV").
-derivativesRestrictions: Summarise key restrictions on derivatives/hedging usage — e.g. whether Credit Default Swaps (CDS) are permitted, caps on unhedged equity exposure, caps on overseas investment exposure. 1-3 sentences.
 sponsorName: Name of the scheme's sponsor entity.
 amcName: Name of the Asset Management Company / Investment Manager.
 trusteeName: Name of the trustee company.
@@ -313,10 +285,7 @@ Return null for any field not found in the document. Return empty arrays for tab
 
 const PPT_PROMPT = `You are extracting strategy details from an Indian SIF (Specialized Investment Fund) investor presentation (PPT/PDF deck).
 
-derivativeStrategies: Identify every named derivative/hedging/alpha strategy the fund employs (e.g. "Cash-Future Arbitrage", "Index Hedging", "Pair Trades"). For each, return { name, description } where description is 1-2 sentences explaining how that strategy works and what it aims to achieve. Empty array if none are named.
-alphaGenerationApproach: 2-4 sentences describing how the fund seeks to generate alpha beyond market beta — its stock selection process, hedging philosophy, market-neutral techniques, or other return-enhancement approach described in the presentation.
-
-Return null for alphaGenerationApproach if not discernible, and an empty array for derivativeStrategies if none are named.`;
+`;
 
 const EXCEL_PROMPT = `You are extracting data from a "Scheme Summary Document" spreadsheet for an Indian SIF (Specialized Investment Fund). The data is a flat list of label/value rows (tab-separated), one fact per row — not a multi-page report.
 
@@ -643,7 +612,6 @@ export async function POST(req: NextRequest) {
 
     type DirectData = {
       portfolioByIndustry: { industry: string; percentage: number }[];
-      portfolioByRatingClass: { ratingClass: string; percentage: number }[];
       equitySectorMap: Record<string, string>;
       bondEntries: { name: string; percentage: number; rating: string | null }[];
     };
@@ -652,7 +620,6 @@ export async function POST(req: NextRequest) {
       let allText = "";
       const direct: DirectData = {
         portfolioByIndustry: [],
-        portfolioByRatingClass: [],
         equitySectorMap: {},
         bondEntries: [],
       };
@@ -784,16 +751,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const ratingClassNames = items.filter(i => i.x >= 28 && i.x <= 30 && i.y >= 38 && i.y <= 41 && !/%/.test(i.text));
-        const ratingClassPcts = items.filter(i => i.x >= 29 && i.x <= 30.5 && i.y >= 38 && i.y <= 41 && /%/.test(i.text));
-        for (const ni of ratingClassNames) {
-          const pct = ratingClassPcts.find(p => Math.abs(p.y - ni.y) < 0.7);
-          if (pct) {
-            const pctNum = parseFloat(pct.text.replace("%", "").trim());
-            if (!isNaN(pctNum)) direct.portfolioByRatingClass.push({ ratingClass: ni.text, percentage: pctNum });
-          }
-        }
-
         for (const row of longRows.slice(1)) {
           const parts = row.split(" | ");
           if (parts.length >= 3) {
@@ -842,7 +799,6 @@ export async function POST(req: NextRequest) {
     const pdfErrors: string[] = [];
     const pdfDirectData: DirectData = {
       portfolioByIndustry: [],
-      portfolioByRatingClass: [],
       equitySectorMap: {},
       bondEntries: [],
     };
@@ -873,7 +829,6 @@ export async function POST(req: NextRequest) {
         else pdfErrors.push("No text extracted from PDF");
 
         if (!pdfDirectData.portfolioByIndustry.length) pdfDirectData.portfolioByIndustry = result.direct.portfolioByIndustry;
-        if (!pdfDirectData.portfolioByRatingClass.length) pdfDirectData.portfolioByRatingClass = result.direct.portfolioByRatingClass;
         if (!Object.keys(pdfDirectData.equitySectorMap).length) pdfDirectData.equitySectorMap = result.direct.equitySectorMap;
         if (!pdfDirectData.bondEntries.length) pdfDirectData.bondEntries = result.direct.bondEntries;
       } catch (e) {
@@ -902,7 +857,6 @@ export async function POST(req: NextRequest) {
 
 
     if (pdfDirectData.portfolioByIndustry.length) aiExtracted.portfolioByIndustry = pdfDirectData.portfolioByIndustry;
-    if (pdfDirectData.portfolioByRatingClass.length) aiExtracted.portfolioByRatingClass = pdfDirectData.portfolioByRatingClass;
 
     if (Array.isArray(aiExtracted.topHoldings)) {
       const CREDIT_RATING_RE = /^(AAA[\+\-]?|AA[\+\-]?|A[\+\-]?|BBB[\+\-]?|SOV|AAA equivalent|AAA\s*Equivalent)$/i;

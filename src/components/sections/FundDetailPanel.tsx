@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import type { FundDetail, PeriodKey } from "@/lib/sifData";
 import { toCumulative } from "@/lib/categoryAverages";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { FUND_CATEGORY_AVG_HELP, FUND_CHART_PERIOD_HELP } from "@/lib/controlHelp";
 
 type ChartPeriod = "1M" | "3M" | "6M" | "1Y" | "All" | "Custom";
 const CHART_PERIODS: ChartPeriod[] = ["1M", "3M", "6M", "1Y", "All"];
@@ -195,44 +197,49 @@ export function FundDetailPanel({
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap sm:justify-end">
           {avgSeries && (
-            <button
-              onClick={() => { setShowCategoryAvg((v) => !v); setTooltip(null); }}
-              className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors ${
-                showCategoryAvg ? "bg-[#0E9F8E] text-white border-[#0E9F8E]" : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
-              }`}
-            >
-              Category Avg
-            </button>
+            <HelpTip {...FUND_CATEGORY_AVG_HELP} align="left">
+              <button
+                onClick={() => { setShowCategoryAvg((v) => !v); setTooltip(null); }}
+                className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors ${
+                  showCategoryAvg ? "bg-[#0E9F8E] text-white border-[#0E9F8E]" : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
+                }`}
+              >
+                Category Avg
+              </button>
+            </HelpTip>
           )}
           <div className="flex items-center gap-1">
             {CHART_PERIODS.map((p) => (
-              <button
-                key={p}
-                onClick={() => { setChartPeriod(p); setCustomRange(null); setTooltip(null); }}
-                className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium text-center transition-colors ${
-                  chartPeriod === p
-                    ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
-                    : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
-                }`}
-              >
-                {p}
-              </button>
+              <HelpTip key={p} {...FUND_CHART_PERIOD_HELP[p]}>
+                <button
+                  onClick={() => { setChartPeriod(p); setCustomRange(null); setTooltip(null); }}
+                  className={`px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium text-center transition-colors ${
+                    chartPeriod === p
+                      ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
+                      : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
+                  }`}
+                >
+                  {p}
+                </button>
+              </HelpTip>
             ))}
-            <DateRangePicker
-              minDate={fund.navHistory[0]?.date}
-              maxDate={fund.navHistory[fund.navHistory.length - 1]?.date}
-              isActive={chartPeriod === "Custom"}
-              onApply={(start, end) => {
-                setCustomRange({ start, end });
-                setChartPeriod("Custom");
-                setTooltip(null);
-              }}
-              onClear={() => {
-                setCustomRange(null);
-                setChartPeriod("All");
-                setTooltip(null);
-              }}
-            />
+            <HelpTip {...FUND_CHART_PERIOD_HELP.Custom} align="right">
+              <DateRangePicker
+                minDate={fund.navHistory[0]?.date}
+                maxDate={fund.navHistory[fund.navHistory.length - 1]?.date}
+                isActive={chartPeriod === "Custom"}
+                onApply={(start, end) => {
+                  setCustomRange({ start, end });
+                  setChartPeriod("Custom");
+                  setTooltip(null);
+                }}
+                onClear={() => {
+                  setCustomRange(null);
+                  setChartPeriod("All");
+                  setTooltip(null);
+                }}
+              />
+            </HelpTip>
           </div>
         </div>
       </div>

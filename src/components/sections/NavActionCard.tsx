@@ -5,17 +5,9 @@ import Link from "next/link";
 import { Plus, Check } from "lucide-react";
 import { FundCTAModal } from "@/components/ui/FundCTAModal";
 import { useCompareTray } from "@/components/ui/CompareTray";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { FUND_INVEST_HELP, FUND_ADD_COMPARE_HELP } from "@/lib/controlHelp";
 import type { FundDetail, FundDetailsData } from "@/lib/sifData";
-
-function fmtInr(n: number | null): string {
-  if (n == null) return "—";
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-function fmtCr(n: number | null): string {
-  if (n == null) return "—";
-  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
-}
 
 export function NavActionCard({
   fund,
@@ -54,37 +46,25 @@ export function NavActionCard({
         <span className="text-[12px] text-white/[0.38]">{fund.navDate}</span>
       </div>
 
-      {/* Sidebar stats */}
-      <div className="mt-4 space-y-0 border-t border-white/[0.07] pt-2">
-        {[
-          { label: "AUM", value: fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null) },
-          { label: "Min investment", value: fmtInr(fundDetails?.minInvestment ?? null) },
-          { label: "Exit load", value: fundDetails?.exitLoad ?? "—" },
-          { label: "Expense ratio", value: fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—") },
-          { label: "Since inception", value: fund.returns.SI !== null ? `${fund.returns.SI >= 0 ? "+" : ""}${fund.returns.SI.toFixed(1)}%` : "—" },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex items-start justify-between gap-4 py-2 border-b border-white/[0.07] last:border-0">
-            <span className="text-[13px] text-white/[0.42] shrink-0">{label}</span>
-            <span className="text-[13px] font-medium text-white text-right">{value}</span>
-          </div>
-        ))}
-      </div>
-
       {/* CTA buttons */}
-      <div className="mt-4 space-y-2">
-        <button
-          onClick={() => setCtaOpen(true)}
-          className="w-full h-10 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors"
-        >
-          Invest Online
-        </button>
-        <button
-          onClick={() => toggle(fund.schemeCode)}
-          className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
-        >
-          {added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
-          {added ? "Added to compare" : "Add to compare"}
-        </button>
+      <div className="mt-4 flex flex-col gap-2">
+        <HelpTip {...FUND_INVEST_HELP} className="w-full">
+          <button
+            onClick={() => setCtaOpen(true)}
+            className="w-full h-10 rounded-[8px] bg-[#0E9F8E] text-white text-[13px] font-semibold hover:bg-[#0a8577] transition-colors"
+          >
+            Invest Online
+          </button>
+        </HelpTip>
+        <HelpTip {...FUND_ADD_COMPARE_HELP} className="w-full">
+          <button
+            onClick={() => toggle(fund.schemeCode)}
+            className="w-full h-9 rounded-[8px] border border-white/[0.14] text-white/60 text-[12px] hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
+          >
+            {added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
+            {added ? "Added to compare" : "Add to compare"}
+          </button>
+        </HelpTip>
       </div>
 
       <FundCTAModal

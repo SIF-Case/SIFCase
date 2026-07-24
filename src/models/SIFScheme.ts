@@ -26,6 +26,10 @@ export interface ISIFScheme extends Document {
   companyName: string;
   companyName_short: string;
   brandName: string;
+  /** AMFI scheme id (e.g. "S-4"), stamped by the sync-amfi cron. "" until matched. */
+  schemeId: string;
+  /** AMFI SIF_Id (the AMC), stamped alongside schemeId. "" until matched. */
+  sifId: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -74,6 +78,8 @@ const SIFSchemeSchema = new Schema<ISIFScheme>(
     companyName_short: { type: String, default: "" },
     brandName: { type: String, default: "" },
     fundName: { type: String, default: "" },
+    schemeId: { type: String, default: "", index: true },
+    sifId: { type: String, default: "" },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

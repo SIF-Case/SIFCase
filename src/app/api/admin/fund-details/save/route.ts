@@ -17,23 +17,17 @@ export async function POST(req: NextRequest) {
   // Strip empty arrays from $set so they don't overwrite existing saved data.
   // An empty array means the user left the section blank — preserve whatever was in DB.
   const arrayFields = [
-    "fundManagers", "assetAllocation", "portfolioByIndustry", "portfolioByRatingClass", "topHoldings", "factsheets",
-    "planCodes", "sipDetails", "terSlabs", "assetAllocationRanges", "derivativeStrategies",
+    "fundManagers", "assetAllocation", "portfolioByIndustry", "topHoldings", "factsheets",
+    "terSlabs",
     // finapi-sync arrays — same "blank means untouched" rule applies here
     "rollingReturns", "categoryRanks", "peers",
   ];
   // Nullable finapi-sync objects: skip when null so an unrelated save doesn't wipe a previous sync.
-  const nullableObjectFields = ["fundamentals", "concentration", "marketCapWeightage", "amcOtherFunds"];
+  const nullableObjectFields = ["fundamentals", "concentration", "marketCapWeightage", "amcOtherFunds", "terBreakdown"];
   const setPayload: Record<string, unknown> = { fundName };
   for (const [k, v] of Object.entries(rest)) {
     if (arrayFields.includes(k) && Array.isArray(v) && v.length === 0) continue; // skip empty arrays
     if (nullableObjectFields.includes(k) && v == null) continue; // skip untouched nullable objects
-    if (k === "riskMetricsConclusions" && v && typeof v === "object") {
-      const allEmpty = Object.values(v as Record<string, { info?: string; timeframes?: unknown[] }>).every(
-        (group) => !group.info && (!group.timeframes || group.timeframes.length === 0),
-      );
-      if (allEmpty) continue;
-    }
     setPayload[k] = v;
   }
 

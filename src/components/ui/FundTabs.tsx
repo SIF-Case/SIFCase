@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { FUND_TAB_HELP } from "@/lib/controlHelp";
 
 type TabKey = "performance" | "risk" | "portfolio" | "manager" | "documents";
 
@@ -56,24 +58,32 @@ export function FundTabs({
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex items-center border-b border-[#E2E8EE] px-2 overflow-x-auto [-webkit-overflow-scrolling:touch]">
-        {TABS.map((tab) => (
-          <button
+      {/* sm+ fits all five tabs, so overflow stays visible there and lets the
+          control tooltips escape the bar. */}
+      <div className="flex items-center border-b border-[#E2E8EE] px-2 overflow-x-auto sm:overflow-visible [-webkit-overflow-scrolling:touch]">
+        {TABS.map((tab, i) => (
+          <HelpTip
             key={tab.key}
-            onClick={() => setActive(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
-              active === tab.key
-                ? "border-[#0E9F8E] text-[#0E9F8E]"
-                : "border-transparent text-[#6B8299] hover:text-[#3D5166]"
-            }`}
+            {...FUND_TAB_HELP[tab.key]}
+            side="bottom"
+            align={i === 0 ? "left" : i === TABS.length - 1 ? "right" : "center"}
           >
-            {tab.label}
-            {tab.badge && (
-              <span className="text-[9px] font-bold uppercase tracking-wide bg-[#0E9F8E] text-white px-1.5 py-0.5 rounded-full leading-none">
-                {tab.badge}
-              </span>
-            )}
-          </button>
+            <button
+              onClick={() => setActive(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
+                active === tab.key
+                  ? "border-[#0E9F8E] text-[#0E9F8E]"
+                  : "border-transparent text-[#6B8299] hover:text-[#3D5166]"
+              }`}
+            >
+              {tab.label}
+              {tab.badge && (
+                <span className="text-[9px] font-bold uppercase tracking-wide bg-[#0E9F8E] text-white px-1.5 py-0.5 rounded-full leading-none">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          </HelpTip>
         ))}
       </div>
       {/* Panel */}

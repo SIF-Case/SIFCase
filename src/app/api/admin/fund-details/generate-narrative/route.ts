@@ -10,15 +10,11 @@ import { z } from "zod";
 const NarrativeSchema = z.object({
   benchmarkDetails: z.string().describe("1-2 sentences describing what the benchmark index represents and why it fits this fund's strategy."),
   taxationSummary: z.string().describe("2-3 sentences summarising how gains from this fund are taxed, based on its category (equity vs hybrid/debt) and holding period."),
-  derivativeStrategies: z.array(z.object({ name: z.string(), description: z.string() }))
-    .describe("Named derivative/hedging strategies inferable from the holdings (e.g. futures on individual stocks appearing as negative-weight 'Future on X' entries), each with a short description."),
-  alphaGenerationApproach: z.string().describe("2-3 sentences on how the fund manager aims to generate alpha, inferred from the strategy category, sector concentration, and factor tilts visible in fundamentals (P/E, P/B vs category average)."),
   suitableFor: z.string().describe("2-3 sentences on the type of investor this fund suits, given its risk band, category, and volatility profile."),
   notSuitableFor: z.string().describe("2-3 sentences on who should avoid this fund."),
   bullMarket: z.string().describe("2-3 sentences on how this fund likely performs in rising equity markets, given its strategy and net exposure."),
   bearMarket: z.string().describe("2-3 sentences on how this fund likely performs in falling markets — does its strategy provide downside protection?"),
   sidewaysMarket: z.string().describe("2-3 sentences on likely performance in flat/range-bound markets."),
-  howItWorks: z.string().describe("2-4 sentences explaining the fund's mechanics, key instruments, and return drivers, grounded in the actual holdings/sectors/asset-allocation data given."),
   mfEquivalent: z.string().describe("1 sentence naming the closest mutual fund category and why."),
   portfolioFit: z.string().describe("2-3 sentences on where this SIF fits in a diversified portfolio — satellite, alternative sleeve, hedge, etc."),
 });
@@ -28,14 +24,11 @@ const PROMPT_INTRO = `You are a SEBI-registered SIF (Specialized Investment Fund
 Fields to produce:
 - benchmarkDetails
 - taxationSummary
-- derivativeStrategies (array of {name, description})
-- alphaGenerationApproach
 - suitableFor
 - notSuitableFor
 - bullMarket
 - bearMarket
 - sidewaysMarket
-- howItWorks
 - mfEquivalent
 - portfolioFit
 
@@ -111,7 +104,6 @@ export async function POST(req: NextRequest) {
     const context = {
       fundName: detail.fundName,
       schemeCategory: detail.schemeCategory,
-      schemeNature: detail.schemeNature,
       schemeType: detail.schemeType,
       riskBand: detail.riskBand,
       benchmarkName: detail.benchmarkName,
@@ -126,7 +118,6 @@ export async function POST(req: NextRequest) {
       marketCapWeightage: detail.marketCapWeightage,
       rollingReturns: detail.rollingReturns,
       categoryRanks: detail.categoryRanks,
-      riskMetricsConclusions: detail.riskMetricsConclusions,
       peers: detail.peers,
       amcName: detail.amcName,
     };

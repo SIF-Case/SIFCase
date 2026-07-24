@@ -45,7 +45,7 @@ export async function runDataQualityChecks(db: Db): Promise<DataQualityResult> {
     ).toArray(),
     fundDetails.find(
       {},
-      { projection: { fundName: 1, riskBand: 1, aumCurrent: 1, benchmarkName: 1, lastSyncedFromFinApi: 1, _id: 0 } },
+      { projection: { fundName: 1, riskBand: 1, aumCurrent: 1, benchmarkName: 1, updatedAt: 1, _id: 0 } },
     ).toArray(),
     clients.find(
       {},

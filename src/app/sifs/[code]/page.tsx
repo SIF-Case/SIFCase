@@ -4,19 +4,20 @@ import Image from "next/image";
 import { extractSchemeCode, fundSlug, fundHref } from "@/lib/slugify";
 import {
   ShieldCheck, TrendingUp, MinusCircle, ExternalLink,
-  CheckCircle2, XCircle, ArrowLeftRight, Compass, BarChart2,
-  Building2, TrendingDown,
+  CheckCircle2, XCircle, BarChart2,
+  Building2,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Providers } from "@/app/providers";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { NavActionCard } from "@/components/sections/NavActionCard";
+import { ScenarioTabs } from "@/components/sections/ScenarioTabs";
 import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
 import { getCategoryAverageSeries } from "@/lib/categoryAverages";
 import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
-import { SEBIRiskometer } from "@/components/ui/RiskMeter";
-import { FundTabs } from "@/components/ui/FundTabs";
+import { SEBIRiskometer, RISK_LABELS } from "@/components/ui/RiskMeter";
+import { FundSectionNav } from "@/components/sections/FundSectionNav";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
@@ -59,6 +60,41 @@ function safeAvg(vals: (number | null)[]): number | null {
   return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 }
 
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// inceptionDate is free text from KIM/ISID entry, so normalise the common shapes
+// to "15 Mar 2025". Anything unparseable is passed through untouched.
+function formatInceptionDate(raw: string): string {
+  const s = raw.trim();
+  if (!s) return s;
+
+  const monthIndex = (name: string) =>
+    MONTH_NAMES.findIndex((m) => name.toLowerCase().startsWith(m.toLowerCase()));
+
+  const build = (day: number, month: number, year: number) => {
+    if (month < 0 || month > 11 || day < 1 || day > 31 || year < 1900) return null;
+    return `${day} ${MONTH_NAMES[month]} ${year}`;
+  };
+
+  // 2025-03-15 / 2025/03/15
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (m) return build(+m[3], +m[2] - 1, +m[1]) ?? s;
+
+  // 15-03-2025 / 15/03/2025 / 15.03.2025  (day first — Indian convention)
+  m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (m) return build(+m[1], +m[2] - 1, +m[3]) ?? s;
+
+  // 15 Mar 2025 / 15-Mar-2025 / 15 March, 2025
+  m = s.match(/^(\d{1,2})[-\s]+([A-Za-z]+),?[-\s]+(\d{4})$/);
+  if (m) return build(+m[1], monthIndex(m[2]), +m[3]) ?? s;
+
+  // Mar 15, 2025 / March 15 2025
+  m = s.match(/^([A-Za-z]+)[-\s]+(\d{1,2}),?[-\s]+(\d{4})$/);
+  if (m) return build(+m[2], monthIndex(m[1]), +m[3]) ?? s;
+
+  return s;
+}
+
 function formatLaunchDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -66,41 +102,6 @@ function formatLaunchDate(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-function formatLaunchMonth(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-  } catch {
-    return iso;
-  }
-}
-
-// ── Category Context Metric Card ──────────────────────────────────────────────
-
-function MetricCard({
-  label,
-  value,
-  catAvg,
-  valueColor,
-}: {
-  label: string;
-  value: string | null;
-  catAvg: string | null;
-  valueColor?: string;
-}) {
-  return (
-    <div className="bg-white rounded-[12px] border border-[#E2E8EE] p-4 flex flex-col gap-2">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#6B8299]">{label}</div>
-      <div className={`text-[22px] font-bold leading-none ${valueColor ?? "text-[#0F1C28]"}`}>
-        {value ?? "—"}
-      </div>
-      {catAvg && (
-        <div className="text-[11px] text-[#6B8299]">Cat avg: {catAvg}</div>
-      )}
-    </div>
-  );
 }
 
 // ── Horizontal Comparison Bar ─────────────────────────────────────────────────
@@ -120,7 +121,7 @@ function ComparisonRow({
   const positive = value !== null ? value >= 0 : true;
 
   return (
-    <div className="flex items-center gap-3 py-[9px] border-b border-[#E2E8EE] last:border-0">
+    <div className="flex items-center gap-3 py-[7px] border-b border-[#E2E8EE] last:border-0">
       <div className="w-[100px] sm:w-[170px] shrink-0">
         <span className={`text-[13px] truncate block ${isThisFund ? "font-semibold text-[#0F1C28]" : "font-medium text-[#3D5166]"}`}>
           {label}
@@ -128,17 +129,21 @@ function ComparisonRow({
       </div>
       {value !== null ? (
         <>
-          <div className="flex-1 h-[6px] bg-[#E2E8EE] rounded-[3px] overflow-hidden">
+          <div className="flex-1 h-[20px] bg-[#EEF2F8] rounded-[6px] overflow-hidden">
             <div
-              className="h-full rounded-[3px] transition-all"
+              className="h-full rounded-[6px] transition-all"
               style={{
-                width: `${pct}%`,
-                background: !positive ? "#F87171" : isThisFund ? "#0E9F8E" : "rgba(14,159,142,0.55)",
+                width: `${Math.max(pct, 2)}%`,
+                background: !positive
+                  ? "#F87171"
+                  : isThisFund
+                    ? "linear-gradient(90deg,#0E9F8E,#0B7F73)"
+                    : "#8CA0BE",
               }}
             />
           </div>
           <div className="w-[56px] shrink-0 text-right">
-            <span className={`text-[13px] font-semibold ${positive ? "text-[#1A9E5F]" : "text-[#F87171]"}`}>
+            <span className={`text-[13px] font-bold tabular-nums ${positive ? "text-[#1A9E5F]" : "text-[#F87171]"}`}>
               {positive ? "+" : ""}{value.toFixed(2)}%
             </span>
           </div>
@@ -157,6 +162,85 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between gap-4 py-[9px] border-b border-[#E2E8EE] last:border-0">
       <span className="text-[12.5px] text-[#6B8299] font-normal">{label}</span>
       <span className="text-[12.5px] text-[#0F1C28] font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+// ── Empty state (for sections with no data yet) ───────────────────────────────
+
+function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="bg-white rounded-[14px] border border-dashed border-[#CCD5DD] p-8 text-center">
+      <h3 className="text-[15px] font-bold text-[#0F1C28] mb-1.5">{title}</h3>
+      <p className="text-[13px] text-[#6B8299] leading-relaxed max-w-[440px] mx-auto">{body}</p>
+    </div>
+  );
+}
+
+// ── Hero: 5-segment risk gauge with pointer ───────────────────────────────────
+
+const GAUGE_SEGMENTS = ["#3FCB6F", "#B7D84A", "#F2C23C", "#F0873F", "#E5484D"];
+
+function HeroGauge({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
+  const idx = Math.max(1, Math.min(5, Math.round(level)));
+  return (
+    <div className="flex h-[6px] rounded-[4px] overflow-hidden">
+      {GAUGE_SEGMENTS.map((c, i) => (
+        <span key={i} className="flex-1 relative" style={{ background: c }}>
+          {i + 1 === idx && (
+            <span className="absolute top-[-3px] left-1/2 -translate-x-1/2 w-[2px] h-[12px] bg-white rounded-[2px] shadow-[0_0_0_2px_rgba(255,255,255,0.28)]" />
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ── Hero: compact risk-band widget item ───────────────────────────────────────
+
+function HeroRiskItem({
+  label,
+  level,
+  secondary,
+  sub,
+}: {
+  label: string;
+  level: 1 | 2 | 3 | 4 | 5;
+  secondary?: boolean;
+  sub?: string;
+}) {
+  return (
+    <div className={`py-[5px] ${secondary ? "opacity-80 border-t border-white/[0.14] mt-1.5 pt-2.5" : ""}`}>
+      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+        <span className="text-[11px] font-semibold text-white/70">{label}</span>
+        <span className="text-[12px] font-extrabold text-white whitespace-nowrap">{RISK_LABELS[level - 1]}</span>
+      </div>
+      <HeroGauge level={level} />
+      {sub && <div className="text-[9.5px] text-white/45 mt-[5px] leading-[1.4]">{sub}</div>}
+    </div>
+  );
+}
+
+// ── Hero: live stat cell ──────────────────────────────────────────────────────
+
+function HeroStat({
+  label,
+  value,
+  valueClass,
+  sub,
+  last,
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+  sub?: string;
+  last?: boolean;
+}) {
+  return (
+    <div className={`flex-1 min-w-[130px] px-4 py-3 ${last ? "" : "sm:border-r border-white/[0.13]"}`}>
+      <div className="text-[11px] font-semibold text-white/45 mb-1.5">{label}</div>
+      <div className={`text-[18px] font-bold tabular-nums ${valueClass ?? "text-white"}`}>{value}</div>
+      {sub && <div className="text-[10.5px] text-white/40 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -202,6 +286,12 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
     (1000 * 60 * 60 * 24 * 365.25);
   const siLabel = fundAgeYears > 1 ? "Since Inception (CAGR)" : "Since Inception";
 
+  // Expense ratio (TER) — always rendered with a trailing "%"; the terMax fallback
+  // is stored without one.
+  const rawTer = fund.expenseRatio ?? fundDetails?.terMax ?? null;
+  const expenseRatioDisplay =
+    rawTer != null && String(rawTer).trim() !== "" ? `${String(rawTer).replace(/%\s*$/, "")}%` : "—";
+
   const reinvestVariant = fund.variants.find(
     (v) => v.option === "IDCW Reinvestment" && v.schemeCode === fund.schemeCode
   );
@@ -212,8 +302,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const catCount = catFunds.length;
 
   const cat1MAvg = safeAvg(catFunds.map((f) => f.returns["1M"]));
-  const catSharpeAvg = safeAvg(catFunds.map((f) => f.sharpes["SI"]));
-  const catDrawdownAvg = safeAvg(catFunds.map((f) => f.drawdowns["SI"]));
 
   // ── Category comparison bars ────────────────────────────────────────────────
   const catFundsWith1M = catFunds
@@ -316,7 +404,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
       <Navbar />
 
       {/* ── Breadcrumb ──────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#E2E8EE]">
+      <div className="bg-[#F4F6F8]">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-10">
           <div className="flex items-center gap-1.5 py-[9px] text-[12px] overflow-x-auto whitespace-nowrap">
             <Link href="/" className="text-[#6B8299] hover:text-[#3D5166] transition-colors shrink-0">Home</Link>
@@ -328,286 +416,194 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {/* ── Hero Banner ─────────────────────────────────────────────────────── */}
-      <div className="bg-[#0C3B54] border-b border-white/[0.06]">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-6 sm:py-7">
+      {/* ── Hero Banner (floating gradient card) ────────────────────────────── */}
+      <div className="bg-[#F4F6F8]">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-10 pt-4 pb-2">
+          <section
+            className="relative overflow-hidden rounded-[20px] shadow-[0_8px_24px_rgba(11,37,69,0.12)]"
+            style={{ background: "linear-gradient(155deg,#0B2545 0%,#12335C 60%,#1B4E82 100%)" }}
+          >
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: "radial-gradient(520px 340px at 8% -15%, rgba(14,159,142,0.28), transparent 62%)" }}
+            />
+            <div className="relative px-5 sm:px-8 pt-7 pb-6">
 
-          {/* Tags row */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <div className="flex items-center gap-[7px] px-3 py-1 rounded-full border border-white/[0.14] bg-white/[0.08]">
+          <div className="flex flex-col lg:flex-row lg:justify-between gap-6 lg:gap-8">
+          {/* LEFT: identity */}
+          <div className="min-w-0">
+          <div className="flex gap-4">
+            {/* Fund house logo */}
+            <div className="w-11 h-11 rounded-[10px] bg-white p-1.5 flex items-center justify-center shrink-0 overflow-hidden">
               {fund.logoUrl ? (
-                <div className="w-5 h-5 rounded-[4px] bg-white flex items-center justify-center shrink-0 overflow-hidden p-0.5">
-                  <Image
-                    src={fund.logoUrl}
-                    alt={fund.amc}
-                    width={20}
-                    height={20}
-                    className="object-contain max-w-full max-h-full"
-                    style={{ width: "auto", height: "auto" }}
-                  />
-                </div>
+                <Image
+                  src={fund.logoUrl}
+                  alt={fund.amc}
+                  width={36}
+                  height={36}
+                  className="object-contain max-w-full max-h-full"
+                  style={{ width: "auto", height: "auto" }}
+                />
               ) : (
-                <div className="w-5 h-5 rounded-[4px] bg-[#0E9F8E] flex items-center justify-center shrink-0">
-                  <span className="text-white text-[10px] font-bold leading-none">{amcInitial}</span>
+                <span className="text-[#0E9F8E] text-[15px] font-extrabold leading-none">{amcInitial}</span>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              {/* Brand row */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-2">
+                <span className="text-[15px] font-semibold text-[#DCE7F8]">{fund.amc}</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full bg-[rgba(22,163,74,0.2)] border border-[rgba(140,235,174,0.4)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8CEBAE]" />
+                  <span className="text-[11px] font-bold text-[#8CEBAE]">Active</span>
+                </span>
+                <Link
+                  href="/sifs"
+                  className="text-[12px] font-semibold text-[#8FE0D2] border-b border-[#8FE0D2]/45 hover:text-white hover:border-white transition-colors"
+                >
+                  View all {fund.amc} schemes →
+                </Link>
+              </div>
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <span className="text-[11px] px-2.5 py-[3px] rounded-full bg-white/10 border border-white/[0.18] text-[#DCE7F8]">{fund.category}</span>
+                <span className="text-[11px] px-2.5 py-[3px] rounded-full bg-white/10 border border-white/[0.18] text-[#DCE7F8]">{fund.strategy}</span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-[26px] sm:text-[30px] font-extrabold text-white leading-[1.15] tracking-[-0.5px] mb-2">
+                {fund.fundName}
+              </h1>
+
+              {/* Meta */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#B9CCEA]">
+                {displayIsin && (
+                  <>
+                    <span>ISIN {displayIsin}</span>
+                    <span className="text-white/25">·</span>
+                  </>
+                )}
+                <span>Launched {formatLaunchDate(fund.launchDate)}</span>
+                {(fund.benchmark ?? fundDetails?.benchmarkName) && (
+                  <>
+                    <span className="text-white/25">·</span>
+                    <span>Benchmark <span className="text-white/85 font-medium">{fund.benchmark ?? fundDetails?.benchmarkName}</span></span>
+                  </>
+                )}
+              </div>
+
+              {/* Plan & Option switcher */}
+              {hasVariants && (
+                <div className="mt-4">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.9px] text-white/40 mb-2">Plan &amp; Option</div>
+                  <div className="flex flex-wrap gap-2">
+                    {fund.variants.map((v) => {
+                      const isVirtualReinvest = v.option === "IDCW Reinvestment";
+                      const isCurrent = isVirtualReinvest
+                        ? isReinvest && v.schemeCode === fund.schemeCode
+                        : !isReinvest && v.schemeCode === fund.schemeCode && v.option === fund.option;
+                      const href = isVirtualReinvest
+                        ? `${fundHref(fund.fundName, v.schemeCode)}?variant=reinvest`
+                        : fundHref(fund.fundName, v.schemeCode);
+                      return isCurrent ? (
+                        <span key={`${v.schemeCode}-${v.option}`} className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#0E9F8E] text-white border border-[#0E9F8E]">
+                          {v.option}
+                        </span>
+                      ) : (
+                        <Link
+                          key={`${v.schemeCode}-${v.option}`}
+                          href={href}
+                          className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/60 border border-white/15 hover:bg-white/20 hover:text-white transition-colors"
+                        >
+                          {v.option}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              <span className="text-[11px] font-medium text-white/80">{fund.amc}</span>
-            </div>
-            <div className="flex items-center gap-[7px] px-3 py-1 rounded-full border border-[rgba(26,158,95,0.25)] bg-[rgba(26,158,95,0.09)]">
-              <span className="w-[6px] h-[6px] rounded-full bg-[#1A9E5F] inline-block" />
-              <span className="text-[11px] font-semibold text-[#1A9E5F]">Active</span>
-            </div>
-            <div className="px-[9px] py-[3px] rounded-full border border-[rgba(14,159,142,0.25)] bg-[rgba(14,159,142,0.09)]">
-              <span className="text-[11px] font-semibold text-[#0E9F8E]">{fund.category}</span>
-            </div>
-            <div className="px-[9px] py-[3px] rounded-full border border-white/[0.12] bg-white/[0.07]">
-              <span className="text-[10px] font-semibold text-white/65">{fund.strategy}</span>
             </div>
           </div>
 
-          {/* Fund name */}
-          <h1 className="text-[20px] sm:text-[24px] font-extrabold text-white leading-[1.2] tracking-[-0.4px] pt-1 mb-2">
-            {fund.fundName}
-          </h1>
+          </div>{/* end LEFT identity column */}
 
-          {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-3 text-[13px] text-white/50 mb-6">
-            {displayIsin && <span>{displayIsin}</span>}
-            {displayIsin && <span className="text-white/20">·</span>}
-            <span>Launched {formatLaunchDate(fund.launchDate)}</span>
-          </div>
-
-          {/* Variant switcher */}
-          {hasVariants && (
-            <div className="mb-6">
-              <div className="text-[9px] font-semibold uppercase tracking-[0.9px] text-white/30 mb-2">
-                Plan &amp; Option
+          {/* RIGHT: actions + compact risk-band widget */}
+          <div className="flex flex-col items-stretch lg:items-end gap-3 shrink-0">
+            <div className="flex gap-2 w-full lg:justify-end">
+              <Link
+                href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
+                className="flex-1 lg:flex-none text-center text-[13px] font-semibold px-4 py-2.5 rounded-[10px] bg-white/[0.08] border border-white/[0.22] text-white hover:bg-white/[0.16] transition-colors"
+              >
+                + Add to Compare
+              </Link>
+              <a
+                href="mailto:support@sifcase.com"
+                className="flex-1 lg:flex-none text-center text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-[#0E9F8E] text-white hover:bg-[#12b3a3] transition-colors shadow-[0_6px_16px_rgba(14,159,142,0.35)]"
+              >
+                Request Callback
+              </a>
+            </div>
+            {fundDetails?.riskBand != null && (
+              <div className="w-full lg:w-[248px] rounded-[12px] border border-white/[0.22] bg-white/[0.09] px-3.5 py-3">
+                <HeroRiskItem label="Fund Risk Band" level={fundDetails.riskBand} />
+                {fundDetails.benchmarkRiskBand != null && (
+                  <HeroRiskItem
+                    label="Benchmark Risk Band"
+                    level={fundDetails.benchmarkRiskBand}
+                    secondary
+                    sub="For reference only — not a SEBI-mandated fund disclosure."
+                  />
+                )}
+                <div className="text-right mt-2.5 pt-2.5 border-t border-white/[0.14]">
+                  <a href="#risk-analytics" className="text-[10.5px] font-medium text-[#8FE0D2] underline hover:text-white transition-colors">Full risk analytics →</a>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {fund.variants.map((v) => {
-                  const key = `${v.schemeCode}-${v.option}`;
-                  const isVirtualReinvest = v.option === "IDCW Reinvestment";
-                  const isCurrent = isVirtualReinvest
-                    ? isReinvest && v.schemeCode === fund.schemeCode
-                    : !isReinvest && v.schemeCode === fund.schemeCode && v.option === fund.option;
-                  const href = isVirtualReinvest
-                    ? `${fundHref(fund.fundName, v.schemeCode)}?variant=reinvest`
-                    : fundHref(fund.fundName, v.schemeCode);
-                  return isCurrent ? (
-                    <span key={key} className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#0E9F8E] text-white border border-[#0E9F8E]">
-                      {v.option}
-                    </span>
-                  ) : (
-                    <Link
-                      key={key}
-                      href={href}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/60 border border-white/15 hover:bg-white/20 hover:text-white transition-colors"
-                    >
-                      {v.option}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Returns strip */}
-          <div className="pt-7 border-t border-white/[0.08]">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-white/40 mb-5">
-              Returns — source: AMFI NAV history
-            </div>
-            <div className="flex flex-wrap gap-y-5 gap-x-6 sm:gap-x-8">
-              {heroReturns.map((r, i) => {
-                const positive = r.value !== null ? r.value >= 0 : true;
-                const catPositive = r.catAvg !== null ? r.catAvg >= 0 : true;
-                return (
-                  <div
-                    key={r.label}
-                    className={`pr-6 sm:pr-8 ${i < heroReturns.length - 1 ? "sm:border-r border-white/[0.08]" : ""}`}
-                  >
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-2.5">{r.label}</div>
-                    {r.value !== null ? (
-                      <div className={`text-[22px] font-bold leading-none tracking-tight ${positive ? "text-[#4ADE80]" : "text-[#F87171]"}`}>
-                        {positive ? "+" : ""}{r.value.toFixed(1)}%
-                      </div>
-                    ) : (
-                      <div className="text-[18px] text-white/30 leading-none">—</div>
-                    )}
-                    {r.note ? (
-                      <div className="text-[11px] text-white/40 mt-2">{r.note}</div>
-                    ) : r.catAvg !== null ? (
-                      <div className={`text-[11.5px] mt-2 ${catPositive ? "text-white/50" : "text-white/50"}`}>
-                        vs cat avg {catPositive ? "+" : ""}{r.catAvg.toFixed(1)}%
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+            )}
           </div>
+          </div>{/* end hero-top */}
+
+          {/* Live stats strip */}
+          <div className="flex flex-wrap mt-6 rounded-[12px] border border-white/[0.18] bg-white/[0.06] overflow-hidden">
+            <HeroStat
+              label="Latest NAV"
+              value={`₹${fund.nav.toFixed(4)}`}
+              valueClass={navChangePositive ? "text-[#4ADE80]" : "text-[#F87171]"}
+              sub={
+                navChange !== null
+                  ? `${navChangePositive ? "+" : ""}₹${navChange.toFixed(4)}${navChangePct !== null ? ` (${navChangePositive ? "+" : ""}${navChangePct.toFixed(2)}%)` : ""} · ${fund.navDate}`
+                  : fund.navDate
+              }
+            />
+            <HeroStat label="AUM" value={fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null)} />
+            <HeroStat
+              label={siLabel}
+              value={fmtPct(fund.returns.SI, 1) ?? "—"}
+              valueClass={(fund.returns.SI ?? 0) >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"}
+              sub={fundAgeYears > 1 ? "Annualised (CAGR)" : "Absolute, not annualised"}
+            />
+            <HeroStat label="Min. Investment" value={fmtInr(fundDetails?.minInvestment ?? null)} />
+            <HeroStat
+              label="Expense Ratio"
+              value={expenseRatioDisplay}
+              last
+            />
+          </div>
+          </div>{/* end hero content */}
+          </section>
         </div>
       </div>
 
       {/* ── Page body ───────────────────────────────────────────────────────── */}
-      <div className="bg-[#F4F6F8] min-h-screen overflow-x-hidden">
+      <div className="bg-[#F4F6F8] min-h-screen overflow-x-clip">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-6 sm:py-8">
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start lg:justify-between">
 
             {/* ── LEFT: Main content ────────────────────────────────────── */}
             <div className="flex-1 min-w-0 w-full lg:max-w-[calc(100%-364px)] flex flex-col gap-6">
 
-              {/* ── Category Context ─────────────────────────────────────── */}
-              <section>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#6B8299] mb-2">
-                  Category context
-                </div>
-                <h2 className="text-[16px] font-bold text-[#0E2A47] mb-4">Performance vs. category</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard
-                    label="1M Return"
-                    value={fmtPct(fund.returns["1M"])}
-                    catAvg={cat1MAvg !== null ? `${cat1MAvg >= 0 ? "+" : ""}${cat1MAvg.toFixed(1)}%` : null}
-                    valueColor={fund.returns["1M"] !== null ? (fund.returns["1M"] >= 0 ? "text-[#1A9E5F]" : "text-[#F87171]") : undefined}
-                  />
-                  <MetricCard
-                    label="Sharpe Ratio"
-                    value={fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : null}
-                    catAvg={catSharpeAvg !== null ? catSharpeAvg.toFixed(1) : null}
-                  />
-                  <MetricCard
-                    label="Max Drawdown"
-                    value={fund.drawdowns["SI"] !== null ? `${fund.drawdowns["SI"]!.toFixed(2)}%` : null}
-                    catAvg={catDrawdownAvg !== null ? `${catDrawdownAvg.toFixed(1)}%` : null}
-                    valueColor={fund.drawdowns["SI"] !== null ? (fund.drawdowns["SI"]! < 0 ? "text-[#F87171]" : "text-[#1A9E5F]") : undefined}
-                  />
-                  <MetricCard
-                    label="Volatility"
-                    value={fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : null}
-                    catAvg={null}
-                  />
-                </div>
-              </section>
-
-              {/* ── Performance tabs card ─────────────────────────────────── */}
-              <div className="bg-white rounded-[14px] border border-[#E2E8EE]">
-                <FundTabs
-                  performance={
-                    <div className="p-5">
-                      <FundDetailPanel
-                        fund={fund}
-                        categoryAvg={categoryAvg}
-                        categoryLabel={fund.strategy}
-                      />
-                    </div>
-                  }
-                  risk={
-                    <div className="divide-y divide-[#E2E8EE]">
-                      {[
-                        {
-                          label: "Sharpe Ratio (SI)",
-                          value: fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : null,
-                          note: "Risk-adjusted return per unit of volatility.",
-                        },
-                        {
-                          label: "Volatility (SI)",
-                          value: fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : null,
-                          note: "Annualised standard deviation of daily returns.",
-                        },
-                        {
-                          label: "Max Drawdown (SI)",
-                          value: fund.drawdowns["SI"] !== null ? `${fund.drawdowns["SI"]!.toFixed(2)}%` : null,
-                          note: "Peak-to-trough decline in NAV since inception.",
-                        },
-                        {
-                          label: "Max Drawdown (3M)",
-                          value: fund.drawdowns["3M"] !== null ? `${fund.drawdowns["3M"]!.toFixed(2)}%` : null,
-                          note: "Peak-to-trough in last 3 months.",
-                        },
-                      ].map(({ label, value, note }) => (
-                        <div key={label} className="px-5 py-4 flex items-start justify-between gap-4">
-                          <div>
-                            <div className="text-[13px] font-medium text-[#3D5166]">{label}</div>
-                            <div className="text-[11px] text-[#6B8299] mt-0.5">{note}</div>
-                          </div>
-                          {value !== null ? (
-                            <span className="text-[16px] font-bold text-[#0F1C28] shrink-0 tabular-nums">{value}</span>
-                          ) : (
-                            <span className="text-[12px] text-[#6B8299] shrink-0">Insufficient history</span>
-                          )}
-                        </div>
-                      ))}
-                      {/* SEBI Riskometer */}
-                      {fundDetails?.riskBand != null && (
-                        <div className="p-5">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#6B8299] mb-4">SEBI Riskometer</div>
-                          <div className={`grid gap-6 ${fundDetails.benchmarkRiskBand != null ? "grid-cols-2" : "grid-cols-1 max-w-xs"}`}>
-                            <SEBIRiskometer level={fundDetails.riskBand} title={fund.fundName} />
-                            {fundDetails.benchmarkRiskBand != null && (
-                              <SEBIRiskometer
-                                level={fundDetails.benchmarkRiskBand}
-                                title={fundDetails.benchmarkName || "Benchmark"}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  }
-                  portfolio={
-                    fundDetails && (fundDetails.assetAllocation?.length > 0 || fundDetails.topHoldings?.length > 0) ? (
-                      <div className="p-1">
-                        <FundDetailsSection details={fundDetails} />
-                      </div>
-                    ) : undefined
-                  }
-                  manager={
-                    fundDetails?.fundManagers?.length ? (
-                      <div className="divide-y divide-[#E2E8EE]">
-                        {fundDetails.fundManagers.map((m, i) => (
-                          <div key={i} className="flex items-center gap-3 px-5 py-4">
-                            <div className="size-10 rounded-full bg-[#0E9F8E]/10 flex items-center justify-center shrink-0">
-                              <span className="text-[13px] font-bold text-[#0E9F8E]">
-                                {m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                              </span>
-                            </div>
-                            <div>
-                              <div className="text-[13px] font-semibold text-[#0F1C28]">{m.name}</div>
-                              <div className="text-[11px] text-[#6B8299] mt-0.5">{m.designation || "Fund Manager"}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                  documents={
-                    fundDetails?.factsheets?.length ? (
-                      <div className="p-5 grid sm:grid-cols-2 gap-3">
-                        {fundDetails.factsheets.map((f, i) => (
-                          <a
-                            key={i}
-                            href={f.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-4 bg-[#F8FAFB] border border-[#E2E8EE] rounded-[12px] hover:border-[#0E9F8E] transition-colors group"
-                          >
-                            <div className="size-9 rounded-[8px] bg-[#0E9F8E]/10 flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E]/20 transition-colors">
-                              <ExternalLink className="size-4 text-[#0E9F8E]" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[12px] font-semibold text-[#0F1C28] truncate">{f.filename}</div>
-                              {f.uploadedAt && (
-                                <div className="text-[10px] text-[#6B8299] mt-0.5">
-                                  {new Date(f.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                                </div>
-                              )}
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                />
-              </div>
+              {/* ── Sticky in-page section nav ────────────────────────────── */}
+              <FundSectionNav />
 
               <div className="block lg:hidden">
                 <NavActionCard
@@ -616,6 +612,47 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   navChangePositive={navChangePositive}
                   navChangePct={navChangePct}
                   fundDetails={fundDetails}
+                />
+              </div>
+
+              {/* ═══════════ PERFORMANCE ═══════════ */}
+              <section id="performance" className="scroll-mt-[140px] flex flex-col gap-6">
+
+              {/* ── Trailing returns ─────────────────────────────────────── */}
+              <div className="bg-white rounded-[14px] border border-[#E2E8EE] p-5 sm:p-6">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">
+                  Returns · Source: AMFI NAV history
+                </div>
+                <h2 className="text-[18px] font-bold text-[#0E2A47] mb-1">Trailing returns</h2>
+                <p className="text-[13px] text-[#6B8299] mb-4">Fund return vs. {fund.strategy} category average.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {heroReturns.map((r) => {
+                    const positive = r.value !== null ? r.value >= 0 : true;
+                    return (
+                      <div key={r.label} className="bg-[#F4F6F8] rounded-[11px] px-3.5 py-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-[#6B8299] mb-1.5">{r.label}</div>
+                        {r.value !== null ? (
+                          <div className={`text-[21px] font-extrabold tabular-nums leading-none ${positive ? "text-[#1A9E5F]" : "text-[#F87171]"}`}>
+                            {positive ? "+" : ""}{r.value.toFixed(1)}%
+                          </div>
+                        ) : (
+                          <div className="text-[21px] font-bold text-[#AAB4C4] leading-none">—</div>
+                        )}
+                        <div className="text-[10.5px] text-[#6B8299] mt-1.5">
+                          {r.note ? r.note : r.catAvg !== null ? `Cat avg ${r.catAvg >= 0 ? "+" : ""}${r.catAvg.toFixed(1)}%` : "Not available"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── NAV chart ─────────────────────────────────────────────── */}
+              <div className="bg-white rounded-[14px] border border-[#E2E8EE] p-5">
+                <FundDetailPanel
+                  fund={fund}
+                  categoryAvg={categoryAvg}
+                  categoryLabel={fund.strategy}
                 />
               </div>
 
@@ -660,11 +697,21 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 </div>
                 <div className="px-4">
                   <InfoRow label="Min. investment" value={fmtInr(fundDetails?.minInvestment ?? null)} />
-                  <InfoRow label="Expense ratio" value={fund.expenseRatio !== null ? `${fund.expenseRatio}%` : (fundDetails?.terMax || "—")} />
+                  <InfoRow label="Expense ratio" value={expenseRatioDisplay} />
                   <InfoRow label="AUM" value={fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null)} />
-                  <InfoRow label="Inception date" value={formatLaunchMonth(fund.launchDate)} />
-                  <InfoRow label="Exit load" value={fundDetails?.exitLoad ?? "—"} />
+                  <InfoRow label="Inception date" value={fundDetails?.inceptionDate ? formatInceptionDate(fundDetails.inceptionDate) : formatLaunchDate(fund.launchDate)} />
                   <InfoRow label="Benchmark" value={fund.benchmark ?? fundDetails?.benchmarkName ?? "—"} />
+                </div>
+                {/* Exit load — highlighted cost card */}
+                <div className="mx-4 mb-4 mt-1 rounded-[12px] border border-[#CFEFDA] bg-[#EAF9EF] p-4">
+                  <div className="flex items-start justify-between gap-4 py-[6px] border-b border-dashed border-[#CFEFDA]">
+                    <span className="text-[12.5px] font-semibold text-[#1B5E3A]">Exit load</span>
+                    <span className="text-[12.5px] font-bold text-[#0F3D24] text-right max-w-[58%]">{fundDetails?.exitLoad || "Nil"}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 py-[6px]">
+                    <span className="text-[12.5px] font-semibold text-[#1B5E3A]">Maximum TER</span>
+                    <span className="text-[12.5px] font-bold text-[#0F3D24]">{expenseRatioDisplay}</span>
+                  </div>
                 </div>
               </div>
 
@@ -738,59 +785,20 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 <section>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Market Scenario Performance</div>
                   <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">How this fund may behave across cycles</h2>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    {fundDetails.bullMarket && (
-                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="size-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                            <TrendingUp className="size-4 text-[#1A9E5F]" strokeWidth={2} />
-                          </span>
-                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Bull Markets</h3>
-                        </div>
-                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.bullMarket}</p>
-                      </div>
-                    )}
-                    {fundDetails.bearMarket && (
-                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="size-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                            <TrendingDown className="size-4 text-[#F87171]" strokeWidth={2} />
-                          </span>
-                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Bear Markets</h3>
-                        </div>
-                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.bearMarket}</p>
-                      </div>
-                    )}
-                    {fundDetails.sidewaysMarket && (
-                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white p-5">
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="size-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                            <ArrowLeftRight className="size-4 text-[#0E9F8E]" strokeWidth={2} />
-                          </span>
-                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Sideways Markets</h3>
-                        </div>
-                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.sidewaysMarket}</p>
-                      </div>
-                    )}
-                  </div>
+                  <ScenarioTabs
+                    bull={fundDetails.bullMarket}
+                    bear={fundDetails.bearMarket}
+                    sideways={fundDetails.sidewaysMarket}
+                  />
                 </section>
               )}
 
               {/* ── Portfolio fit ─────────────────────────────────────────── */}
-              {fundDetails && (fundDetails.howItWorks || fundDetails.mfEquivalent || fundDetails.portfolioFit) && (
+              {fundDetails && (fundDetails.mfEquivalent || fundDetails.portfolioFit) && (
                 <section>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Where Does This Fund Fit?</div>
                   <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Understanding the fund&apos;s role in your portfolio</h2>
                   <div className="space-y-3">
-                    {fundDetails.howItWorks && (
-                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white p-5">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Compass className="size-4 text-[#0E9F8E]" strokeWidth={2} />
-                          <h3 className="text-[14px] font-bold text-[#0F1C28]">How this fund works</h3>
-                        </div>
-                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.howItWorks}</p>
-                      </div>
-                    )}
                     {fundDetails.mfEquivalent && (
                       <div className="rounded-[16px] border border-[#E2E8EE] bg-white p-5">
                         <div className="flex items-center gap-2 mb-2">
@@ -830,6 +838,123 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 </p>
               </section>
 
+              </section>{/* ═══════════ end PERFORMANCE ═══════════ */}
+
+              {/* ═══════════ RISK ANALYTICS ═══════════ */}
+              <section id="risk-analytics" className="scroll-mt-[140px]">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Risk Analytics</div>
+                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Risk-adjusted metrics</h2>
+                <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden divide-y divide-[#E2E8EE]">
+                  {[
+                    { label: "Sharpe Ratio (SI)", value: fund.sharpes["SI"] !== null ? fund.sharpes["SI"]!.toFixed(2) : null, note: "Risk-adjusted return per unit of volatility." },
+                    { label: "Volatility (SI)", value: fund.volatilities["SI"] !== null ? `${fund.volatilities["SI"]!.toFixed(2)}%` : null, note: "Annualised standard deviation of daily returns." },
+                    { label: "Max Drawdown (SI)", value: fund.drawdowns["SI"] !== null ? `${fund.drawdowns["SI"]!.toFixed(2)}%` : null, note: "Peak-to-trough decline in NAV since inception." },
+                    { label: "Max Drawdown (3M)", value: fund.drawdowns["3M"] !== null ? `${fund.drawdowns["3M"]!.toFixed(2)}%` : null, note: "Peak-to-trough in last 3 months." },
+                  ].map(({ label, value, note }) => (
+                    <div key={label} className="px-5 py-4 flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[13px] font-medium text-[#3D5166]">{label}</div>
+                        <div className="text-[11px] text-[#6B8299] mt-0.5">{note}</div>
+                      </div>
+                      {value !== null ? (
+                        <span className="text-[16px] font-bold text-[#0F1C28] shrink-0 tabular-nums">{value}</span>
+                      ) : (
+                        <span className="text-[12px] text-[#6B8299] shrink-0">Insufficient history</span>
+                      )}
+                    </div>
+                  ))}
+                  {fundDetails?.riskBand != null && (
+                    <div className="p-5">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#6B8299] mb-4">SEBI Riskometer</div>
+                      <div className={`grid gap-6 ${fundDetails.benchmarkRiskBand != null ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-xs"}`}>
+                        <SEBIRiskometer level={fundDetails.riskBand} title={fund.fundName} />
+                        {fundDetails.benchmarkRiskBand != null && (
+                          <SEBIRiskometer level={fundDetails.benchmarkRiskBand} title={fundDetails.benchmarkName || "Benchmark"} />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* ═══════════ PORTFOLIO ═══════════ */}
+              <section id="portfolio" className="scroll-mt-[140px]">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Portfolio</div>
+                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Portfolio holdings</h2>
+                {fundDetails && (fundDetails.assetAllocation?.length > 0 || fundDetails.topHoldings?.length > 0) ? (
+                  <FundDetailsSection details={fundDetails} />
+                ) : (
+                  <EmptyState
+                    title="Holdings disclosure pending"
+                    body="Per SEBI's SIF framework, portfolio disclosures are made every alternate month. Sector allocation, top holdings and net long/short exposure will populate here once the AMC's next disclosure is verified against ISID."
+                  />
+                )}
+              </section>
+
+              {/* ═══════════ FUND MANAGER ═══════════ */}
+              <section id="fund-manager" className="scroll-mt-[140px]">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Fund Manager</div>
+                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Who manages this fund</h2>
+                {fundDetails?.fundManagers?.length ? (
+                  <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden divide-y divide-[#E2E8EE]">
+                    {fundDetails.fundManagers.map((m, i) => (
+                      <div key={i} className="flex items-center gap-3 px-5 py-4">
+                        <div className="size-10 rounded-full bg-[#0E9F8E]/10 flex items-center justify-center shrink-0">
+                          <span className="text-[13px] font-bold text-[#0E9F8E]">
+                            {m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-[13px] font-semibold text-[#0F1C28]">{m.name}</div>
+                          <div className="text-[11px] text-[#6B8299] mt-0.5">{m.designation || "Fund Manager"}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Fund manager details pending verification"
+                    body="Name, tenure, qualifications and other schemes managed will appear here once confirmed against the ISID / SID."
+                  />
+                )}
+              </section>
+
+              {/* ═══════════ DOCUMENTS ═══════════ */}
+              <section id="documents" className="scroll-mt-[140px]">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Documents</div>
+                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Scheme documents</h2>
+                {fundDetails?.factsheets?.length ? (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {fundDetails.factsheets.map((f, i) => (
+                      <a
+                        key={i}
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 bg-white border border-[#E2E8EE] rounded-[12px] hover:border-[#0E9F8E] transition-colors group"
+                      >
+                        <div className="size-9 rounded-[8px] bg-[#0E9F8E]/10 flex items-center justify-center shrink-0 group-hover:bg-[#0E9F8E]/20 transition-colors">
+                          <ExternalLink className="size-4 text-[#0E9F8E]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12px] font-semibold text-[#0F1C28] truncate">{f.filename}</div>
+                          {f.uploadedAt && (
+                            <div className="text-[10px] text-[#6B8299] mt-0.5">
+                              {new Date(f.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No documents published yet"
+                    body="Official filings — Scheme Information Document, Investment Strategy Information Document and portfolio disclosures — will appear here once uploaded and verified."
+                  />
+                )}
+              </section>
+
               {/* ── Source trust strip ────────────────────────────────────── */}
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[#6B8299] pb-4">
                 <span className="inline-flex items-center gap-1.5">
@@ -848,7 +973,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
             </div>
 
             {/* ── RIGHT: Sidebar ────────────────────────────────────── */}
-            <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 lg:self-start lg:ml-auto">
+            <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-20 lg:self-start lg:ml-auto">
 
               {/* NAV Action Card */}
               <NavActionCard
@@ -870,12 +995,10 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                   <span className="text-[13px] font-semibold text-[#0E2A47]">Scheme information</span>
                 </div>
                 <div className="px-4">
-                  <InfoRow label="Scheme code" value={fund.schemeCode} />
                   <InfoRow label="Category" value={fund.category} />
                   <InfoRow label="Strategy" value={fund.strategy} />
-                  <InfoRow label="Plan" value={fund.plan} />
                   <InfoRow label="Option" value={fund.option} />
-                  <InfoRow label="Launch date" value={formatLaunchMonth(fund.launchDate)} />
+                  <InfoRow label="Launch date" value={formatLaunchDate(fund.launchDate)} />
                   <InfoRow label="Benchmark" value={fund.benchmark ?? fundDetails?.benchmarkName ?? "—"} />
                 </div>
               </div>
