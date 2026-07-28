@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { KeyRound, Plus, Pencil, Trash2, RefreshCw, X, ChevronDown } from "lucide-react";
 import { AI_USAGES } from "@/lib/aiUsages";
 import MonthlyReportsPanel from "./MonthlyReportsPanel";
+import LeadNotificationsPanel from "./LeadNotificationsPanel";
 
 type Provider = "deepseek" | "gemini" | "openrouter";
 
@@ -218,6 +219,8 @@ export default function AISettingsClient() {
           </div>
         ))}
       </div>
+
+      <LeadNotificationsPanel />
 
       <MonthlyReportsPanel />
 

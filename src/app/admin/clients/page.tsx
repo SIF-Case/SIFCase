@@ -927,7 +927,7 @@ export default function AdminClients() {
                           <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
                             {[...selectedClient.notes].reverse().map((n, idx) => (
                               <div key={n._id ?? idx} className="border-l border-rule pl-3">
-                                <p className="text-[12px] text-body">{n.text}</p>
+                                <p className="text-[12px] text-body whitespace-pre-line">{n.text}</p>
                                 <p className="text-[10px] text-faint mt-0.5">{n.authorName} · {new Date(n.createdAt).toLocaleString("en-IN")}</p>
                                 {n.nextFollowUpAt && (
                                   <p className={`text-[10px] mt-0.5 font-medium ${isOverdue(n.nextFollowUpAt) ? "text-loss" : "text-primary"}`}>

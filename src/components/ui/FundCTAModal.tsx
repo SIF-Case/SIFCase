@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { X, Phone, User, Mail, MessageSquare, Check, TrendingUp, Loader2, ShieldCheck } from "lucide-react";
+import { X, Phone, User, Mail, Check, TrendingUp, Loader2, ShieldCheck } from "lucide-react";
 
 const AMOUNT_OPTIONS = [
   { label: "₹10L", value: 10 },
@@ -24,6 +25,8 @@ async function safeJson(res: Response): Promise<{ error?: string; [key: string]:
     return { error: `Server error (${res.status}). Please try again.` };
   }
 }
+
+const digitsOnly = (v: string) => v.replace(/\D/g, "");
 
 type Props = {
   open: boolean;
@@ -126,7 +129,7 @@ function VerifyRow({
           name={name}
           value={value}
           onChange={onChange}
-          disabled={disabled}
+          disabled={disabled || verified}
           placeholder={placeholder}
           required={required}
           className="w-full pl-9 pr-[92px] py-2 text-[13.5px] border border-rule rounded-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body placeholder-muted/65 bg-white disabled:bg-surface disabled:text-muted"
@@ -152,8 +155,13 @@ function VerifyRow({
 }
 
 export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,37 +170,54 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
 
   const [formData, setFormData] = useState({ name: "", phone: "", email: "", message: "" });
 
-  // Phone verification state
-  const [phoneVerified, setPhoneVerified] = useState(false);
+  // Phone verification state. `phoneOtpVerified` only tracks an OTP completed
+  // inside this modal — a signed-in user's own number is trusted separately
+  // (see `phoneVerified` below) so it survives session refetches.
+  const [phoneOtpVerified, setPhoneOtpVerified] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState(false);
   const [phoneOtp, setPhoneOtp] = useState("");
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [phoneResendIn, setPhoneResendIn] = useState(0);
 
-  // Email verification state
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [emailOtpStage, setEmailOtpStage] = useState(false);
-  const [emailOtp, setEmailOtp] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [emailResendIn, setEmailResendIn] = useState(0);
+  // A phone on the session was already OTP-verified by the sign-in phone gate,
+  // so don't make a signed-in user prove the same number again. Comparing on
+  // digits keeps "+91 95940 62579" and "919594062579" equivalent.
+  const sessionPhone = session?.user?.phone ?? "";
+  const phoneFromSession = !!sessionPhone && digitsOnly(formData.phone) === digitsOnly(sessionPhone);
+  const phoneVerified = phoneOtpVerified || phoneFromSession;
 
-  // Pre-fill from session whenever the modal opens.
+  // The account email was verified at sign-in (Google, or an email OTP), so it
+  // is shown locked and already verified. A guest still types their own.
+  const sessionEmail = session?.user?.email ?? "";
+  const emailFromSession = !!sessionEmail && formData.email.trim().toLowerCase() === sessionEmail.toLowerCase();
+
+  // Reset only when the modal actually opens. `session` is intentionally not a
+  // dependency: next-auth hands back a new session object on every window-focus
+  // refetch, which used to wipe an in-progress verification the moment the user
+  // tabbed away and back.
   useEffect(() => {
     if (!open) return;
-    setFormData({
-      name: session?.user?.name ?? "",
-      phone: session?.user?.phone ?? "",
-      email: session?.user?.email ?? "",
-      message: "",
-    });
+    setFormData({ name: "", phone: "", email: "", message: "" });
     setAmountLakhs(null);
     setErrorMsg("");
     setIsSubmitted(false);
-    setPhoneVerified(false); setPhoneOtpStage(false); setPhoneOtp(""); setPhoneError(""); setPhoneResendIn(0);
-    setEmailVerified(false); setEmailOtpStage(false); setEmailOtp(""); setEmailError(""); setEmailResendIn(0);
-  }, [open, session]);
+    setPhoneOtpVerified(false); setPhoneOtpStage(false); setPhoneOtp(""); setPhoneError(""); setPhoneResendIn(0);
+  }, [open]);
+
+  // Pre-fill from the session once it's available, filling blanks only so a
+  // late-arriving session never overwrites what the user has already typed.
+  useEffect(() => {
+    if (!open || status !== "authenticated") return;
+    const user = session?.user;
+    if (!user) return;
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name || (user.name ?? ""),
+      phone: prev.phone || (user.phone ?? ""),
+      email: prev.email || (user.email ?? ""),
+    }));
+  }, [open, status, session?.user?.name, session?.user?.phone, session?.user?.email]);
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -205,18 +230,11 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
     return () => clearTimeout(t);
   }, [phoneResendIn]);
 
-  useEffect(() => {
-    if (emailResendIn <= 0) return;
-    const t = setTimeout(() => setEmailResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [emailResendIn]);
-
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Editing a verified field after the fact invalidates the verification.
-    if (name === "phone" && phoneVerified) { setPhoneVerified(false); setPhoneOtpStage(false); }
-    if (name === "email" && emailVerified) { setEmailVerified(false); setEmailOtpStage(false); }
+    // Editing the phone after verifying it invalidates the verification.
+    if (name === "phone" && phoneOtpVerified) { setPhoneOtpVerified(false); setPhoneOtpStage(false); }
   }
 
   function handleOverlayClick(e: React.MouseEvent) {
@@ -224,7 +242,7 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
   }
 
   async function startPhoneVerify() {
-    const digits = formData.phone.replace(/[\s\-\+\(\)]/g, "");
+    const digits = digitsOnly(formData.phone);
     if (!/^\d{8,15}$/.test(digits)) { setPhoneError("Enter a valid phone number first"); return; }
     setPhoneLoading(true); setPhoneError("");
     try {
@@ -252,49 +270,11 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
       });
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.error || "Invalid code");
-      setPhoneVerified(true); setPhoneOtpStage(false); setPhoneOtp("");
+      setPhoneOtpVerified(true); setPhoneOtpStage(false); setPhoneOtp("");
     } catch (e) {
       setPhoneError((e as Error).message);
     } finally {
       setPhoneLoading(false);
-    }
-  }
-
-  async function startEmailVerify() {
-    const email = formData.email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) { setEmailError("Enter a valid email address first"); return; }
-    setEmailLoading(true); setEmailError("");
-    try {
-      const res = await fetch("/api/public/verify-email/start", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error(data.error || "Couldn't send code");
-      setEmailOtpStage(true); setEmailResendIn(RESEND_COOLDOWN); setEmailOtp("");
-    } catch (e) {
-      setEmailError((e as Error).message);
-    } finally {
-      setEmailLoading(false);
-    }
-  }
-
-  async function checkEmailOtp() {
-    if (emailOtp.length !== 6) { setEmailError("Enter the 6-digit code"); return; }
-    setEmailLoading(true); setEmailError("");
-    try {
-      const res = await fetch("/api/public/verify-email/check", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email.trim(), otp: emailOtp }),
-      });
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error(data.error || "Invalid code");
-      setEmailVerified(true); setEmailOtpStage(false); setEmailOtp("");
-    } catch (e) {
-      setEmailError((e as Error).message);
-    } finally {
-      setEmailLoading(false);
     }
   }
 
@@ -304,13 +284,12 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
 
     if (!formData.name.trim()) { setErrorMsg("Name is required"); return; }
     if (!formData.phone.trim()) { setErrorMsg("Phone number is required"); return; }
-    const phoneClean = formData.phone.replace(/[\s\-\+\(\)]/g, "");
+    const phoneClean = digitsOnly(formData.phone);
     if (!/^\d{8,15}$/.test(phoneClean)) { setErrorMsg("Please enter a valid phone number (8-15 digits)"); return; }
     if (!phoneVerified) { setErrorMsg("Please verify your phone number"); return; }
     if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) { setErrorMsg("Please enter a valid email address"); return; }
-      if (!emailVerified) { setErrorMsg("Please verify your email address"); return; }
     }
     if (amountLakhs == null) { setErrorMsg("Please select how much you're planning to invest"); return; }
 
@@ -323,6 +302,7 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
           ...formData,
           fundName: fund.fundName,
           schemeCode: fund.schemeCode,
+          strategy: fund.strategy,
           amountLakhs,
         }),
       });
@@ -341,7 +321,7 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
 
   if (!open) return null;
 
-  return (
+  const modalContent = (
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
@@ -420,25 +400,26 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
                 onCancelOtp={() => { setPhoneOtpStage(false); setPhoneError(""); }}
               />
 
-              <VerifyRow
-                icon={<Mail className="size-4" />}
-                inputType="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="Email Address (Optional)"
-                disabled={isSubmitting}
-                verified={emailVerified}
-                otpStage={emailOtpStage}
-                otp={emailOtp}
-                onOtpChange={setEmailOtp}
-                loading={emailLoading}
-                error={emailError}
-                resendIn={emailResendIn}
-                onStart={startEmailVerify}
-                onCheck={checkEmailOtp}
-                onCancelOtp={() => { setEmailOtpStage(false); setEmailError(""); }}
-              />
+              {/* For a signed-in user this is the account email, already verified
+                  at sign-in — shown locked with the badge. A guest just types a
+                  contact address; the phone OTP is what establishes identity, so
+                  there is no verify step here either way. */}
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted">
+                  <Mail className="size-4" />
+                </span>
+                <input
+                  type="email" name="email" value={formData.email} onChange={handleInputChange}
+                  disabled={isSubmitting || emailFromSession}
+                  placeholder="Email Address (Optional)"
+                  className={`w-full pl-9 ${emailFromSession ? "pr-[92px]" : "pr-3"} py-2 text-[13.5px] border border-rule rounded-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body placeholder-muted/65 bg-white disabled:bg-surface disabled:text-muted`}
+                />
+                {emailFromSession && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-[11px] font-semibold text-verified">
+                    <ShieldCheck className="size-3.5" /> Verified
+                  </span>
+                )}
+              </div>
 
               <div>
                 <p className="text-[12px] font-medium text-muted mb-1.5">How much are you planning to invest?</p>
@@ -491,4 +472,6 @@ export function FundCTAModal({ open, onClose, fund, minInvestment }: Props) {
       </div>
     </div>
   );
+
+  return mounted ? createPortal(modalContent, document.body) : null;
 }

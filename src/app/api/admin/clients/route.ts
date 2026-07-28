@@ -79,7 +79,13 @@ export async function GET(req: NextRequest) {
     const staffMatch: Record<string, unknown>[] = [{ linkedUserId: { $in: staffIds } }];
     if (staffEmails.length) staffMatch.push({ email: { $in: staffEmails } });
     if (staffPhoneDigits.length) staffMatch.push({ phone: { $regex: `(${staffPhoneDigits.join("|")})$` } });
-    filters.push({ $nor: staffMatch });
+    // A submission through a public lead form is a real inbound request and must
+    // always be visible, even when the number or address happens to belong to a
+    // staff member (own testing, a colleague's family). Without this, the whole
+    // list silently reads "0 clients" while leads are landing in the DB.
+    // Sources as written by /api/public/callback.
+    const publicLeadSources = ["fund_cta_popup", "callback_popup"];
+    filters.push({ $or: [{ source: { $in: publicLeadSources } }, { $nor: staffMatch }] });
   }
 
   const query = filters.length ? { $and: filters } : {};
