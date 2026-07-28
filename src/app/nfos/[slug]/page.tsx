@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -21,10 +22,16 @@ export async function generateMetadata(props: { params: Params }) {
       title: "NFO Not Found — SIFcase",
     };
   }
-  return {
-    title: `${nfo.name} NFO — SIFcase`,
-    description: `${nfo.name} NFO. Open ${nfo.openDate} – ${nfo.closeDate}. Minimum ${nfo.minInvestment}. ${nfo.category} long-short strategy under SEBI's SIF framework.`,
-  };
+  return resolvePageMetadata({
+    path: "/nfos/[slug]",
+    tokens: {
+      name: nfo.name,
+      openDate: nfo.openDate,
+      closeDate: nfo.closeDate,
+      minInvestment: nfo.minInvestment,
+      category: nfo.category,
+    },
+  });
 }
 
 export default async function NFODetailsPage(props: { params: Params }) {

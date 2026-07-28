@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -8,10 +9,11 @@ import { getTopFunds, getTickerNavs } from "@/lib/sifData";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Compare SIFs — SIFcase",
-  description: "Compare up to 4 Specialized Investment Funds side by side. Source-verified NAV, returns, risk metrics, and strategy",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/compare" });
+}
 
 type Props = { searchParams: Promise<{ funds?: string }> };
 

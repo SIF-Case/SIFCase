@@ -135,7 +135,10 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [period, setPeriod] = useState<PeriodKey>("SI");
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>("All");
+  const [category, setCategory] = useState<typeof CATEGORIES[number]>(() => {
+    const c = searchParams.get("category") as typeof CATEGORIES[number] | null;
+    return c && CATEGORIES.includes(c) ? c : "All";
+  });
   const [sortKey, setSortKey] = useState<SortKey>("return1m");
   const [sortAsc, setSortAsc] = useState(false);
   const [showFilters, setShowFilters] = useState(false);

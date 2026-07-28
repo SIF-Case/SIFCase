@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 /**
  * /fund-houses — listing page for all fund houses.
  *
@@ -18,11 +19,11 @@ import mongoose from "mongoose";
 import FundHouse from "@/models/FundHouse";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Fund Houses — SIFcase",
-  description:
-    "Browse all AMCs offering Specialised Investment Funds. Compare schemes, AUM, strategies, and performance across fund houses.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/fund-houses" });
+}
 
 function initialsFor(name: string): string {
   const words = name.trim().split(/\s+/);

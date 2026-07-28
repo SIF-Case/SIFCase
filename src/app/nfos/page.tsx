@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { resolvePageMetadata } from "@/lib/pageSeo";
 export const revalidate = 60;
 
 import { Navbar } from "@/components/layout/Navbar";
@@ -7,11 +9,11 @@ import { getTickerNavs } from "@/lib/sifData";
 import { getOpenNfos } from "@/lib/nfoQueries";
 import { NFOListClient } from "./NFOListClient";
 
-export const metadata = {
-  title: "Open SIF NFOs — SIFcase",
-  description:
-    "Track every open SIF NFO — subscription window, allotment dates, asset allocation, exit load and minimum investment. Verified from official sources.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/nfos" });
+}
 
 export default async function NFOListPage() {
   const [tickerNavs, nfos] = await Promise.all([getTickerNavs(), getOpenNfos()]);

@@ -1,5 +1,6 @@
 export const revalidate = 3600;
 
+import { resolvePageMetadata, getPageImageAlt } from "@/lib/pageSeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,6 +15,7 @@ import Article from "@/models/Article";
 import type { ArticleDoc } from "@/app/read/page";
 import {
   getFundHouseBySlug,
+  getAllFundHouseSlugs,
   getSIFsWithReturns,
   getTopFunds,
   getTickerNavs,
@@ -25,14 +27,22 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
+export async function generateStaticParams() {
+  const slugs = await getAllFundHouseSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const fundHouse = await getFundHouseBySlug(slug);
   if (!fundHouse) return { title: "Fund House not found — SIFcase" };
-  return {
-    title: `${fundHouse.brandName} — SIFcase`,
-    description: `${fundHouse.brandName} Specialised Investment Funds — schemes, NAV performance, and news.`,
-  };
+  return resolvePageMetadata({
+    path: "/fund-house/[slug]",
+    tokens: {
+      brandName: fundHouse.brandName,
+      fundCount: fundHouse.schemeCount,
+    },
+  });
 }
 
 function initialsFor(brandName: string): string {
@@ -45,16 +55,18 @@ function initialsFor(brandName: string): string {
 function FundHouseLogo({
   logoUrl,
   brandName,
+  alt,
 }: {
   logoUrl?: string;
   brandName: string;
+  alt?: string;
 }) {
   if (logoUrl) {
     return (
       <div className="size-[80px] rounded-[16px] bg-white shrink-0 flex items-center justify-center shadow-[0_2px_12px_rgba(0,0,0,0.18)] overflow-hidden p-2.5">
         <Image
           src={logoUrl}
-          alt={brandName}
+          alt={alt || `${brandName} logo`}
           width={80}
           height={80}
           className="object-contain max-w-full max-h-full"
@@ -83,6 +95,11 @@ export default async function FundHousePage({ params }: Props) {
     getTopFunds(),
     getTickerNavs(),
   ]);
+
+  // Logo alt text, overridable from the Page SEO admin screen.
+  const logoAlt =
+    (await getPageImageAlt("/fund-house/[slug]", { brandName: fundHouse.brandName })) ??
+    `${fundHouse.brandName} logo`;
 
   const fundNamesInHouse = new Set(sifs.map((s) => s.fundName));
   const houseFunds = allFunds.filter((f) => fundNamesInHouse.has(f.fundName));
@@ -136,7 +153,7 @@ export default async function FundHousePage({ params }: Props) {
             </div>
             
             <div className="flex items-start gap-4 mb-4">
-              <FundHouseLogo logoUrl={fundHouse.logoUrl} brandName={fundHouse.brandName} />
+              <FundHouseLogo logoUrl={fundHouse.logoUrl} brandName={fundHouse.brandName} alt={logoAlt} />
               <div className="flex flex-col gap-1 pt-1">
                 <h1 className="text-[26px] sm:text-[32px] lg:text-[38px] font-extrabold text-white leading-[1.1] tracking-tight">
                   {fundHouse.brandName}

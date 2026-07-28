@@ -35,7 +35,7 @@ export async function LearnSection() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={a.coverDesktop || a.coverMobile}
-                  alt=""
+                  alt={a.title}
                   className="w-full h-36 object-cover bg-mist"
                   loading="lazy"
                 />

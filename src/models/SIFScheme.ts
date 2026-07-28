@@ -102,12 +102,21 @@ export function parsePlanFromName(name: string): "Regular" | "Direct" {
   return "Regular";
 }
 
+// AMFI scheme names use either the "IDCW" abbreviation or the expanded
+// "Income Distribution cum Capital Withdrawal" wording — Magnum spells it out.
+// Matching only the abbreviation silently fell through to "Growth", so an IDCW
+// scheme was indistinguishable from its fund's real Growth plan and showed up
+// as a second copy of the fund in every {plan, option} listing query.
+const IDCW = "(?:idcw|income\\s+distribution(?:\\s+cum\\s+capital\\s+withdrawal)?)";
+
 export function parseOptionFromName(name: string): ISIFScheme["option"] {
-  if (/monthly\s+idcw/i.test(name)) return "Monthly IDCW";
-  if (/quarterly\s+idcw/i.test(name)) return "Quarterly IDCW";
-  if (/idcw\s+reinvestment/i.test(name)) return "IDCW Reinvestment";
-  if (/idcw\s+payout/i.test(name)) return "IDCW Payout";
-  if (/idcw/i.test(name)) return "IDCW";
+  const has = (pattern: string) => new RegExp(pattern, "i").test(name);
+
+  if (has(`monthly\\s+${IDCW}`)) return "Monthly IDCW";
+  if (has(`quarterly\\s+${IDCW}`)) return "Quarterly IDCW";
+  if (has(`${IDCW}[\\s-]+reinvest`)) return "IDCW Reinvestment";
+  if (has(`${IDCW}[\\s-]+payout`)) return "IDCW Payout";
+  if (has(IDCW)) return "IDCW";
   return "Growth";
 }
 

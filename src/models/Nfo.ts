@@ -110,6 +110,11 @@ const NfoSchema = new Schema<INfo>(
   { timestamps: true },
 );
 
+// Every public NFO surface (homepage, /nfos, the detail page's static params)
+// runs the same "published, still open, soonest-closing first" query — this
+// covers the filter and the sort in one index.
+NfoSchema.index({ published: 1, closeDate: 1 });
+
 const Nfo: Model<INfo> = mongoose.models.Nfo || mongoose.model<INfo>("Nfo", NfoSchema);
 
 export default Nfo;

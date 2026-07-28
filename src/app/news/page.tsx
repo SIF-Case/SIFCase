@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import { Clock, ArrowRight } from "lucide-react";
@@ -7,13 +9,17 @@ import { Footer } from "@/components/layout/Footer";
 import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { getTickerNavs } from "@/lib/sifData";
 import { FundHousesNewsClient } from "@/components/sections/FundHousesNewsClient";
+import { Pagination } from "@/components/ui/Pagination";
+
+const PER_PAGE = 20;
 
 // No revalidate - will use on-demand revalidation from API
 
-export const metadata = {
-  title: "Latest SIF News - SIFcase",
-  description: "Stay updated with the latest news and developments in the Specialised Investment Fund industry.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/news" });
+}
 
 async function getPublishedNews(brand?: string) {
   await connectDB();
@@ -41,16 +47,22 @@ async function getPublishedNews(brand?: string) {
   return { generalNews, fundHousesNews };
 }
 
-type Props = { searchParams: Promise<{ brand?: string }> };
+type Props = { searchParams: Promise<{ brand?: string; page?: string }> };
 
 export default async function NewsPage({ searchParams }: Props) {
-  const { brand } = await searchParams;
+  const { brand, page } = await searchParams;
   const [newsData, tickerNavs] = await Promise.all([
     getPublishedNews(brand),
     getTickerNavs(),
   ]);
 
   const { generalNews, fundHousesNews } = newsData;
+
+  // General News paginates via the URL so pages stay linkable and cacheable.
+  const generalTotalPages = Math.max(1, Math.ceil(generalNews.length / PER_PAGE));
+  const generalPage = Math.min(generalTotalPages, Math.max(1, Number(page) || 1));
+  const generalPageItems = generalNews.slice((generalPage - 1) * PER_PAGE, generalPage * PER_PAGE);
+  const generalHref = `/news?${brand ? `brand=${encodeURIComponent(brand)}&` : ""}page={page}#general-news`;
 
   return (
     <main className="flex flex-col min-h-screen bg-[#F4F6FA]">
@@ -88,14 +100,15 @@ export default async function NewsPage({ searchParams }: Props) {
           <>
             {/* General News Section */}
             {generalNews.length > 0 && (
-              <section className="mb-16">
+              <section id="general-news" className="mb-16 scroll-mt-24">
                 <div className="flex items-center gap-3 mb-6">
                   <h2 className="text-[28px] font-bold text-heading tracking-tight">General News</h2>
                   <div className="flex-1 h-px bg-rule"></div>
+                  <span className="text-[12px] text-faint whitespace-nowrap">{generalNews.length} articles</span>
                 </div>
-                
+
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {generalNews.map((article) => (
+                  {generalPageItems.map((article) => (
                     <Link
                       key={article._id.toString()}
                       href={`/news/${article.slug}`}
@@ -142,6 +155,8 @@ export default async function NewsPage({ searchParams }: Props) {
                     </Link>
                   ))}
                 </div>
+
+                <Pagination page={generalPage} totalPages={generalTotalPages} hrefPattern={generalHref} />
               </section>
             )}
 

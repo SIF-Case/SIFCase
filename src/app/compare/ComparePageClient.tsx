@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { X, Plus, Search, GitCompare } from "lucide-react";
 import Link from "next/link";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
-import { CompareLab } from "@/components/sections/CompareLab";
+// recharts only matters once funds are picked — keep it out of the initial
+// compare bundle.
+const CompareLab = dynamic(
+  () => import("@/components/sections/CompareLab").then((m) => m.CompareLab),
+  { loading: () => <div className="h-[420px]" /> },
+);
 import { Sparkline } from "@/components/ui/Sparkline";
 import { fundHref } from "@/lib/slugify";
 

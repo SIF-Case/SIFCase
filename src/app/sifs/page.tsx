@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { resolvePageMetadata } from "@/lib/pageSeo";
 export const revalidate = 3600;
 
 import { Suspense } from "react";
@@ -8,10 +10,11 @@ import { SIFsClient } from "./SIFsClient";
 import { getTopFunds, getTickerNavs } from "@/lib/sifData";
 import { Providers } from "@/app/providers";
 
-export const metadata = {
-  title: "All SIFs — SIFcase",
-  description: "Browse every Specialised Investment Fund with verified NAV, returns, and risk metrics.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/sifs" });
+}
 
 export default async function SIFsPage() {
   const [funds, tickerNavs] = await Promise.all([getTopFunds(), getTickerNavs()]);

@@ -1,12 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend, LabelList,
-} from "recharts";
-import { FileText, Download, Search, Users, TrendingUp, TrendingDown, Building2, BarChart2, CheckCircle2, XCircle, ArrowLeftRight } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Search, Users, TrendingUp, BarChart2 } from "lucide-react";
 import type { FundDetailsData } from "@/lib/sifData";
+
+// recharts is the single biggest chunk on this page and both charts sit below
+// the fold — load them only in the browser, once this section renders.
+const chartFallback = () => <div className="h-[200px] rounded-lg bg-[#F4F6F8] animate-pulse" />;
+const AssetAllocationChart = dynamic(
+  () => import("./FundAllocationCharts").then((m) => m.AssetAllocationChart),
+  { ssr: false, loading: chartFallback },
+);
+const IndustryChart = dynamic(
+  () => import("./FundAllocationCharts").then((m) => m.IndustryChart),
+  { ssr: false, loading: chartFallback },
+);
 
 // ─── Colour palette ────────────────────────────────────────────────────────────
 
@@ -15,10 +24,6 @@ const PIE_COLORS = [
   "#EC4899", "#06B6D4", "#EF4444", "#64748B",
   "#10B981", "#F97316",
 ];
-
-function barColor(pct: number) {
-  return pct < 0 ? "#DC2626" : "#1E4ED8";
-}
 
 // ─── Shared card wrapper ───────────────────────────────────────────────────────
 
@@ -55,105 +60,7 @@ function fmtInr(n: number | null) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
-// ─── Asset allocation donut chart ─────────────────────────────────────────────
 
-const RADIAN = Math.PI / 180;
-
-function DonutLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: {
-  cx: number; cy: number; midAngle: number; innerRadius: number; outerRadius: number;
-  percent: number; name: string;
-}) {
-  const radius = outerRadius + 36;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  const lineX1 = cx + (outerRadius + 6) * Math.cos(-midAngle * RADIAN);
-  const lineY1 = cy + (outerRadius + 6) * Math.sin(-midAngle * RADIAN);
-  const lineX2 = cx + (outerRadius + 26) * Math.cos(-midAngle * RADIAN);
-  const lineY2 = cy + (outerRadius + 26) * Math.sin(-midAngle * RADIAN);
-  if (percent < 0.03) return null;
-  return (
-    <g>
-      <line x1={lineX1} y1={lineY1} x2={lineX2} y2={lineY2} stroke="#94A3B8" strokeWidth={1} />
-      <text x={x} y={y} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11} fill="#334155" fontWeight={500}>
-        {name}
-      </text>
-      <text x={x} y={y + 14} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={10} fill="#64748B">
-        {(percent * 100).toFixed(1)}%
-      </text>
-    </g>
-  );
-}
-
-function AssetDonutChart({ data }: { data: { assetClass: string; percentage: number }[] }) {
-  const positive = data.filter(d => d.percentage > 0);
-  const shorts = data.filter(d => d.percentage < 0);
-  const total = positive.reduce((s, d) => s + d.percentage, 0);
-
-  return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Relative wrapper so the centre overlay can be absolutely positioned */}
-      <div className="relative w-full" style={{ height: 340 }}>
-        <ResponsiveContainer width="100%" height={340} minWidth={0}>
-          <PieChart margin={{ top: 30, right: 80, bottom: 30, left: 80 }}>
-            <Pie
-              data={positive}
-              dataKey="percentage"
-              nameKey="assetClass"
-              cx="50%" cy="50%"
-              innerRadius={0}
-              outerRadius={112}
-              paddingAngle={2}
-              labelLine={false}
-              label={(props) => {
-                const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0, name } = props;
-                return <DonutLabel cx={cx} cy={cy} midAngle={midAngle} innerRadius={innerRadius} outerRadius={outerRadius} percent={percent} name={name ?? ""} />;
-              }}
-            >
-              {positive.map((_, i) => (
-                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="white" strokeWidth={2} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(v) => [`${Number(v).toFixed(2)}%`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }} />
-          </PieChart>
-        </ResponsiveContainer>
-
-      </div>
-
-      {/* Short / derivatives strip */}
-      {shorts.length > 0 && (
-        <div className="w-full border-t border-rule pt-3">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-muted mb-2">Short / Derivative Exposure</div>
-          <div className="flex flex-wrap gap-2">
-            {shorts.map((s, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-[8px] px-3 py-1.5">
-                <span className="text-[11px] font-medium text-body">{s.assetClass}</span>
-                <span className="text-[12px] font-bold tabular text-loss">{s.percentage.toFixed(2)}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Asset allocation bar chart ────────────────────────────────────────────────
-
-function AssetAllocationChart({ data }: { data: { assetClass: string; percentage: number }[] }) {
-  const sorted = [...data].sort((a, b) => b.percentage - a.percentage);
-  return (
-    <ResponsiveContainer width="100%" height={Math.max(180, sorted.length * 36)} minWidth={0}>
-      <BarChart data={sorted} layout="vertical" margin={{ left: 0, right: 24, top: 4, bottom: 4 }}>
-        <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: "#64748B" }} axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="assetClass" width={160} tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
-        <Tooltip formatter={(v) => [`${Number(v).toFixed(2)}%`, "Allocation"]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-        <Bar dataKey="percentage" radius={[0, 4, 4, 0]} maxBarSize={24}>
-          {sorted.map((entry, i) => <Cell key={i} fill={barColor(entry.percentage)} />)}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
 
 // ─── Voronoi treemap with overlay drill-down ──────────────────────────────────
 
@@ -420,52 +327,22 @@ function VoronoiSectorChart({
   );
 }
 
-// ─── Industry allocation chart ─────────────────────────────────────────────────
-
-function IndustryChart({ data }: { data: { industry: string; percentage: number }[] }) {
-  const sorted = [...data].sort((a, b) => b.percentage - a.percentage).slice(0, 20);
-  return (
-    <ResponsiveContainer width="100%" height={sorted.length * 36 + 32} minWidth={0}>
-      <BarChart data={sorted} layout="vertical" margin={{ left: 0, right: 44, top: 4, bottom: 4 }}
-        tabIndex={-1} style={{ outline: "none", userSelect: "none" }}>
-        <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#94A3B8" }}
-          axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="industry" width={115}
-          axisLine={false} tickLine={false}
-          tick={(props) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { x, y, payload } = props as any;
-            const label = payload.value.length > 12 ? payload.value.slice(0, 11) + "…" : payload.value;
-            return (
-              <text x={Number(x)} y={Number(y)} dy={4} textAnchor="end" fill="#334155" fontSize={11}>
-                {label}
-              </text>
-            );
-          }} />
-        <Tooltip
-          cursor={false}
-          formatter={(v) => [`${Number(v).toFixed(2)}%`, "Allocation"]}
-          contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #E2E8F0" }} />
-        <Bar dataKey="percentage" radius={[0, 6, 6, 0]} barSize={18} activeBar={false}>
-          {sorted.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-          <LabelList dataKey="percentage" position="right"
-            formatter={(v) => `${Number(v).toFixed(1)}%`}
-            style={{ fontSize: 10, fill: "#64748B", fontWeight: 600 }} />
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function FundDetailsSection({ details }: { details: FundDetailsData }) {
   const [holdingSearch, setHoldingSearch] = useState("");
+  const [showAllHoldings, setShowAllHoldings] = useState(false);
 
   const filteredHoldings = details.topHoldings.filter(h =>
     h.name.toLowerCase().includes(holdingSearch.toLowerCase()) ||
     (h.sector ?? "").toLowerCase().includes(holdingSearch.toLowerCase()),
   );
+
+  // Collapse to top 10 unless expanded; searching always shows every match.
+  const HOLDINGS_PREVIEW = 10;
+  const isSearching = holdingSearch.trim().length > 0;
+  const collapsed = !showAllHoldings && !isSearching;
+  const visibleHoldings = collapsed ? filteredHoldings.slice(0, HOLDINGS_PREVIEW) : filteredHoldings;
 
   const longCount = details.topHoldings.filter(h => h.percentage > 0).length;
   const shortCount = details.topHoldings.filter(h => h.percentage < 0).length;
@@ -544,11 +421,8 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
               <span className="text-[11px] text-muted">{details.assetAllocation.length} asset classes</span>
             </div>
             <div className="grid md:grid-cols-[1fr_260px] divide-y md:divide-y-0 md:divide-x divide-rule">
-              <div className="p-6 space-y-6">
+              <div className="p-6">
                 <AssetAllocationChart data={details.assetAllocation} />
-                <div className="border-t border-rule pt-6">
-                  <AssetDonutChart data={details.assetAllocation} />
-                </div>
               </div>
               <div className="divide-y divide-rule">
                 {details.assetAllocation.map((a, i) => (
@@ -648,7 +522,7 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rule">
-                  {filteredHoldings.map((h, i) => (
+                  {visibleHoldings.map((h, i) => (
                     <tr key={i} className="hover:bg-surface transition-colors">
                       <td className="px-5 py-3 font-medium text-body">{h.name}</td>
                       <td className="px-4 py-3 text-muted">{h.sector || "—"}</td>
@@ -674,6 +548,16 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
                 </tbody>
               </table>
             </div>
+
+            {!isSearching && filteredHoldings.length > HOLDINGS_PREVIEW && (
+              <button
+                type="button"
+                onClick={() => setShowAllHoldings(v => !v)}
+                className="w-full border-t border-rule px-5 py-3.5 text-left text-[12px] font-semibold text-primary hover:bg-surface transition-colors"
+              >
+                {showAllHoldings ? "Show less" : `See all ${filteredHoldings.length}`}
+              </button>
+            )}
           </div>
         </SectionCard>
       )}
@@ -806,126 +690,11 @@ export function FundDetailsSection({ details }: { details: FundDetailsData }) {
         </SectionCard>
       )}
 
-      {/* ── INVESTOR SUITABILITY ───────────────────────────────────────── */}
-      {(details.suitableFor || details.notSuitableFor) && (
-        <SectionCard label="Investor Suitability" title="Is this fund right for you?">
-          <div className="grid sm:grid-cols-2 gap-4">
-            {details.suitableFor && (
-              <div className="rounded-[16px] border border-emerald-200 bg-emerald-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="size-4 text-gain" strokeWidth={2} />
-                  <h3 className="text-[14px] font-bold text-heading">Suitable for</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.suitableFor}</p>
-              </div>
-            )}
-            {details.notSuitableFor && (
-              <div className="rounded-[16px] border border-red-200 bg-red-50 p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <XCircle className="size-4 text-loss" strokeWidth={2} />
-                  <h3 className="text-[14px] font-bold text-heading">Not suitable for</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.notSuitableFor}</p>
-              </div>
-            )}
-          </div>
-        </SectionCard>
-      )}
+      {/* Suitability + market-scenario sections render on the scheme page
+          (Performance column) — not duplicated here. */}
 
-      {/* ── MARKET SCENARIO PERFORMANCE ────────────────────────────────── */}
-      {(details.bullMarket || details.bearMarket || details.sidewaysMarket) && (
-        <SectionCard label="Market Scenario Performance" title="How this fund may behave across cycles">
-          <div className="grid sm:grid-cols-3 gap-4">
-            {details.bullMarket && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="size-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                    <TrendingUp className="size-4 text-gain" strokeWidth={2} />
-                  </span>
-                  <h3 className="text-[14px] font-bold text-heading">In Bull Markets</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.bullMarket}</p>
-              </div>
-            )}
-            {details.bearMarket && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="size-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                    <TrendingDown className="size-4 text-loss" strokeWidth={2} />
-                  </span>
-                  <h3 className="text-[14px] font-bold text-heading">In Bear Markets</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.bearMarket}</p>
-              </div>
-            )}
-            {details.sidewaysMarket && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="size-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                    <ArrowLeftRight className="size-4 text-primary" strokeWidth={2} />
-                  </span>
-                  <h3 className="text-[14px] font-bold text-heading">In Sideways Markets</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.sidewaysMarket}</p>
-              </div>
-            )}
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── WHERE DOES THIS FUND FIT FOR YOU ───────────────────────────── */}
-      {(details.mfEquivalent || details.portfolioFit) && (
-        <SectionCard label="Where Does This Fund Fit For You?" title="Understanding the fund's role in your portfolio">
-          <div className="space-y-4">
-            {details.mfEquivalent && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <BarChart2 className="size-4 text-primary" strokeWidth={2} />
-                  <h3 className="text-[14px] font-bold text-heading">Closest mutual fund equivalent</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.mfEquivalent}</p>
-              </div>
-            )}
-            {details.portfolioFit && (
-              <div className="rounded-[16px] border border-rule bg-white shadow-card p-5">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Building2 className="size-4 text-primary" strokeWidth={2} />
-                  <h3 className="text-[14px] font-bold text-heading">Where it fits in your portfolio</h3>
-                </div>
-                <p className="text-[13px] text-body leading-relaxed">{details.portfolioFit}</p>
-              </div>
-            )}
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── FACTSHEETS ─────────────────────────────────────────────────── */}
-      {details.factsheets?.length > 0 && (
-        <SectionCard label="Documents" title="Factsheets">
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {details.factsheets.map((f, i) => (
-              <a
-                key={i}
-                href={f.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 p-4 bg-white border border-rule rounded-[14px] shadow-card hover:border-primary hover:shadow-md transition-all group"
-              >
-                <div className="size-10 rounded-[10px] bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                  <FileText className="size-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-semibold text-heading truncate">{f.filename}</div>
-                  <div className="text-[10px] text-muted mt-0.5">
-                    {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}
-                  </div>
-                </div>
-                <Download className="size-4 text-muted group-hover:text-primary transition-colors shrink-0" />
-              </a>
-            ))}
-          </div>
-        </SectionCard>
-      )}
+      {/* Factsheets intentionally omitted here — the scheme page renders them
+          once under "Scheme documents". */}
     </div>
   );
 }

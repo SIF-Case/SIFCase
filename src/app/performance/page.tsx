@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight, FileText } from "lucide-react";
@@ -14,11 +15,11 @@ import PerformanceReport from "@/models/PerformanceReport";
 
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "SIF Performance Reports — SIFcase",
-  description:
-    "Monthly performance analysis across every Specialised Investment Fund in India — category leaders, fund-by-fund returns, and downloadable reports.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/performance" });
+}
 
 type ReportRow = {
   monthKey: string;

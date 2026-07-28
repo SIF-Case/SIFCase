@@ -17,7 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connectDB();
 
   const [schemes, brandNames, articles, nfos, reports] = await Promise.all([
-    SIFScheme.find({}, "schemeCode fundName updatedAt").lean(),
+    // Regular plan only — Direct rows 308 to their Regular page, so submitting
+    // them just feeds Google duplicate URLs of every fund.
+    SIFScheme.find({ plan: "Regular" }, "schemeCode fundName updatedAt").lean(),
     SIFScheme.distinct("brandName"),
     Article.find({ status: "published" }, "slug category updatedAt publishedAt").lean(),
     Nfo.find({ published: true }, "slug updatedAt").lean(),

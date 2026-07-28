@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -13,6 +14,12 @@ export const revalidate = 3600;
 
 type Props = { params: Promise<{ slug: string }> };
 
+export async function generateStaticParams() {
+  await connectDB();
+  const reports = await PerformanceReport.find({ published: true }, "slug").lean();
+  return reports.map((r) => ({ slug: r.slug as string }));
+}
+
 async function loadReport(slug: string) {
   await connectDB();
   const report = await PerformanceReport.findOne({ slug, published: true }).lean();
@@ -26,10 +33,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const loaded = await loadReport(slug);
   if (!loaded) return { title: "Report not found — SIFcase" };
-  return {
-    title: `${loaded.data.label} SIF Performance Report — SIFcase`,
-    description: `${loaded.data.label} performance analysis across ${loaded.data.funds.length} Specialized Investment Fund schemes — best/worst performers, returns table and key insights.`,
-  };
+  return resolvePageMetadata({
+    path: "/performance/[slug]",
+    tokens: {
+      label: loaded.data.label,
+      fundCount: loaded.data.funds.length,
+    },
+  });
 }
 
 function fmtPct(v: number | null) {

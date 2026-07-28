@@ -1,69 +1,160 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { HeroHeatmap } from "@/components/sections/HeroHeatmap";
+import { ArrowRight, Compass, Sprout, IndianRupee } from "lucide-react";
+import { TalkToAdvisorButton } from "@/components/sections/TalkToAdvisorButton";
 import type { FundRow, SnapshotStats } from "@/lib/sifData";
 import type { NFOData } from "@/lib/nfoData";
 
-export function Hero({ stats, topFund, allFunds, nextNfo }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[]; nextNfo?: NFOData }) {
+// Existing brand values — the hero teal and its accent are unchanged.
+const INK = "#004c61";
+const INK_2 = "#03566d";
+const ACCENT = "#14b7a3";
+const LINE = "rgba(20,183,163,0.28)";
+const PALE = "rgba(255,255,255,0.72)";
+
+const INVESTOR_TYPES = [
+  {
+    Icon: Compass,
+    title: "Get started",
+    description: "Start your SIF investing journey with confidence",
+    href: "/sif-101",
+  },
+  {
+    Icon: Sprout,
+    title: "Growth investor",
+    description: "Equity-led SIFs built to compound wealth over time",
+    href: "/sifs?category=Equity",
+  },
+  {
+    Icon: IndianRupee,
+    title: "Income investor",
+    description: "Hybrid SIFs designed for steadier, regular returns",
+    href: "/sifs?category=Hybrid",
+  },
+];
+
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <section
-      className="overflow-hidden px-5 py-12 sm:px-10 sm:py-16 lg:px-[113px] lg:py-[84px]"
-      style={{ background: "linear-gradient(0deg, #004c61 0%, #004c61 100%)" }}
-    >
+    <div className="shrink-0">
+      <div className="text-[22px] font-semibold text-white whitespace-nowrap nums">{value}</div>
+      <div className="text-[13px] mt-0.5 whitespace-nowrap" style={{ color: PALE }}>{label}</div>
+    </div>
+  );
+}
+
+export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allFunds?: FundRow[]; nextNfo?: NFOData }) {
+  const equity = stats?.categoryBreakdown.equity ?? 0;
+  const hybrid = stats?.categoryBreakdown.hybrid ?? 0;
+  const debt = stats?.categoryBreakdown.debt ?? 0;
+  const schemeTotal = equity + hybrid + debt;
+  const aumCr = stats?.totalAUM ? Math.round(stats.totalAUM / 1e7) : null;
+
+  // Composition bar widths — guard against a zero total on first load.
+  const pctOf = (n: number) => (schemeTotal > 0 ? (n / schemeTotal) * 100 : 0);
+
+  return (
+    <section className="overflow-hidden px-5 py-12 sm:px-10 sm:py-14 lg:px-[113px] lg:py-16" style={{ background: INK }}>
       <div className="max-w-[1280px] mx-auto">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_378px]">
-          {/* Left content */}
-          <div className="flex flex-col items-start gap-8 sm:gap-10">
-            {/* Platform badge */}
-            <div
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5"
-              style={{ borderColor: "#14b7a3", background: "rgba(20,183,163,0.1)" }}
+        <div className="grid gap-10 lg:grid-cols-[65fr_35fr] lg:gap-11 items-start">
+          {/* Left: copy + CTAs */}
+          <div className="flex flex-col items-start">
+            <span
+              className="inline-block rounded-full px-3.5 py-1.5 text-[13px] mb-5"
+              style={{ color: "#9fe1d5", border: `1px solid ${LINE}` }}
             >
-              <span
-                className="text-[12px] font-semibold leading-[20px] uppercase tracking-wider sm:text-[13px] sm:leading-[26px] lg:text-[14px] lg:leading-[30px]"
-                style={{ color: "#14b7a3" }}
-              >
-                India&apos;s SIF Research Platform
-              </span>
-            </div>
+              SEBI regulated · AMFI registered distributor
+            </span>
 
-            {/* Heading */}
-            <div className="flex flex-col gap-4">
-              <h1
-                className="text-white max-w-[620px] text-[34px] leading-[42px] sm:text-[40px] sm:leading-[50px] lg:text-[44px] lg:leading-[56px]"
-                style={{ fontFamily: "var(--font-dm-sans), sans-serif", fontWeight: 800, letterSpacing: "-0.02em" }}
-              >
-                Research, Compare &amp;
-                <br />
-                Invest in{" "}
-                <span style={{ color: "#14b7a3" }}>Specialised</span> Investment Funds
-              </h1>
-              <p
-                className="max-w-[580px] text-[15px] leading-[24px] sm:text-[16px] sm:leading-[26px] lg:text-[18px] lg:leading-[28px]"
-                style={{ color: "rgba(255,255,255,0.72)", fontFamily: "var(--font-dm-sans), sans-serif", fontWeight: 400 }}
-              >
-                Every SEBI-registered SIF — tracked, rated and explained. From first read to final
-                investment, SIFcase is your complete guide to India&apos;s newest investment
-                category.
-              </p>
-            </div>
-
-            {/* CTA button */}
-            <Link
-              href="/sifs"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white transition-all hover:opacity-90 hover:scale-[1.02]"
-              style={{ background: "#14b7a3", textDecoration: "none", boxShadow: "0 0 24px rgba(20,183,163,0.35)" }}
+            <h1
+              className="text-white text-[32px] leading-[1.2] sm:text-[38px] lg:text-[42px] mb-4"
+              style={{ fontFamily: "var(--font-dm-sans), sans-serif", fontWeight: 600, letterSpacing: "-0.01em" }}
             >
-              Explore Funds
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+              Research, compare and invest in{" "}
+              <span style={{ color: ACCENT }}>Specialised Investment Funds</span>
+            </h1>
+
+            <p className="text-[17px] leading-[1.7] max-w-[460px] mb-7" style={{ color: PALE }}>
+              SIFs bridge mutual funds and PMS — verified NAV, risk bands and strategy notes for
+              every SEBI-registered scheme, from ₹10 lakh.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/sifs"
+                className="inline-flex items-center rounded-[10px] px-[22px] py-3 text-[15px] font-medium transition-opacity hover:opacity-90"
+                style={{ background: ACCENT, color: INK }}
+              >
+                Explore {schemeTotal > 0 ? schemeTotal : ""} SIFs
+              </Link>
+              <TalkToAdvisorButton
+                className="inline-flex items-center rounded-[10px] px-[22px] py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/5"
+                style={{ border: `1px solid ${LINE}`, background: "transparent" }}
+              />
+            </div>
           </div>
 
-          {/* Right: heatmap panel */}
-          <div className="mx-auto w-full max-w-[378px] lg:mx-0">
-            <HeroHeatmap stats={stats} topFund={topFund} allFunds={allFunds} nextNfo={nextNfo} />
+          {/* Right: investor-type entry points */}
+          <div className="flex flex-col gap-3 lg:mt-12">
+            {INVESTOR_TYPES.map(({ Icon, title, description, href }) => (
+              <Link
+                key={title}
+                href={href}
+                className="group flex items-center gap-3.5 rounded-[12px] p-4 transition-colors"
+                style={{ background: INK_2, border: `1px solid ${LINE}` }}
+              >
+                <span
+                  className="flex size-10 shrink-0 items-center justify-center rounded-[10px]"
+                  style={{ background: "rgba(20,183,163,0.16)" }}
+                >
+                  <Icon className="size-5" style={{ color: ACCENT }} strokeWidth={1.8} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold text-white mb-0.5">{title}</span>
+                  <span className="block text-[13px] leading-[1.5]" style={{ color: PALE }}>{description}</span>
+                </span>
+                <ArrowRight
+                  className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                  style={{ color: PALE }}
+                />
+              </Link>
+            ))}
+          </div>
+
+          {/* Full-width stat strip */}
+          <div className="lg:col-span-2">
+            <div
+              className="flex flex-wrap items-start justify-between gap-6 pt-5 sm:gap-10"
+              style={{ borderTop: `1px solid ${LINE}` }}
+            >
+              <Stat value={aumCr !== null ? `₹${aumCr.toLocaleString("en-IN")} Cr` : "—"} label="AUM tracked" />
+              <Stat value={String(stats?.uniqueAMCs ?? "—")} label="AMCs" />
+              <Stat value={String(schemeTotal || "—")} label="Schemes" />
+              <Stat value="Daily" label="NAV updates" />
+
+              <div className="flex-1 min-w-[220px] max-sm:basis-full">
+                <div className="flex items-center gap-4">
+                  <span className="text-[22px] font-semibold text-white whitespace-nowrap">Scheme composition</span>
+                  <span className="flex h-2 flex-1 gap-[3px] overflow-hidden rounded-full">
+                    <span style={{ width: `${pctOf(equity)}%`, background: ACCENT }} />
+                    <span style={{ width: `${pctOf(hybrid)}%`, background: "#0d8a7c" }} />
+                    {debt > 0 && <span style={{ width: `${pctOf(debt)}%`, background: "#9fe1d5" }} />}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-x-[18px] gap-y-1 text-[13px] mt-0.5">
+                  <span className="text-white">
+                    <span className="mr-1.5 inline-block size-[7px] rounded-[2px] align-middle" style={{ background: ACCENT }} />
+                    {equity} equity schemes
+                  </span>
+                  <span className="text-white">
+                    <span className="mr-1.5 inline-block size-[7px] rounded-[2px] align-middle" style={{ background: "#0d8a7c" }} />
+                    {hybrid} hybrid schemes
+                  </span>
+                  <span style={{ color: PALE, opacity: 0.7 }}>
+                    <span className="mr-1.5 inline-block size-[7px] rounded-[2px] align-middle" style={{ background: "#9fe1d5" }} />
+                    {debt > 0 ? `${debt} debt schemes` : "0 debt schemes yet"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

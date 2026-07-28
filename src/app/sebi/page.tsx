@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -5,11 +6,11 @@ import { TickerRibbon } from "@/components/sections/TickerRibbon";
 import { Shield } from "lucide-react";
 import { getTickerNavs } from "@/lib/sifData";
 
-export const metadata: Metadata = {
-  title: "SEBI Disclosure — SIFcase",
-  description:
-    "SEBI regulatory disclosure for SIFcase by Aureva Capital Private Limited. Registration details, commission disclosure, and mandated risk disclaimers.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/sebi" });
+}
 
 export default async function SebiPage() {
   const tickerNavs = await getTickerNavs();

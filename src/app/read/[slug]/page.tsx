@@ -14,6 +14,14 @@ import { getTickerNavs } from "@/lib/sifData";
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Prerender published articles at build so readers get static HTML instead of a
+// cold function + Mongo lookup. New slugs still render on demand.
+export async function generateStaticParams() {
+  await connectDB();
+  const articles = await Article.find({ status: "published" }, "slug").lean();
+  return articles.map((a) => ({ slug: a.slug as string }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   await connectDB();

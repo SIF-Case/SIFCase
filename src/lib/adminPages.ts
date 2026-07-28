@@ -13,6 +13,7 @@ import {
   Building2,
   BarChart2,
   Rocket,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ export const ADMIN_PAGES: AdminPageDef[] = [
   { key: "news", label: "SIF News", href: "/admin/news", icon: Newspaper, editable: true },
   { key: "faqs", label: "FAQs", href: "/admin/faqs", icon: HelpCircle, editable: true },
   { key: "suitability", label: "Suitability Quiz", href: "/admin/suitability", icon: ClipboardCheck, editable: true },
+  { key: "seo", label: "Page SEO", href: "/admin/seo", icon: Search, editable: true },
   { key: "logs", label: "Cron Logs", href: "/admin/logs", icon: ScrollText, editable: false },
 ];
 

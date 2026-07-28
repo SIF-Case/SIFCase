@@ -1,12 +1,14 @@
+import type { Metadata } from "next";
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { QuizClient } from "./QuizClient";
 
-export const metadata = {
-  title: "Test Your Readiness — SIF 101 Quiz | SIFcase",
-  description:
-    "Test your understanding of SIF basics with our interactive quiz. Get instant feedback and learn as you go.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/sif-101/quiz" });
+}
 
 export default function QuizPage() {
   return (

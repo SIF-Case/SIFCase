@@ -15,6 +15,19 @@ import slugify from "slugify";
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Both this page and its metadata scan every published article to resolve a
+// subcategory slug — prerendering the known slugs keeps that off the request path.
+export async function generateStaticParams() {
+  await connectDB();
+  const optionsDoc = await ArticleOptions.findOne({}).lean();
+  const mainCategory = optionsDoc?.categories?.[0] ?? "General";
+  const articles = await Article.find({ status: "published", category: mainCategory }, "subcategory").lean();
+  const slugs = new Set(
+    articles.map((a) => slugify(a.subcategory?.trim() || mainCategory, { lower: true, strict: true })),
+  );
+  return [...slugs].map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   await connectDB();

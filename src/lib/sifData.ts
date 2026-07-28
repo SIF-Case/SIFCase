@@ -4,6 +4,7 @@ import PerformanceReport from "@/models/PerformanceReport";
 import FundHouse from "@/models/FundHouse";
 import { unstable_cache } from "next/cache";
 import { formatFundName } from "@/lib/utils";
+import { fundSlug } from "@/lib/slugify";
 
 // ── Cache config ─────────────────────────────────────────────────────────────
 // All public data functions are wrapped with Next.js unstable_cache.
@@ -410,6 +411,13 @@ export interface FundHouseInfo {
 }
 
 // Resolve a URL slug (e.g. "abc-mutual-fund") back to its brandName (e.g. "ABC Mutual Fund")
+/** Every fund-house slug, for prerendering /fund-house/[slug]. */
+export async function getAllFundHouseSlugs(): Promise<string[]> {
+  const { schemes } = await getCollections();
+  const brands = await schemes.distinct("brandName", { brandName: { $exists: true, $ne: "" } });
+  return (brands as string[]).map(brandNameToSlug);
+}
+
 async function _getFundHouseBySlug(slug: string): Promise<FundHouseInfo | null> {
   await connectDB();
   const { schemes } = await getCollections();
@@ -643,6 +651,37 @@ export const getTopFunds = unstable_cache(
   { tags: CACHE_TAG, revalidate: CACHE_TTL }
 );
 
+/**
+ * Canonical slugs for every listed fund page, derived from the same raw
+ * `fundName` that getFundDetail uses to build its canonical URL — anything else
+ * would prerender paths that immediately 308 to the real one.
+ */
+export async function getAllFundSlugs(): Promise<string[]> {
+  const { schemes } = await getCollections();
+  const rows = await schemes
+    .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, fundName: 1, schemeName: 1, _id: 0 } })
+    .toArray();
+  return rows.map((s) =>
+    fundSlug((s.fundName as string) || (s.schemeName as string), s.schemeCode as string),
+  );
+}
+
+/**
+ * Scheme code of a fund's Regular plan page, used to redirect Direct-plan URLs
+ * away — Direct rows duplicate the Regular ones in search with a different NAV.
+ * Prefers the Growth option, then any other Regular option; null if the fund
+ * has no Regular row at all.
+ */
+export async function getRegularCodeForFund(fundName: string): Promise<string | null> {
+  const { schemes } = await getCollections();
+  const rows = await schemes
+    .find({ fundName, plan: "Regular" }, { projection: { schemeCode: 1, option: 1, _id: 0 } })
+    .toArray();
+  if (rows.length === 0) return null;
+  const growth = rows.find((r) => (r.option as string) === "Growth");
+  return ((growth ?? rows[0]).schemeCode as string) || null;
+}
+
 async function _getTickerNavs(): Promise<TickerNav[]> {
   const { schemes, navs } = await getCollections();
 
@@ -651,22 +690,34 @@ async function _getTickerNavs(): Promise<TickerNav[]> {
     .find({ plan: "Regular", option: "Growth" }, { projection: { schemeCode: 1, schemeName: 1, fundName: 1, amc: 1 } })
     .toArray();
 
+  // One query for every scheme's NAV history instead of two-per-scheme in a
+  // loop — that was ~N round trips to Atlas on every cache miss, and network
+  // latency, not index time, dominates at this collection size.
+  const codes = regularSchemes.map((s) => s.schemeCode as string);
+  const navRows = await navs
+    .find({ schemeCode: { $in: codes } }, { projection: { schemeCode: 1, nav: 1, navDate: 1 } })
+    .sort({ navDate: -1 })
+    .toArray();
+
+  // Sorted newest-first, so the first two entries per scheme are the latest two.
+  const recentByCode = new Map<string, number[]>();
+  for (const r of navRows) {
+    const code = r.schemeCode as string;
+    const list = recentByCode.get(code);
+    if (!list) recentByCode.set(code, [r.nav as number]);
+    else if (list.length < 2) list.push(r.nav as number);
+  }
+
   const items: TickerNav[] = [];
 
   for (const s of regularSchemes) {
     const code = s.schemeCode as string;
 
-    // Latest two NAV records to compute daily change
-    const recent = await navs
-      .find({ schemeCode: code }, { projection: { nav: 1, navDate: 1 } })
-      .sort({ navDate: -1 })
-      .limit(2)
-      .toArray();
+    const recent = recentByCode.get(code);
+    if (!recent || recent.length === 0) continue;
 
-    if (recent.length === 0) continue;
-
-    const latest = recent[0].nav as number;
-    const prev = recent.length > 1 ? (recent[1].nav as number) : latest;
+    const latest = recent[0];
+    const prev = recent.length > 1 ? recent[1] : latest;
     const change = pct(latest, prev);
 
     // Use fundName (clean brand name) when available, else strip plan/option suffixes from schemeName
@@ -850,6 +901,7 @@ export interface FundDetailsData {
   portfolioByIndustry: { industry: string; percentage: number; marketValue?: number | null; change1M?: number | null }[];
   topHoldings: { name: string; percentage: number; sector?: string; rating?: string; marketValue?: number | null; change1M?: number | null }[];
   factsheets: { url: string; filename: string; documentType?: string; uploadedAt: string }[];
+  taxationSummary: string;
   suitableFor: string;
   notSuitableFor: string;
   bullMarket: string;
@@ -985,13 +1037,21 @@ async function _getFundDetail(code: string): Promise<FundDetail | null> {
     .find({ fundName: fundNameValue }, { projection: { schemeCode: 1, plan: 1, option: 1, isinGrowth: 1, isinReinvestment: 1, _id: 0 } })
     .toArray();
 
+  // Latest NAV for every variant in one query rather than one per variant.
+  const variantCodes = variantDocs.map((v) => v.schemeCode as string);
+  const variantNavRows = await navs
+    .find({ schemeCode: { $in: variantCodes } }, { projection: { schemeCode: 1, nav: 1, navDate: 1, _id: 0 } })
+    .sort({ navDate: -1 })
+    .toArray();
+  const latestNavByCode = new Map<string, number>();
+  for (const r of variantNavRows) {
+    const code = r.schemeCode as string;
+    if (!latestNavByCode.has(code)) latestNavByCode.set(code, r.nav as number);
+  }
+
   const variantNavs = await Promise.all(
     variantDocs.map(async (v) => {
-      const latest = await navs.findOne(
-        { schemeCode: v.schemeCode as string },
-        { projection: { nav: 1, _id: 0 }, sort: { navDate: -1 } }
-      );
-      const navVal = latest ? (latest.nav as number) : 0;
+      const navVal = latestNavByCode.get(v.schemeCode as string) ?? 0;
       const isinG = (v.isinGrowth as string) || null;
       const isinR = (v.isinReinvestment as string) || null;
       const entries: FundVariant[] = [

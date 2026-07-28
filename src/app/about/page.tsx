@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
@@ -14,11 +15,11 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "About SIFcase — India's SIF Research & Comparison Platform",
-  description:
-    "SIFcase is India's dedicated research, comparison, and distribution platform for SEBI-registered Specialised Investment Funds. Built by Aureva Capital Private Limited (ARN-346247).",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/about" });
+}
 
 const TOOLS = [
   {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, DM_Sans } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { Analytics } from "@vercel/analytics/next";
 import { UserTracker } from "@/components/UserTracker";
@@ -7,11 +7,9 @@ import { CallbackPopup } from "@/components/ui/CallbackPopup";
 import { PhoneGate } from "@/components/auth/PhoneGate";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
+// Inter used to be loaded here too, but every rule in globals.css names
+// --font-dm-sans first and only falls back to Inter, so it was a second font
+// download on every page that nothing ever rendered.
 
 // Self-hosted replacement for the old cdnfonts.com (Nohemi, 500-erroring)
 // and fonts.googleapis.com (Satoshi Variable, wrong host) render-blocking
@@ -45,9 +43,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${dmSans.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
-        <SessionProvider>
+        {/* No window-focus refetch: the session is a JWT that doesn't change
+            while a tab sits open, and every refetch handed components a fresh
+            session object that reset their derived state. */}
+        <SessionProvider refetchOnWindowFocus={false}>
           <UserTracker />
           <CallbackPopup />
           {children}

@@ -1,3 +1,4 @@
+import { resolvePageMetadata } from "@/lib/pageSeo";
 export const revalidate = 60;
 
 import { Navbar } from "@/components/layout/Navbar";
@@ -12,10 +13,11 @@ import { Clock, ArrowRight } from "lucide-react";
 import slugify from "slugify";
 import { getTickerNavs } from "@/lib/sifData";
 
-export const metadata: Metadata = {
-  title: "Read — SIFcase",
-  description: "Insights, education, and analysis on Specialised Investment Funds.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/read" });
+}
 
 export type ArticleDoc = {
   _id: unknown;
@@ -41,7 +43,7 @@ export function ArticleCard({ a }: { a: ArticleDoc }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={cover}
-          alt=""
+          alt={a.title}
           className="w-full h-[165px] object-cover bg-mist"
           loading="lazy"
         />

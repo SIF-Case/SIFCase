@@ -1,17 +1,21 @@
 import { Landmark, Search, ShieldCheck, TrendingDown } from "lucide-react";
 
+const ACCENT = "#14b7a3";
+const TINT = "#e6f6f3";
+const TINT_TEXT = "#0a5f57";
+
 const TRUST_PILLS = [
-  "Track Every SIF In India",
-  "Independent Research",
-  "Monthly Rankings",
-  "SEBI-Compliant Framework",
-  "Expert Team",
+  "Track every SIF in India",
+  "Independent research",
+  "Monthly rankings",
+  "SEBI-compliant framework",
+  "Expert team",
 ];
 
 const FEATURE_CARDS = [
   {
     Icon: Landmark,
-    title: "SEBI-Regulated",
+    title: "SEBI-regulated",
     description:
       "Every SIF operates under SEBI's framework, with defined rules on strategy, disclosure and risk.",
   },
@@ -19,113 +23,61 @@ const FEATURE_CARDS = [
     Icon: Search,
     title: "Transparent",
     description:
-      "Each fund shows its SEBI Risk Band, mandate and NAV history up front, so you know what you own.",
+      "Each fund shows its SEBI risk band, mandate and NAV history up front.",
   },
   {
     Icon: TrendingDown,
-    title: "Lower Entry",
+    title: "Lower entry",
     description:
-      "PMS- and AIF-style strategies from Rs. 10 lakh minimum, under regulated AMC oversight.",
+      "PMS and AIF-style strategies from ₹10 lakh, under regulated AMC oversight.",
   },
   {
     Icon: ShieldCheck,
     title: "Safeguarded",
     description:
-      "Assets sit with regulated AMCs and independent custodians, with audited, NAV-based reporting.",
+      "Assets sit with regulated AMCs and independent custodians, with audited reporting.",
   },
 ];
 
 export function WhySIFcase() {
   return (
-    <>
-      {/* Green trust pill bar */}
-      <section style={{ background: "#ecf4f1", padding: "8px 0" }}>
-        <div
-          className="flex flex-wrap items-center justify-center gap-3 mx-auto px-6 sm:gap-5 lg:px-10"
-          style={{ maxWidth: 1280 }}
-        >
-          {TRUST_PILLS.map((label, i) => (
+    <section className="bg-white py-12 lg:py-14">
+      <div className="mx-auto w-full max-w-[1200px] px-5 lg:px-8">
+        {/* Trust pills — one scrolling row on narrow screens rather than wrapping. */}
+        <div className="mb-7 flex gap-3 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden justify-start md:justify-center">
+          {TRUST_PILLS.map((label) => (
             <span
               key={label}
-              className="trust-pill inline-flex items-center whitespace-nowrap text-[13px] font-[500] leading-5 sm:text-[14px]"
-              style={{
-                padding: "12px 16px",
-                borderRadius: 16,
-                border: "1px solid #c8e6c9",
-                background: "#eef5ee",
-                color: "#0f2918",
-                opacity: 0.8,
-                animationDelay: `${i * 60}ms`,
-              }}
+              className="shrink-0 whitespace-nowrap rounded-full px-5 py-[8px] text-[15px]"
+              style={{ background: TINT, color: TINT_TEXT }}
             >
               {label}
             </span>
           ))}
         </div>
-      </section>
 
-      {/* Why Investors section */}
-      <section
-        className="flex flex-col items-center gap-6"
-        style={{ background: "#fdfefe", padding: "56px 0" }}
-      >
-        <div className="mx-auto w-full max-w-[1280px] px-6 lg:px-10">
-          <h2
-            className="text-center uppercase"
-            style={{
-              color: "#14b7a3",
-              fontSize: 15,
-              fontWeight: 700,
-              lineHeight: "30px",
-              marginBottom: 24,
-            }}
-          >
-            Why Investors Are Looking At SIFs
-          </h2>
+        <p className="mb-7 text-center text-[26px] font-medium" style={{ color: ACCENT }}>
+          Why investors are looking at SIFs
+        </p>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {FEATURE_CARDS.map(({ Icon, title, description }) => (
-              <article
-                key={title}
-                className="flex flex-col items-center justify-center gap-2"
-                style={{
-                  padding: 12,
-                  borderRadius: 24,
-                  border: "1px solid rgba(232,232,233,0.6)",
-                  background: "#fff",
-                  minHeight: 157,
-                  boxShadow: "0 1px 4px 0 rgba(0,0,0,0.04)",
-                }}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <Icon className="size-6 text-black" strokeWidth={1.5} />
-                  <h3
-                    style={{
-                      color: "#000",
-                      fontSize: 15,
-                      fontWeight: 700,
-                      lineHeight: "30px",
-                    }}
-                  >
-                    {title}
-                  </h3>
-                </div>
-                <p
-                  className="text-center"
-                  style={{
-                    color: "rgba(15,41,24,0.7)",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    lineHeight: "normal",
-                  }}
-                >
-                  {description}
-                </p>
-              </article>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURE_CARDS.map(({ Icon, title, description }) => (
+            <article
+              key={title}
+              className="rounded-[14px] p-6"
+              style={{ border: "1px solid #dee7e5" }}
+            >
+              <Icon className="mb-3.5 size-6" style={{ color: ACCENT }} strokeWidth={1.8} />
+              <h3 className="mb-1.5 text-[17px] font-semibold" style={{ color: "#04342c" }}>
+                {title}
+              </h3>
+              <p className="text-[15px] leading-[1.6]" style={{ color: "#6b7975" }}>
+                {description}
+              </p>
+            </article>
+          ))}
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }

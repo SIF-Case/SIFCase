@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { resolvePageMetadata } from "@/lib/pageSeo";
 // Revalidate on-demand only (via revalidatePath calls)
 export const revalidate = false;
 
@@ -9,11 +11,11 @@ import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 import { LearningHubClient } from "./LearningHubClient";
 
-export const metadata = {
-  title: "SIF 101 — Learning Hub | SIFcase",
-  description:
-    "Build confidence before you invest. Bite-sized articles on SIF products, mechanics, risk, regulation and tax.",
-};
+// Title/description/canonical come from the Page SEO admin screen when an
+// override exists, otherwise from the defaults in src/lib/seoRegistry.ts.
+export async function generateMetadata(): Promise<Metadata> {
+  return resolvePageMetadata({ path: "/sif-101" });
+}
 
 export type SifEducationArticle = {
   _id: string;

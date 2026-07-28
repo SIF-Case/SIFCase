@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Clock, ArrowRight, Search, Filter } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+
+const PER_PAGE = 20;
 
 type Article = {
   _id: string;
@@ -36,8 +39,22 @@ export function FundHousesNewsClient({ articles }: { articles: Article[] }) {
     });
   }, [articles, searchQuery, selectedHouse]);
 
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / PER_PAGE));
+  const pageItems = filteredArticles.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  // Filters change the result set — go back to page 1 so nothing is stranded.
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedHouse]);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    document.getElementById("fund-houses-news")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <section>
+    <section id="fund-houses-news" className="scroll-mt-24">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
         <div className="flex items-center gap-3 flex-1">
           <h2 className="text-[28px] font-bold text-heading tracking-tight whitespace-nowrap">Fund Houses News</h2>
@@ -82,7 +99,7 @@ export function FundHousesNewsClient({ articles }: { articles: Article[] }) {
       
       {filteredArticles.length > 0 ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredArticles.map((article) => (
+          {pageItems.map((article) => (
             <Link
               key={article._id}
               href={`/news/${article.slug}`}
@@ -134,6 +151,8 @@ export function FundHousesNewsClient({ articles }: { articles: Article[] }) {
           <p className="text-[14px] text-faint font-medium">No articles match your criteria.</p>
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
     </section>
   );
 }

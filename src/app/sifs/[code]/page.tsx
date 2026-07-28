@@ -1,28 +1,44 @@
+import { resolvePageMetadata, getPageImageAlt } from "@/lib/pageSeo";
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { extractSchemeCode, fundSlug, fundHref } from "@/lib/slugify";
 import {
-  ShieldCheck, TrendingUp, MinusCircle, ExternalLink,
-  CheckCircle2, XCircle, BarChart2,
-  Building2,
+  ShieldCheck, TrendingUp, TrendingDown, ArrowLeftRight, MinusCircle, ExternalLink,
+  CheckCircle2, XCircle, BarChart2, Building2,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Providers } from "@/app/providers";
 import { FundDetailPanel } from "@/components/sections/FundDetailPanel";
 import { NavActionCard } from "@/components/sections/NavActionCard";
-import { ScenarioTabs } from "@/components/sections/ScenarioTabs";
-import { getFundDetail, getFundDetailsForName, getTopFunds, type PeriodKey } from "@/lib/sifData";
+import { QuickLinksCard } from "@/components/sections/QuickLinksCard";
+import { getFundDetail, getFundDetailsForName, getTopFunds, getAllFundSlugs, getRegularCodeForFund, type PeriodKey } from "@/lib/sifData";
 import { getCategoryAverageSeries } from "@/lib/categoryAverages";
-import { FundDetailsSection } from "@/components/sections/FundDetailsSection";
+import { VariantIsin, VariantSwitcher } from "@/components/sections/FundVariantBits";
+// recharts + d3-voronoi-treemap ride along with this section and it sits far
+// below the fold — split it out so it doesn't block the first paint.
+const FundDetailsSection = dynamic(
+  () => import("@/components/sections/FundDetailsSection").then((m) => m.FundDetailsSection),
+  { loading: () => <div className="h-[400px]" /> },
+);
 import { SEBIRiskometer, RISK_LABELS } from "@/components/ui/RiskMeter";
 import { FundSectionNav } from "@/components/sections/FundSectionNav";
 import type { Metadata } from "next";
 
 export const revalidate = 3600;
 
-type Props = { params: Promise<{ code: string }>; searchParams: Promise<{ variant?: string }> };
+type Props = { params: Promise<{ code: string }> };
+
+// Prerender every fund page at build time so visitors hit static HTML from the
+// CDN instead of waiting on a cold function + Mongo round trip. Unknown codes
+// still render on demand and get cached (dynamicParams defaults to true).
+export async function generateStaticParams() {
+  const slugs = await getAllFundSlugs();
+  return slugs.map((code) => ({ code }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { code } = await params;
@@ -30,11 +46,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!schemeCode) return { title: "Fund not found — SIFcase" };
   const fund = await getFundDetail(schemeCode);
   if (!fund) return { title: "Fund not found — SIFcase" };
-  return {
-    title: `${fund.fundName} — SIFcase`,
-    description: `${fund.strategy} SIF by ${fund.amc}. Latest NAV ₹${fund.nav.toFixed(4)} as of ${fund.navDate}. Source-verified returns and risk metrics.`,
-    alternates: { canonical: fundHref(fund.fundName, fund.schemeCode) },
-  };
+  // Growth is the primary page for a fund; other options keep their own URL, so
+  // they need a distinct title or they compete with it on the same string.
+  const optionSuffix = fund.option === "Growth" ? "" : ` — ${fund.option}`;
+  return resolvePageMetadata({
+    path: "/sifs/[code]",
+    tokens: {
+      fundName: fund.fundName,
+      optionSuffix,
+      option: fund.option,
+      strategy: fund.strategy,
+      amc: fund.amc,
+      nav: fund.nav.toFixed(4),
+      navDate: fund.navDate,
+      schemeCode: fund.schemeCode,
+    },
+    fallback: { canonical: fundHref(fund.fundName, fund.schemeCode) },
+  });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -247,26 +275,37 @@ function HeroStat({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default async function FundDetailPage({ params, searchParams }: Props) {
+export default async function FundDetailPage({ params }: Props) {
   const { code } = await params;
-  const { variant } = await searchParams;
-  const isReinvest = variant === "reinvest";
   const schemeCode = extractSchemeCode(code);
   if (!schemeCode) notFound();
   const fund = await getFundDetail(schemeCode);
   if (!fund) notFound();
+
+  // Direct-plan schemes get no page of their own: same fund, same content, a
+  // different NAV — they only ever showed up in search as duplicates of the
+  // Regular page. Send them there instead.
+  if (fund.plan === "Direct") {
+    const regularCode = await getRegularCodeForFund(fund.fundName);
+    if (!regularCode) notFound();
+    permanentRedirect(fundHref(fund.fundName, regularCode));
+  }
 
   // Canonicalize old bare-code URLs (/sifs/sif-105) and any non-canonical slug
   // to the keyword-rich fund-name-based URL for SEO — permanent (308) redirect
   // preserves link equity from already-indexed/bookmarked old URLs.
   const canonicalSlug = fundSlug(fund.fundName, fund.schemeCode);
   if (code.toLowerCase() !== canonicalSlug) {
-    const qs = variant ? `?variant=${variant}` : "";
-    permanentRedirect(`/sifs/${canonicalSlug}${qs}`);
+    permanentRedirect(`/sifs/${canonicalSlug}`);
   }
 
   const fundDetails = await getFundDetailsForName(fund.fundName).catch(() => null);
   const allFunds = await getTopFunds();
+
+  // Alt text for the fund-house logo, overridable from the Page SEO admin screen.
+  const logoAlt =
+    (await getPageImageAlt("/sifs/[code]", { fundName: fund.fundName, amc: fund.amc })) ??
+    `${fund.amc} logo`;
 
   const PERIOD_KEYS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
   const categoryAvg = PERIOD_KEYS.reduce((acc, p) => {
@@ -295,7 +334,6 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   const reinvestVariant = fund.variants.find(
     (v) => v.option === "IDCW Reinvestment" && v.schemeCode === fund.schemeCode
   );
-  const displayIsin = isReinvest && reinvestVariant?.isin ? reinvestVariant.isin : fund.isin;
 
   // ── Category metrics ────────────────────────────────────────────────────────
   const catFunds = allFunds.filter((f) => f.strategy === fund.strategy);
@@ -378,18 +416,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
   };
   const explainer = STRATEGY_EXPLAINERS[fund.strategy] ?? null;
 
-  const TAXATION =
-    fund.category === "Equity"
-      ? [
-          { type: "Short-Term Capital Gain (< 12 months)", rule: "Taxed at 20% as per equity taxation rules." },
-          { type: "Long-Term Capital Gain (> 12 months)", rule: "Taxed at 12.5% on gains exceeding ₹1.25 lakh per year." },
-          { type: "Dividend / IDCW", rule: "Taxed at applicable slab rate as ordinary income." },
-        ]
-      : [
-          { type: "Short-Term Capital Gain (< 24 months)", rule: "Taxed at applicable slab rate." },
-          { type: "Long-Term Capital Gain (> 24 months)", rule: "Taxed at 12.5% without indexation." },
-          { type: "Dividend / IDCW", rule: "Taxed at applicable slab rate as ordinary income." },
-        ];
+  const taxationSummary = (fundDetails?.taxationSummary ?? "").trim();
 
   // ── Fund manager initials ───────────────────────────────────────────────────
   const amcInitial = fund.amc
@@ -438,7 +465,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               {fund.logoUrl ? (
                 <Image
                   src={fund.logoUrl}
-                  alt={fund.amc}
+                  alt={logoAlt}
                   width={36}
                   height={36}
                   className="object-contain max-w-full max-h-full"
@@ -478,12 +505,9 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
 
               {/* Meta */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#B9CCEA]">
-                {displayIsin && (
-                  <>
-                    <span>ISIN {displayIsin}</span>
-                    <span className="text-white/25">·</span>
-                  </>
-                )}
+                <Suspense fallback={null}>
+                  <VariantIsin isin={fund.isin ?? null} reinvestIsin={reinvestVariant?.isin ?? null} />
+                </Suspense>
                 <span>Launched {formatLaunchDate(fund.launchDate)}</span>
                 {(fund.benchmark ?? fundDetails?.benchmarkName) && (
                   <>
@@ -497,30 +521,23 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               {hasVariants && (
                 <div className="mt-4">
                   <div className="text-[9px] font-semibold uppercase tracking-[0.9px] text-white/40 mb-2">Plan &amp; Option</div>
-                  <div className="flex flex-wrap gap-2">
-                    {fund.variants.map((v) => {
-                      const isVirtualReinvest = v.option === "IDCW Reinvestment";
-                      const isCurrent = isVirtualReinvest
-                        ? isReinvest && v.schemeCode === fund.schemeCode
-                        : !isReinvest && v.schemeCode === fund.schemeCode && v.option === fund.option;
-                      const href = isVirtualReinvest
-                        ? `${fundHref(fund.fundName, v.schemeCode)}?variant=reinvest`
-                        : fundHref(fund.fundName, v.schemeCode);
-                      return isCurrent ? (
-                        <span key={`${v.schemeCode}-${v.option}`} className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#0E9F8E] text-white border border-[#0E9F8E]">
-                          {v.option}
-                        </span>
-                      ) : (
-                        <Link
-                          key={`${v.schemeCode}-${v.option}`}
-                          href={href}
-                          className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-white/10 text-white/60 border border-white/15 hover:bg-white/20 hover:text-white transition-colors"
-                        >
-                          {v.option}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                  <Suspense fallback={null}>
+                    <VariantSwitcher
+                      chips={fund.variants.map((v) => {
+                        const isVirtualReinvest = v.option === "IDCW Reinvestment";
+                        return {
+                          option: v.option,
+                          schemeCode: v.schemeCode,
+                          isVirtualReinvest,
+                          href: isVirtualReinvest
+                            ? `${fundHref(fund.fundName, v.schemeCode)}?variant=reinvest`
+                            : fundHref(fund.fundName, v.schemeCode),
+                        };
+                      })}
+                      currentSchemeCode={fund.schemeCode}
+                      currentOption={fund.option}
+                    />
+                  </Suspense>
                 </div>
               )}
             </div>
@@ -757,7 +774,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 <section>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Investor Suitability</div>
                   <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Is this fund right for you?</h2>
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className={`grid gap-4 ${fundDetails.suitableFor && fundDetails.notSuitableFor ? "sm:grid-cols-2" : "grid-cols-1"}`}>
                     {fundDetails.suitableFor && (
                       <div className="rounded-[16px] border border-emerald-200 bg-emerald-50 p-5">
                         <div className="flex items-center gap-2 mb-3">
@@ -785,11 +802,41 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
                 <section>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Market Scenario Performance</div>
                   <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">How this fund may behave across cycles</h2>
-                  <ScenarioTabs
-                    bull={fundDetails.bullMarket}
-                    bear={fundDetails.bearMarket}
-                    sideways={fundDetails.sidewaysMarket}
-                  />
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    {fundDetails.bullMarket && (
+                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white shadow-card p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="size-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                            <TrendingUp className="size-4 text-[#1A9E5F]" strokeWidth={2} />
+                          </span>
+                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Bull Markets</h3>
+                        </div>
+                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.bullMarket}</p>
+                      </div>
+                    )}
+                    {fundDetails.bearMarket && (
+                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white shadow-card p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="size-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                            <TrendingDown className="size-4 text-[#F87171]" strokeWidth={2} />
+                          </span>
+                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Bear Markets</h3>
+                        </div>
+                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.bearMarket}</p>
+                      </div>
+                    )}
+                    {fundDetails.sidewaysMarket && (
+                      <div className="rounded-[16px] border border-[#E2E8EE] bg-white shadow-card p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="size-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                            <ArrowLeftRight className="size-4 text-[#1E6FD9]" strokeWidth={2} />
+                          </span>
+                          <h3 className="text-[14px] font-bold text-[#0F1C28]">In Sideways Markets</h3>
+                        </div>
+                        <p className="text-[13px] text-[#334155] leading-relaxed">{fundDetails.sidewaysMarket}</p>
+                      </div>
+                    )}
+                  </div>
                 </section>
               )}
 
@@ -822,21 +869,22 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               )}
 
               {/* ── Taxation ──────────────────────────────────────────────── */}
-              <section>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Taxation</div>
-                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">How returns from this fund are taxed</h2>
-                <div className="grid md:grid-cols-3 gap-px bg-[#E2E8EE] border border-[#E2E8EE] rounded-[18px] overflow-hidden">
-                  {TAXATION.map(({ type, rule }) => (
-                    <div key={type} className="bg-white p-5">
-                      <div className="text-[13px] font-semibold text-[#0F1C28] mb-2">{type}</div>
-                      <p className="text-[13px] text-[#334155] leading-relaxed">{rule}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-[11px] text-[#6B8299]">
-                  Based on fund category ({fund.category}). Consult a tax advisor for your specific situation.
-                </p>
-              </section>
+              {/* Per-fund summary from the scheme's own documents. The old
+                  three-card table was generic rates inferred from fund.category,
+                  which was wrong for hybrids whose treatment depends on their
+                  actual equity share, so it is not shown as a fallback. */}
+              {taxationSummary && (
+                <section>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Taxation</div>
+                  <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">How returns from this fund are taxed</h2>
+                  <div className="bg-white p-5 rounded-[18px] border border-[#E2E8EE]">
+                    <p className="text-[13.5px] text-[#334155] leading-relaxed whitespace-pre-line">{taxationSummary}</p>
+                  </div>
+                  <p className="mt-3 text-[11px] text-[#6B8299]">
+                    As disclosed by the AMC. Consult a tax advisor for your specific situation.
+                  </p>
+                </section>
+              )}
 
               </section>{/* ═══════════ end PERFORMANCE ═══════════ */}
 
@@ -1004,30 +1052,7 @@ export default async function FundDetailPage({ params, searchParams }: Props) {
               </div>
 
               {/* Quick links */}
-              <div className="bg-white rounded-[14px] border border-[#E2E8EE] overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3.5 border-b border-[#E2E8EE]">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M8.167 7.583a3.5 3.5 0 0 1-4.667.292M5.833 6.417a3.5 3.5 0 0 1 4.667-.292M8.167 13.75a5.833 5.833 0 1 0 0-11.667 5.833 5.833 0 0 0 0 11.667z" stroke="#0E9F8E" strokeWidth="1.17" />
-                  </svg>
-                  <span className="text-[13px] font-semibold text-[#0E2A47]">Quick links</span>
-                </div>
-                <div>
-                  {[
-                    { label: "Compare with other funds →", href: `/compare?funds=${encodeURIComponent(fund.schemeCode)}` },
-                    { label: "Learn how SIFs work →", href: "/sif-101" },
-                    { label: "View open NFOs →", href: "/nfos" },
-                    { label: "Speak to a specialist →", href: "mailto:support@sifcase.com" },
-                  ].map(({ label, href }) => (
-                    <Link
-                      key={label}
-                      href={href}
-                      className="block px-4 py-[9px] border-b border-[#E2E8EE] last:border-0 text-[13px] font-medium text-[#0E9F8E] hover:bg-[#F4F6F8] transition-colors"
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              <QuickLinksCard fund={fund} fundDetails={fundDetails} />
             </div>
           </div>
         </div>
