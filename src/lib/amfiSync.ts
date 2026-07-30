@@ -3,7 +3,7 @@ import FundDetails from "@/models/FundDetails";
 import SchemeMapping from "@/models/SchemeMapping";
 import SIFScheme from "@/models/SIFScheme";
 import {
-  fetchSchemesForSifId, fetchSsd, fetchTer, extractFromSsd,
+  fetchSchemesForSifId, fetchSsd, fetchTer, extractFromSsd, deriveRedemptionFrequency,
   normaliseName, sifIdsFromTer, type TerRow,
 } from "./amfiSif";
 
@@ -247,6 +247,18 @@ export async function applySsdToFund(fundName: string): Promise<SourceOutcome> {
     if (v !== undefined && v !== null && v !== "") {
       set[key] = v;
       written.push(key);
+    }
+  }
+
+  // Redemption frequency has no SSD field of its own — only fill it in when the
+  // fund doesn't already have one on file, and only for the open-ended case we
+  // can infer safely from Fund_Type (see deriveRedemptionFrequency).
+  const existing = await FundDetails.findOne({ fundName }, { redemptionFrequency: 1 }).lean<{ redemptionFrequency?: string } | null>();
+  if (!existing?.redemptionFrequency) {
+    const derived = deriveRedemptionFrequency(extract.fundType);
+    if (derived) {
+      set.redemptionFrequency = derived;
+      written.push("redemptionFrequency");
     }
   }
 

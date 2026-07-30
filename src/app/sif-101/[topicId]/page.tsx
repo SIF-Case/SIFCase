@@ -6,6 +6,8 @@ import { getTickerNavs } from "@/lib/sifData";
 import { TopicDetailClient } from "./TopicDetailClient";
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
+import Sif101Quiz from "@/models/Sif101Quiz";
+import { SIF101_QUIZZES } from "@/lib/sif101Quizzes";
 
 // Revalidate on-demand only (via revalidatePath calls from admin)
 export const revalidate = false;
@@ -86,6 +88,8 @@ export default async function TopicDetailPage({
     .lean();
 
   const tickerNavs = await getTickerNavs();
+  const quizOverride = await Sif101Quiz.findOne({ topicSlug: topicId }).lean();
+  const quizQuestions = quizOverride ? quizOverride.questions : SIF101_QUIZZES[topicId] ?? null;
 
   // Convert to plain objects
   const articles = allArticles.map((a: any) => ({
@@ -115,7 +119,7 @@ export default async function TopicDetailPage({
     <main className="flex flex-col min-h-screen" style={{ background: "#FDFEFE" }}>
       <TickerRibbon navItems={tickerNavs} />
       <Navbar />
-      <TopicDetailClient topicId={topicId} article={article} allArticles={articles} relatedArticles={relatedArticles} />
+      <TopicDetailClient topicId={topicId} article={article} allArticles={articles} relatedArticles={relatedArticles} quizQuestions={quizQuestions} />
       <Footer />
     </main>
   );

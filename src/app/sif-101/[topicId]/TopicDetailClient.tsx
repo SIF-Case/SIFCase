@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { STORAGE_KEY } from "../topicsData";
+import type { Sif101QuizQuestion } from "@/lib/sif101Quizzes";
+import { TopicQuiz } from "@/components/sections/TopicQuiz";
 
 export type ArticleMeta = {
   _id: string;
@@ -56,11 +58,13 @@ export function TopicDetailClient({
   article,
   allArticles,
   relatedArticles,
+  quizQuestions,
 }: {
   topicId: string;
   article: Article;
   allArticles: ArticleMeta[];
   relatedArticles: RelatedArticle[];
+  quizQuestions: Sif101QuizQuestion[] | null;
 }) {
   const router = useRouter();
   const [completed, setCompleted] = useState<Set<string>>(new Set());
@@ -339,6 +343,9 @@ export function TopicDetailClient({
             dangerouslySetInnerHTML={{ __html: processedContent }}
           />
 
+          {/* Test your knowledge */}
+          {quizQuestions && <TopicQuiz questions={quizQuestions} />}
+
           {/* Bottom navigation */}
           <div className="article-bottom-nav">
             <div className="bottom-nav-left">
@@ -427,29 +434,52 @@ export function TopicDetailClient({
               </div>
               <h4 className="quiz-card-title">Test your readiness</h4>
             </div>
-            <p className="quiz-card-desc">
-              A quick 5-question check tells you whether you&apos;re ready to start exploring
-              funds — or which topics to revisit.
-            </p>
-            <Link href="/sif-101/quiz" className="quiz-card-btn">Take the quiz</Link>
+            {quizQuestions ? (
+              <>
+                <p className="quiz-card-desc">
+                  A quick {quizQuestions.length}-question check on this topic — instant feedback,
+                  no login needed.
+                </p>
+                <button type="button" className="quiz-card-btn" onClick={() => scrollToSection("topic-quiz")}>
+                  Take the quiz
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="quiz-card-desc">
+                  A quick 5-question check tells you whether you&apos;re ready to start exploring
+                  funds — or which topics to revisit.
+                </p>
+                <Link href="/sif-101/quiz" className="quiz-card-btn">Take the quiz</Link>
+              </>
+            )}
           </div>
 
-          {/* Related articles */}
-          {relatedArticles.length > 0 && (
-            <div className="right-sidebar-card">
-              <h4 className="right-sidebar-card-title">Related articles</h4>
-              <ul className="related-articles-list">
-                {relatedArticles.map((relArticle) => (
-                  <li key={relArticle.slug} className="related-article-item">
-                    <Link href={`/read/${relArticle.slug}`} className="related-article-link">
-                      <span className="related-article-arrow">›</span>
-                      <span>{relArticle.title}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Browse insights by category */}
+          <div className="right-sidebar-card">
+            <h4 className="right-sidebar-card-title">Browse insights</h4>
+            <ul className="related-articles-list">
+              {[
+                { href: "/read/subcategory/sif-categories", label: "SIF Categories" },
+                { href: "/read/subcategory/strategy", label: "Strategy" },
+                { href: "/read/subcategory/derivative-strategies", label: "Derivative Strategies" },
+                { href: "/read/subcategory/sif-education", label: "SIF Education" },
+              ].map((cat) => (
+                <li key={cat.href} className="related-article-item">
+                  <Link href={cat.href} className="related-article-link">
+                    <span className="related-article-arrow">›</span>
+                    <span>{cat.label}</span>
+                  </Link>
+                </li>
+              ))}
+              <li className="related-article-item">
+                <Link href="/read" className="related-article-link">
+                  <span className="related-article-arrow">›</span>
+                  <span>Read all insights</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </aside>
       </div>
 

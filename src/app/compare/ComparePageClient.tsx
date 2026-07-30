@@ -76,7 +76,7 @@ const SECTION_ROWS: {
   {
     section: "AUM & Fundamentals",
     rows: [
-      { label: "AUM",              key: (f) => ({ text: f.aum ? `₹${(f.aum / 1e7).toFixed(2)} Cr` : "—" }) },
+      { label: "AUM",              key: (f) => ({ text: f.aum ? `₹${f.aum.toFixed(2)} Cr` : "—" }) },
       { label: "P/E",               key: (f) => ({ text: f.fundamentals?.pe != null ? f.fundamentals.pe.toFixed(2) : "—" }) },
       { label: "P/B",               key: (f) => ({ text: f.fundamentals?.pb != null ? f.fundamentals.pb.toFixed(2) : "—" }) },
       { label: "Dividend Yield",    key: (f) => ({ text: f.fundamentals?.dividendYield != null ? `${f.fundamentals.dividendYield.toFixed(2)}%` : "—" }) },
@@ -95,7 +95,6 @@ const SECTION_ROWS: {
     rows: [
       { label: "Redemption Frequency", key: (f) => ({ text: f.redemptionFrequency || "—" }) },
       { label: "Suitable For",         key: (f) => ({ text: f.suitableFor || "—" }) },
-      { label: "Not Suitable For",     key: (f) => ({ text: f.notSuitableFor || "—" }) },
     ],
   },
 ];

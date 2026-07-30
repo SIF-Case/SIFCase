@@ -18,6 +18,8 @@ import { PerformanceReportBanner } from "@/components/sections/PerformanceReport
 import { TopFunds } from "@/components/sections/TopFunds";
 
 import { WhySIFcase } from "@/components/sections/WhySIFcase";
+import { SIFNewsSection } from "@/components/sections/SIFNewsSection";
+import { InTheMediaSection } from "@/components/sections/InTheMediaSection";
 import { FAQSection } from "@/components/sections/FAQSection";
 import { CTABand } from "@/components/sections/CTABand";
 import { NotReadyToInvest } from "@/components/sections/NotReadyToInvest";
@@ -61,6 +63,8 @@ export default async function HomePage() {
         <TopFunds funds={topFunds} />
         <NotReadyToInvest />
         <BuildYourCompareLazy funds={topFunds} />
+        <SIFNewsSection />
+        <InTheMediaSection />
         <FAQSection groups={faqGroups} />
         <CTABand />
         <Footer />

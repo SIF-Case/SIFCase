@@ -272,6 +272,11 @@ export interface SsdExtract {
   schemeCategory?: string;
   statedAssetAllocation?: string;
   annualExpenseStatedMaximum?: string;
+  /** Free-text scheme description, e.g. "An open ended equity investment strategy…".
+   *  The SSD has no dedicated redemption-frequency field — this is the only place
+   *  open-ended vs interval/close-ended structure is stated, so callers derive
+   *  redemption frequency from it rather than from a field that doesn't exist. */
+  fundType?: string;
 }
 
 function pick(fields: Record<string, string>, ...aliases: string[]): string | undefined {
@@ -298,6 +303,19 @@ function pickCurrentRiskometer(fields: Record<string, string>): string | undefin
   return v === undefined || isBlank(v) ? undefined : v.trim();
 }
 
+/**
+ * The SSD has no dedicated redemption-frequency field. Open-ended strategies
+ * redeem daily (subject to exit load) by construction, so that much can be
+ * inferred from Fund_Type's free text. Interval/close-ended structures vary
+ * fund to fund and aren't safe to guess — left for manual entry.
+ */
+export function deriveRedemptionFrequency(fundType?: string): string | undefined {
+  if (!fundType) return undefined;
+  const t = fundType.toLowerCase().replace(/[\s-]/g, "");
+  if (t.includes("openend")) return "Daily (subject to exit load)";
+  return undefined;
+}
+
 export function extractFromSsd(doc: SsdDoc): SsdExtract {
   const f = doc.fields;
   const out: SsdExtract = {};
@@ -321,6 +339,7 @@ export function extractFromSsd(doc: SsdDoc): SsdExtract {
   // parsing it into min/max ranges is too brittle against the phrasing variance.
   set("statedAssetAllocation", pick(f, "Stated_Asset_Allocation", "Stated_Asset_Allocation1"));
   set("annualExpenseStatedMaximum", pick(f, "Annual_Expense_Stated_maximum"));
+  set("fundType", pick(f, "Fund_Type"));
 
   return out;
 }

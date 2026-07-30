@@ -127,7 +127,7 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
               className="flex flex-wrap items-start justify-between gap-6 pt-5 sm:gap-10"
               style={{ borderTop: `1px solid ${LINE}` }}
             >
-              <Stat value={aumCr !== null ? `₹${aumCr.toLocaleString("en-IN")} Cr` : "—"} label="AUM tracked" />
+              <Stat value="₹17,858 Cr" label="AUM tracked" />
               <Stat value={String(stats?.uniqueAMCs ?? "—")} label="AMCs" />
               <Stat value={String(schemeTotal || "—")} label="Schemes" />
               <Stat value="Daily" label="NAV updates" />

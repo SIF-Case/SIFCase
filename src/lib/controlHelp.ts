@@ -73,9 +73,9 @@ export const METRIC_HELP: Record<string, HelpCopy> = {
 // Universe Map.
 export const CATEGORY_FILTER_HELP: Record<string, HelpCopy> = {
   All: { body: "Shows every SIF, regardless of category." },
-  Equity: { title: "Equity.", body: "Predominantly invest in equities/equity-related instruments, using strategies like long-short, sector rotation, or ex-Top 100 long-short, with short exposure capped at 25% via derivatives." },
-  Hybrid: { title: "Hybrid.", body: "Combine equity, debt, and other asset classes (including REITs/InvITs and commodity derivatives) through active, dynamic asset allocation, with long-short positions on both sides." },
-  Debt: { title: "Debt.", body: "Predominantly invest in fixed-income instruments like bonds and credit, with strategies such as sectoral debt long-short, aimed at investors seeking relative stability." },
+  Equity: { title: "Equity.", body: "Funds that invest mainly in stocks via long-short or sector-rotation strategies." },
+  Hybrid: { title: "Hybrid.", body: "Funds mixing equity and debt through active asset allocation." },
+  Debt: { title: "Debt.", body: "Funds that mainly invest in bonds and other fixed-income instruments." },
 };
 
 // Every row label in the side-by-side comparison table (/compare) — this table
@@ -122,7 +122,6 @@ export const COMPARE_ROW_HELP: Record<string, HelpCopy> = {
   "Small Cap %": { body: "% invested in smaller companies — higher growth potential but typically more volatile." },
   "Redemption Frequency": { body: "How often you're allowed to withdraw money from this fund — SIFs can restrict redemptions to set windows." },
   "Suitable For": { body: "The kind of investor profile the AMC considers a good fit for this fund." },
-  "Not Suitable For": { body: "The kind of investor profile the AMC advises against this fund." },
 };
 
 export const COMPARE_FUND_TAG_HELP: HelpCopy = {

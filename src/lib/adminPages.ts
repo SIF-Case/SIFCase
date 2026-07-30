@@ -14,6 +14,8 @@ import {
   BarChart2,
   Rocket,
   Search,
+  GraduationCap,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +41,8 @@ export const ADMIN_PAGES: AdminPageDef[] = [
   { key: "news", label: "SIF News", href: "/admin/news", icon: Newspaper, editable: true },
   { key: "faqs", label: "FAQs", href: "/admin/faqs", icon: HelpCircle, editable: true },
   { key: "suitability", label: "Suitability Quiz", href: "/admin/suitability", icon: ClipboardCheck, editable: true },
+  { key: "sif101Quiz", label: "SIF 101 Quizzes", href: "/admin/sif-101/quiz", icon: GraduationCap, editable: true },
+  { key: "mediaMentions", label: "Media Mentions", href: "/admin/media-mentions", icon: Megaphone, editable: true },
   { key: "seo", label: "Page SEO", href: "/admin/seo", icon: Search, editable: true },
   { key: "logs", label: "Cron Logs", href: "/admin/logs", icon: ScrollText, editable: false },
 ];

@@ -24,7 +24,14 @@ export function Navbar() {
   const [fundHousesOpen, setFundHousesOpen] = useState(false);
   const [mobileFundHousesOpen, setMobileFundHousesOpen] = useState(false);
   const [brandNames, setBrandNames] = useState<{ brandName: string; companyName_short: string }[]>([]);
+  const [fundHouseQuery, setFundHouseQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const filteredBrandNames = fundHouseQuery.trim()
+    ? brandNames.filter(({ brandName, companyName_short }) => {
+        const q = fundHouseQuery.trim().toLowerCase();
+        return brandName.toLowerCase().includes(q) || companyName_short?.toLowerCase().includes(q);
+      })
+    : brandNames;
   const fundHousesRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
 
@@ -38,6 +45,7 @@ export function Navbar() {
     function handleClick(e: MouseEvent) {
       if (fundHousesRef.current && !fundHousesRef.current.contains(e.target as Node)) {
         setFundHousesOpen(false);
+        setFundHouseQuery("");
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -121,18 +129,32 @@ export function Navbar() {
                       className="absolute left-0 top-full mt-2.5 z-30 bg-white border border-[#e5e7eb] rounded-[14px] shadow-[0_14px_40px_rgba(11,31,58,0.10)] py-1.5 w-[480px] max-h-80 overflow-y-auto [-webkit-overflow-scrolling:touch]"
                       onMouseLeave={() => setFundHousesOpen(false)}
                     >
-                      <Link
-                        href={link.href}
-                        className="block px-4 py-2 text-[12px] font-semibold text-[#14b7a3] hover:bg-[#f3f4f6]"
-                      >
-                        All Fund Houses &rarr;
-                      </Link>
+                      <div className="flex items-center justify-between gap-3 px-4 py-2">
+                        <Link
+                          href={link.href}
+                          className="text-[12px] font-semibold text-[#14b7a3] hover:underline whitespace-nowrap"
+                        >
+                          All Fund Houses &rarr;
+                        </Link>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 border border-[#e5e7eb] rounded-[7px] bg-[#f9fafb] flex-1 max-w-[200px] mr-4">
+                          <Search className="size-3 text-[#9ca3af] shrink-0" strokeWidth={2} />
+                          <input
+                            value={fundHouseQuery}
+                            onChange={(e) => setFundHouseQuery(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="Search…"
+                            className="w-full bg-transparent text-[12px] text-[#374151] placeholder:text-[#9ca3af] outline-none"
+                          />
+                        </div>
+                      </div>
                       <div className="border-t border-[#e5e7eb] my-1" />
                       {brandNames.length === 0 ? (
                         <div className="px-4 py-2 text-[12px] text-[#64748B]">Loading…</div>
+                      ) : filteredBrandNames.length === 0 ? (
+                        <div className="px-4 py-2 text-[12px] text-[#64748B]">No fund houses match "{fundHouseQuery}"</div>
                       ) : (
                         <div className="grid grid-cols-2 px-2 pb-1">
-                          {brandNames.map(({ brandName, companyName_short }) => (
+                          {filteredBrandNames.map(({ brandName, companyName_short }) => (
                             <Link
                               key={brandName}
                               href={`/fund-house/${encodeURIComponent(
@@ -302,12 +324,23 @@ export function Navbar() {
                       >
                         All Fund Houses &rarr;
                       </Link>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 mb-2 border border-[#e5e7eb] rounded-[7px] bg-[#f9fafb]">
+                        <Search className="size-3 text-[#9ca3af] shrink-0" strokeWidth={2} />
+                        <input
+                          value={fundHouseQuery}
+                          onChange={(e) => setFundHouseQuery(e.target.value)}
+                          placeholder="Search fund houses…"
+                          className="w-full bg-transparent text-[12.5px] text-[#374151] placeholder:text-[#9ca3af] outline-none"
+                        />
+                      </div>
                       <div className="border-t border-[#e5e7eb] mb-2" />
                       {brandNames.length === 0 ? (
                         <div className="px-3 py-2 text-[12px] text-[#64748B]">Loading…</div>
+                      ) : filteredBrandNames.length === 0 ? (
+                        <div className="px-3 py-2 text-[12px] text-[#64748B]">No fund houses match "{fundHouseQuery}"</div>
                       ) : (
                         <div className="flex flex-col gap-1 max-h-60 overflow-y-auto [-webkit-overflow-scrolling:touch]">
-                          {brandNames.map(({ brandName, companyName_short }) => (
+                          {filteredBrandNames.map(({ brandName, companyName_short }) => (
                             <Link
                               key={brandName}
                               href={`/fund-house/${encodeURIComponent(

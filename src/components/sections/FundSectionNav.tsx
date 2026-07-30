@@ -30,18 +30,19 @@ const ITEMS: Item[] = [
 // navbar (64) + this sticky bar (~58) + a little breathing room
 const SCROLL_LINE = 150;
 
-export function FundSectionNav() {
-  const [active, setActive] = useState(ITEMS[0].id);
+export function FundSectionNav({ hasPortfolio = true }: { hasPortfolio?: boolean }) {
+  const items = hasPortfolio ? ITEMS : ITEMS.filter((i) => i.id !== "portfolio");
+  const [active, setActive] = useState(items[0].id);
   const clickLock = useRef(false);
 
   useEffect(() => {
-    const sections = ITEMS
+    const sections = items
       .map((i) => document.getElementById(i.id))
       .filter((el): el is HTMLElement => el !== null);
 
     const onScroll = () => {
       if (clickLock.current) return;
-      let current = sections[0]?.id ?? ITEMS[0].id;
+      let current = sections[0]?.id ?? items[0].id;
       for (const s of sections) {
         if (s.getBoundingClientRect().top - SCROLL_LINE <= 0) current = s.id;
       }
@@ -69,7 +70,7 @@ export function FundSectionNav() {
   return (
     <div className="sticky top-16 z-30">
       <div className="bg-white border border-[#E2E8EE] rounded-[14px] shadow-[0_4px_16px_rgba(11,31,58,0.06)] flex flex-wrap gap-1 p-1.5">
-        {ITEMS.map((i) => {
+        {items.map((i) => {
           const on = active === i.id;
           const btn = (
             <button

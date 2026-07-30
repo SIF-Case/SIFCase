@@ -284,6 +284,7 @@ export default async function FundDetailPage({ params }: Props) {
 
   const fundDetails = await getFundDetailsForName(fund.fundName).catch(() => null);
   const allFunds = await getTopFunds();
+  const hasPortfolio = !!(fundDetails && (fundDetails.assetAllocation?.length > 0 || fundDetails.topHoldings?.length > 0));
 
   // Alt text for the fund-house logo, overridable from the Page SEO admin screen.
   const logoAlt =
@@ -610,7 +611,7 @@ export default async function FundDetailPage({ params }: Props) {
             <div className="flex-1 min-w-0 w-full lg:max-w-[calc(100%-364px)] flex flex-col gap-6">
 
               {/* ── Sticky in-page section nav ────────────────────────────── */}
-              <FundSectionNav />
+              <FundSectionNav hasPortfolio={hasPortfolio} />
 
               <div className="block lg:hidden">
                 <NavActionCard
@@ -916,18 +917,13 @@ export default async function FundDetailPage({ params }: Props) {
               </section>
 
               {/* ═══════════ PORTFOLIO ═══════════ */}
-              <section id="portfolio" className="scroll-mt-[140px]">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Portfolio</div>
-                <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Portfolio holdings</h2>
-                {fundDetails && (fundDetails.assetAllocation?.length > 0 || fundDetails.topHoldings?.length > 0) ? (
-                  <FundDetailsSection details={fundDetails} />
-                ) : (
-                  <EmptyState
-                    title="Holdings disclosure pending"
-                    body="Per SEBI's SIF framework, portfolio disclosures are made every alternate month. Sector allocation, top holdings and net long/short exposure will populate here once the AMC's next disclosure is verified against ISID."
-                  />
-                )}
-              </section>
+              {hasPortfolio && (
+                <section id="portfolio" className="scroll-mt-[140px]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[#0E9F8E] mb-1">Portfolio</div>
+                  <h2 className="text-[20px] font-bold text-[#0E2A47] mb-4">Portfolio holdings</h2>
+                  <FundDetailsSection details={fundDetails!} />
+                </section>
+              )}
 
               {/* ═══════════ FUND MANAGER ═══════════ */}
               <section id="fund-manager" className="scroll-mt-[140px]">

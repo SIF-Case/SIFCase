@@ -162,51 +162,59 @@ export function SEBIRiskometer({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full">
+    <div className="flex flex-col items-center gap-2 w-full max-w-[210px] mx-auto">
       <div className="text-center">
-        <div className="text-[11px] font-mono uppercase tracking-widest text-muted mb-0.5">Risk Band</div>
-        <div className="text-[18px] font-bold text-heading tracking-tight">RISK-LEVEL {level}</div>
-        {title && <div className="text-[13px] text-body mt-0.5">{title}</div>}
-        {subtitle && <div className="text-[11px] text-muted mt-0.5">{subtitle}</div>}
+        <div className="text-[10px] font-mono uppercase tracking-widest text-muted mb-0.5">Risk Band</div>
+        <div className="text-[13px] font-bold text-heading tracking-tight">RISK-LEVEL {level}</div>
+        {title && (
+          <div
+            className="text-[10.5px] text-body mt-0.5 leading-[1.35] h-[2.7em] overflow-hidden"
+            style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+            title={title}
+          >
+            {title}
+          </div>
+        )}
+        {subtitle && <div className="text-[9.5px] text-muted mt-0.5">{subtitle}</div>}
       </div>
 
       <div className="w-full">
-        <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-muted mb-1.5 px-0.5">
+        <div className="flex justify-between text-[7.5px] font-bold uppercase tracking-widest text-muted mb-1 px-0.5">
           <span>Lower Risk</span>
           <span>Higher Risk</span>
         </div>
 
         {/* Boxes */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-0.5">
           {[1, 2, 3, 4, 5].map((i) => {
             const active = i === level;
             return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                 <div
-                  className="w-full flex items-center justify-center rounded-[6px] font-bold text-white relative"
+                  className="w-full flex items-center justify-center rounded-[3.5px] font-bold text-white relative"
                   style={{
                     backgroundColor: RISK_COLORS[i - 1],
-                    height: "44px",
-                    fontSize: "18px",
-                    boxShadow: active ? "inset 0 0 0 3px #0B1F3A, inset 0 0 0 5px #fff" : "none",
+                    height: "22px",
+                    fontSize: "11px",
+                    boxShadow: active ? "inset 0 0 0 1.5px #0B1F3A, inset 0 0 0 3px #fff" : "none",
                   }}
                 >
                   {i}
                 </div>
                 {/* Triangle pointer under active */}
                 {active ? (
-                  <svg width="12" height="8" viewBox="0 0 12 8">
+                  <svg width="8" height="5.5" viewBox="0 0 12 8">
                     <polygon points="6,0 12,8 0,8" fill="#0B1F3A" />
                   </svg>
                 ) : (
-                  <div className="h-2" />
+                  <div className="h-[5.5px]" />
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="mt-1.5 text-center text-[10px] font-semibold text-muted">
+        <div className="mt-1 text-center text-[8.5px] font-semibold text-muted">
           {RISK_LABELS[level - 1]}
         </div>
       </div>
