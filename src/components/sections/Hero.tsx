@@ -61,7 +61,7 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
               className="inline-block rounded-full px-3.5 py-1.5 text-[13px] mb-5"
               style={{ color: "#9fe1d5", border: `1px solid ${LINE}` }}
             >
-              SEBI regulated · AMFI registered distributor
+              SEBI regulated Investment Category
             </span>
 
             <h1
@@ -72,8 +72,10 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
               <span style={{ color: ACCENT }}>Specialised Investment Funds</span>
             </h1>
 
-            <p className="text-[17px] leading-[1.7] max-w-[460px] mb-7" style={{ color: PALE }}>
-              SIFs bridge mutual funds and PMS — verified NAV, risk bands and strategy notes for
+            <p className="text-[17px] leading-[1.5] max-w-[640px] mb-7" style={{ color: PALE }}>
+              SIF bridges the gap between mutual funds and alternatives such as PMS & AIFs.
+            <br></br>
+              SIFcase offers Verified NAV, risk bands and strategy notes for
               every SEBI-registered scheme, from ₹10 lakh.
             </p>
 
@@ -83,7 +85,7 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
                 className="inline-flex items-center rounded-[10px] px-[22px] py-3 text-[15px] font-medium transition-opacity hover:opacity-90"
                 style={{ background: ACCENT, color: INK }}
               >
-                Explore {schemeTotal > 0 ? schemeTotal : ""} SIFs
+                Explore All SIFs
               </Link>
               <TalkToAdvisorButton
                 className="inline-flex items-center rounded-[10px] px-[22px] py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/5"

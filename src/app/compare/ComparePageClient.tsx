@@ -13,6 +13,9 @@ const CompareLab = dynamic(
 );
 import { Sparkline } from "@/components/ui/Sparkline";
 import { fundHref } from "@/lib/slugify";
+import { formatInceptionDate } from "@/lib/utils";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { COMPARE_ROW_HELP } from "@/lib/controlHelp";
 
 
 const SECTION_ROWS: {
@@ -29,7 +32,7 @@ const SECTION_ROWS: {
       { label: "Plan",          key: (f) => ({ text: f.plan }) },
       { label: "Option",        key: (f) => ({ text: f.option || "—" }) },
       { label: "Scheme Category", key: (f) => ({ text: f.schemeCategory || "—" }) },
-      { label: "Inception Date",  key: (f) => ({ text: f.inceptionDate || "—" }) },
+      { label: "Inception Date",  key: (f) => ({ text: f.inceptionDate ? formatInceptionDate(f.inceptionDate) : "—" }) },
       { label: "Benchmark",       key: (f) => ({ text: f.benchmarkName || "—" }) },
       { label: "Fund Manager(s)", key: (f) => ({ text: f.fundManagers.length ? f.fundManagers.map((m) => m.name).join(", ") : "—" }) },
       { label: "Sponsor",         key: (f) => ({ text: f.sponsorName || "—" }) },
@@ -310,11 +313,15 @@ export function ComparePageClient({ funds, initialCodes }: { funds: FundRow[]; i
                     </div>
 
                     {/* Section rows */}
-                    {rows.map(({ label, key }, ri) => {
+                    {rows
+                      .filter(({ label }) => label !== "Trustee" || selected.some((f) => f.trusteeName))
+                      .map(({ label, key }, ri) => {
                       const cells = selected.map((f) => key(f, period));
                       return (
                         <div key={label} className={`grid border-b border-rule last:border-0 ${ri % 2 === 0 ? "bg-white" : "bg-surface/40"}`} style={{ gridTemplateColumns: `140px repeat(${selected.length}, minmax(0, 1fr))` }}>
-                          <div className="px-4 py-3.5 text-[11px] text-muted font-medium self-center">{label}</div>
+                          <div className="px-4 py-3.5 text-[11px] text-muted font-medium self-center">
+                            {COMPARE_ROW_HELP[label] ? <HelpTip {...COMPARE_ROW_HELP[label]} align="left" side="bottom">{label}</HelpTip> : label}
+                          </div>
                           {cells.map((cell, ci) => (
                           <div key={ci} className="px-4 py-3.5 border-l border-rule flex items-center">
                               {cell.link ? (

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         phone: "+919999999999",
         email: "test.investor@example.com",
         message: "This is a sample message from an admin test send.",
-        fundName: "qSIF Equity Long Short Fund",
+        fundName: "qsif Equity Long Short Fund",
         schemeCode: "SIF-105",
         strategy: "Equity Long-Short",
         amountLakhs: 30,

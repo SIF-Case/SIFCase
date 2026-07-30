@@ -63,7 +63,7 @@ export interface FundRow {
   amc: string;
   companyName: string;
   strategy: string;
-  category: "Equity" | "Hybrid";
+  category: "Equity" | "Hybrid" | "Debt";
   plan: "Regular" | "Direct";
   nav: number;
   navDate: string;
@@ -184,12 +184,7 @@ function navClosestTo(
   return best;
 }
 
-function strategyToCategory(strategy: string): "Equity" | "Hybrid" {
-  if (/hybrid/i.test(strategy) || /active\s*asset/i.test(strategy)) return "Hybrid";
-  return "Equity";
-}
-
-function strategyToBroadCategory(strategy: string): "Equity" | "Hybrid" | "Debt" {
+function strategyToCategory(strategy: string): "Equity" | "Hybrid" | "Debt" {
   if (/hybrid/i.test(strategy) || /active\s*asset/i.test(strategy)) return "Hybrid";
   if (/debt|credit|income|bond|fixed\s*income/i.test(strategy)) return "Debt";
   return "Equity";
@@ -268,7 +263,7 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
 
   const categoryBreakdown = { equity: 0, hybrid: 0, debt: 0 };
   for (const s of growthSchemes) {
-    const cat = strategyToBroadCategory((s.strategy as string) || "");
+    const cat = strategyToCategory((s.strategy as string) || "");
     if (cat === "Equity") categoryBreakdown.equity++;
     else if (cat === "Hybrid") categoryBreakdown.hybrid++;
     else categoryBreakdown.debt++;
@@ -503,7 +498,7 @@ async function _getTopFunds(): Promise<FundRow[]> {
   const db = mongoose.connection.db!;
   // Join on the RAW fundName — funddetails stores the unformatted name.
   // Using the display-formatted fundName here silently drops riskBand/AUM/etc
-  // for any fund whose casing formatFundName rewrites (e.g. qsif -> qSIF).
+  // for any fund whose casing formatFundName normalizes (e.g. QSIF -> qsif).
   const fundNames = sorted.map((s) => s.fundNameRaw);
   const detailsDocs = await db.collection("funddetails")
     .find({ fundName: { $in: fundNames } }, { projection: {
@@ -631,7 +626,7 @@ async function _getTopFunds(): Promise<FundRow[]> {
       taxationSummary: detailsByFundName.get(s.fundNameRaw)?.taxationSummary || null,
       suitableFor: detailsByFundName.get(s.fundNameRaw)?.suitableFor || null,
       notSuitableFor: detailsByFundName.get(s.fundNameRaw)?.notSuitableFor || null,
-      sponsorName: detailsByFundName.get(s.fundNameRaw)?.sponsorName || null,
+      sponsorName: detailsByFundName.get(s.fundNameRaw)?.sponsorName || s.amc || null,
       trusteeName: detailsByFundName.get(s.fundNameRaw)?.trusteeName || null,
       registrarName: detailsByFundName.get(s.fundNameRaw)?.registrarName || null,
       fundamentals: detailsByFundName.get(s.fundNameRaw)?.fundamentals ?? null,
@@ -751,7 +746,7 @@ export interface MonthlyHeatmapFund {
   schemeCode: string;
   name: string;
   strategy: string;
-  category: "Equity" | "Hybrid";
+  category: "Equity" | "Hybrid" | "Debt";
   months: (number | null)[];
 }
 
@@ -851,7 +846,7 @@ export interface FundDetail {
   brandName: string;
   logoUrl: string;
   strategy: string;
-  category: "Equity" | "Hybrid";
+  category: "Equity" | "Hybrid" | "Debt";
   plan: "Regular" | "Direct";
   option: string;
   nav: number;

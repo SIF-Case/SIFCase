@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { Plus, X, Bookmark, Check, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { AuthModal } from "@/components/auth/AuthModal";
+import { HelpTip, type HelpCopy } from "@/components/ui/HelpTip";
+import { COMPARE_VIEW_HELP, COMPARE_PERIOD_HELP, FUND_CATEGORY_AVG_HELP } from "@/lib/controlHelp";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -212,17 +214,19 @@ export function CompareLab({ funds, initialPicked, controlled, onPeriodChange }:
             <h3 className="mt-0.5 text-[15px] font-bold text-heading">Multi-fund NAV visualiser</h3>
           </div>
         )}
-        <div className="flex items-center gap-2 ml-auto overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap max-w-full [-webkit-overflow-scrolling:touch]">
-          <Toggle active={view} options={["Cumulative", "Drawdown", "Rolling", "Volatility"] as const} onChange={setView} />
-          <Toggle active={period} options={periods} onChange={setPeriod} />
-          <button
-            onClick={() => setShowCategoryAvg((v) => !v)}
-            className={`h-7 px-3 inline-flex items-center rounded-full border text-[11px] transition-colors shrink-0 whitespace-nowrap ${
-              showCategoryAvg ? "bg-brand-navy text-white border-brand-navy" : "bg-white text-muted border-rule hover:text-body hover:border-rule-strong"
-            }`}
-          >
-            Category Avg
-          </button>
+        <div className="flex items-center gap-2 ml-auto flex-wrap max-w-full">
+          <Toggle active={view} options={["Cumulative", "Drawdown", "Rolling", "Volatility"] as const} onChange={setView} help={COMPARE_VIEW_HELP} />
+          <Toggle active={period} options={periods} onChange={setPeriod} help={COMPARE_PERIOD_HELP} />
+          <HelpTip {...FUND_CATEGORY_AVG_HELP} side="bottom" align="right">
+            <button
+              onClick={() => setShowCategoryAvg((v) => !v)}
+              className={`h-7 px-3 inline-flex items-center rounded-full border text-[11px] transition-colors shrink-0 whitespace-nowrap ${
+                showCategoryAvg ? "bg-brand-navy text-white border-brand-navy" : "bg-white text-muted border-rule hover:text-body hover:border-rule-strong"
+              }`}
+            >
+              Category Avg
+            </button>
+          </HelpTip>
         </div>
       </div>
 
@@ -466,17 +470,23 @@ function SaveCompareBtn({ picked, period }: { picked: string[]; period: string }
   );
 }
 
-function Toggle<T extends string>({ active, options, onChange }: { active: T; options: readonly T[]; onChange: (v: T) => void }) {
+function Toggle<T extends string>({
+  active, options, onChange, help,
+}: { active: T; options: readonly T[]; onChange: (v: T) => void; help?: Record<string, HelpCopy> }) {
   return (
     <div className="inline-flex items-center bg-surface border border-rule rounded-full p-0.5 shrink-0">
-      {options.map((o) => (
-        <button key={o} onClick={() => onChange(o)}
-          className={`h-7 px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all whitespace-nowrap ${
-            active === o ? "bg-primary text-white shadow-btn" : "text-muted hover:text-body"
-          }`}>
-          {o}
-        </button>
-      ))}
+      {options.map((o) => {
+        const btn = (
+          <button onClick={() => onChange(o)}
+            className={`h-7 px-2.5 sm:px-3 text-[10px] sm:text-[11px] font-semibold rounded-full transition-all whitespace-nowrap ${
+              active === o ? "bg-primary text-white shadow-btn" : "text-muted hover:text-body"
+            }`}>
+            {o}
+          </button>
+        );
+        const copy = help?.[o];
+        return copy ? <HelpTip key={o} {...copy} side="bottom">{btn}</HelpTip> : <div key={o}>{btn}</div>;
+      })}
     </div>
   );
 }

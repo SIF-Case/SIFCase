@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import { X, Plus } from "lucide-react";
 import type { FundRow, PeriodKey } from "@/lib/sifData";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { RETURN_PERIOD_HELP, METRIC_HELP } from "@/lib/controlHelp";
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
 
@@ -126,15 +128,17 @@ export function CompareFunds({ funds }: { funds: FundRow[] }) {
             <p className="text-[15px] text-muted">Select up to 3 SIFs to compare side by side</p>
           </div>
           <div className="flex items-center gap-1 bg-surface rounded-full border border-rule p-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${period === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"}`}
-              >
-                {p}
-              </button>
-            ))}
+            {PERIODS.map((p) => {
+              const btn = (
+                <button
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${period === p ? "bg-primary text-white shadow-btn" : "text-muted hover:text-heading"}`}
+                >
+                  {p}
+                </button>
+              );
+              return <HelpTip key={p} {...RETURN_PERIOD_HELP[p]}>{btn}</HelpTip>;
+            })}
           </div>
         </div>
 
@@ -175,7 +179,9 @@ export function CompareFunds({ funds }: { funds: FundRow[] }) {
                   const best = bestFor(label);
                   return (
                     <tr key={label} className={ri % 2 === 0 ? "bg-white" : "bg-surface/50"}>
-                      <td className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap">{label}</td>
+                      <td className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted whitespace-nowrap">
+                        {METRIC_HELP[label] ? <HelpTip {...METRIC_HELP[label]} align="left" side="bottom">{label}</HelpTip> : label}
+                      </td>
                       {selected.map((f) => {
                         const raw = key(f, period);
                         const { text, numeric } = fmtVal(raw, label);

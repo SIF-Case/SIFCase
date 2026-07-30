@@ -24,7 +24,7 @@ type Props = {
 
 export function PulseStrip({ funds, monthLabels, topFunds }: Props) {
   const grouped = useMemo(() => {
-    const g: Record<string, MonthlyHeatmapFund[]> = { Equity: [], Hybrid: [] };
+    const g: Record<string, MonthlyHeatmapFund[]> = { Equity: [], Hybrid: [], Debt: [] };
     for (const f of funds) g[f.category]?.push(f);
     return g;
   }, [funds]);
@@ -72,7 +72,7 @@ export function PulseStrip({ funds, monthLabels, topFunds }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(["Equity", "Hybrid"] as const).map((k) =>
+                  {(["Equity", "Hybrid", "Debt"] as const).map((k) =>
                     grouped[k]?.length ? (
                       <GroupRows key={k} label={k} rows={grouped[k]} lastIdx={lastIdx} />
                     ) : null,

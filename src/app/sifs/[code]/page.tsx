@@ -5,6 +5,9 @@ import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { extractSchemeCode, fundSlug, fundHref } from "@/lib/slugify";
+import { formatInceptionDate } from "@/lib/utils";
+import { HelpTip, type HelpCopy } from "@/components/ui/HelpTip";
+import { COMPARE_ROW_HELP, SI_PERIOD_HELP, FUND_ADD_COMPARE_HELP, FUND_INVEST_HELP } from "@/lib/controlHelp";
 import {
   ShieldCheck, TrendingUp, TrendingDown, ArrowLeftRight, MinusCircle, ExternalLink,
   CheckCircle2, XCircle, BarChart2, Building2,
@@ -88,41 +91,6 @@ function safeAvg(vals: (number | null)[]): number | null {
   return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
 }
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-// inceptionDate is free text from KIM/ISID entry, so normalise the common shapes
-// to "15 Mar 2025". Anything unparseable is passed through untouched.
-function formatInceptionDate(raw: string): string {
-  const s = raw.trim();
-  if (!s) return s;
-
-  const monthIndex = (name: string) =>
-    MONTH_NAMES.findIndex((m) => name.toLowerCase().startsWith(m.toLowerCase()));
-
-  const build = (day: number, month: number, year: number) => {
-    if (month < 0 || month > 11 || day < 1 || day > 31 || year < 1900) return null;
-    return `${day} ${MONTH_NAMES[month]} ${year}`;
-  };
-
-  // 2025-03-15 / 2025/03/15
-  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (m) return build(+m[3], +m[2] - 1, +m[1]) ?? s;
-
-  // 15-03-2025 / 15/03/2025 / 15.03.2025  (day first — Indian convention)
-  m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-  if (m) return build(+m[1], +m[2] - 1, +m[3]) ?? s;
-
-  // 15 Mar 2025 / 15-Mar-2025 / 15 March, 2025
-  m = s.match(/^(\d{1,2})[-\s]+([A-Za-z]+),?[-\s]+(\d{4})$/);
-  if (m) return build(+m[1], monthIndex(m[2]), +m[3]) ?? s;
-
-  // Mar 15, 2025 / March 15 2025
-  m = s.match(/^([A-Za-z]+)[-\s]+(\d{1,2}),?[-\s]+(\d{4})$/);
-  if (m) return build(+m[2], monthIndex(m[1]), +m[3]) ?? s;
-
-  return s;
-}
-
 function formatLaunchDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -185,10 +153,22 @@ function ComparisonRow({
 
 // ── Info Row (sidebar / key facts) ────────────────────────────────────────────
 
+// InfoRow labels are a mix of exact COMPARE_ROW_HELP keys ("Benchmark", "Category")
+// and shorter on-page phrasings ("Min. investment" vs "Min Investment") — this maps
+// the latter onto the shared dictionary instead of duplicating copy.
+const INFO_ROW_HELP_ALIAS: Record<string, string> = {
+  "Min. investment": "Min Investment",
+  "Expense ratio": "Expense Ratio (TER)",
+  "Inception date": "Inception Date",
+  "Launch date": "Inception Date",
+};
+
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const help = COMPARE_ROW_HELP[label] ?? COMPARE_ROW_HELP[INFO_ROW_HELP_ALIAS[label] ?? ""];
+  const labelEl = <span className="text-[12.5px] text-[#6B8299] font-normal">{label}</span>;
   return (
     <div className="flex items-start justify-between gap-4 py-[9px] border-b border-[#E2E8EE] last:border-0">
-      <span className="text-[12.5px] text-[#6B8299] font-normal">{label}</span>
+      {help ? <HelpTip {...help} align="left">{labelEl}</HelpTip> : labelEl}
       <span className="text-[12.5px] text-[#0F1C28] font-medium text-right">{value}</span>
     </div>
   );
@@ -257,16 +237,19 @@ function HeroStat({
   valueClass,
   sub,
   last,
+  help,
 }: {
   label: string;
   value: string;
   valueClass?: string;
   sub?: string;
   last?: boolean;
+  help?: HelpCopy;
 }) {
+  const labelEl = <div className="text-[11px] font-semibold text-white/45 mb-1.5">{label}</div>;
   return (
     <div className={`flex-1 min-w-[130px] px-4 py-3 ${last ? "" : "sm:border-r border-white/[0.13]"}`}>
-      <div className="text-[11px] font-semibold text-white/45 mb-1.5">{label}</div>
+      {help ? <HelpTip {...help} side="bottom">{labelEl}</HelpTip> : labelEl}
       <div className={`text-[18px] font-bold tabular-nums ${valueClass ?? "text-white"}`}>{value}</div>
       {sub && <div className="text-[10.5px] text-white/40 mt-0.5">{sub}</div>}
     </div>
@@ -485,7 +468,7 @@ export default async function FundDetailPage({ params }: Props) {
                   <span className="text-[11px] font-bold text-[#8CEBAE]">Active</span>
                 </span>
                 <Link
-                  href="/sifs"
+                  href={`/sifs?amc=${encodeURIComponent(fund.amc)}`}
                   className="text-[12px] font-semibold text-[#8FE0D2] border-b border-[#8FE0D2]/45 hover:text-white hover:border-white transition-colors"
                 >
                   View all {fund.amc} schemes →
@@ -548,18 +531,22 @@ export default async function FundDetailPage({ params }: Props) {
           {/* RIGHT: actions + compact risk-band widget */}
           <div className="flex flex-col items-stretch lg:items-end gap-3 shrink-0">
             <div className="flex gap-2 w-full lg:justify-end">
-              <Link
-                href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
-                className="flex-1 lg:flex-none text-center text-[13px] font-semibold px-4 py-2.5 rounded-[10px] bg-white/[0.08] border border-white/[0.22] text-white hover:bg-white/[0.16] transition-colors"
-              >
-                + Add to Compare
-              </Link>
-              <a
-                href="mailto:support@sifcase.com"
-                className="flex-1 lg:flex-none text-center text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-[#0E9F8E] text-white hover:bg-[#12b3a3] transition-colors shadow-[0_6px_16px_rgba(14,159,142,0.35)]"
-              >
-                Request Callback
-              </a>
+              <HelpTip {...FUND_ADD_COMPARE_HELP} side="bottom" className="flex-1 lg:flex-none">
+                <Link
+                  href={`/compare?funds=${encodeURIComponent(fund.schemeCode)}`}
+                  className="block text-center text-[13px] font-semibold px-4 py-2.5 rounded-[10px] bg-white/[0.08] border border-white/[0.22] text-white hover:bg-white/[0.16] transition-colors"
+                >
+                  + Add to Compare
+                </Link>
+              </HelpTip>
+              <HelpTip {...FUND_INVEST_HELP} side="bottom" className="flex-1 lg:flex-none" align="right">
+                <a
+                  href="mailto:support@sifcase.com"
+                  className="block text-center text-[13px] font-bold px-4 py-2.5 rounded-[10px] bg-[#0E9F8E] text-white hover:bg-[#12b3a3] transition-colors shadow-[0_6px_16px_rgba(14,159,142,0.35)]"
+                >
+                  Request Callback
+                </a>
+              </HelpTip>
             </div>
             {fundDetails?.riskBand != null && (
               <div className="w-full lg:w-[248px] rounded-[12px] border border-white/[0.22] bg-white/[0.09] px-3.5 py-3">
@@ -591,19 +578,22 @@ export default async function FundDetailPage({ params }: Props) {
                   ? `${navChangePositive ? "+" : ""}₹${navChange.toFixed(4)}${navChangePct !== null ? ` (${navChangePositive ? "+" : ""}${navChangePct.toFixed(2)}%)` : ""} · ${fund.navDate}`
                   : fund.navDate
               }
+              help={COMPARE_ROW_HELP["Latest NAV"]}
             />
-            <HeroStat label="AUM" value={fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null)} />
+            <HeroStat label="AUM" value={fmtCr(fund.aum ?? fundDetails?.aumCurrent ?? null)} help={COMPARE_ROW_HELP.AUM} />
             <HeroStat
               label={siLabel}
               value={fmtPct(fund.returns.SI, 1) ?? "—"}
               valueClass={(fund.returns.SI ?? 0) >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"}
               sub={fundAgeYears > 1 ? "Annualised (CAGR)" : "Absolute, not annualised"}
+              help={SI_PERIOD_HELP}
             />
-            <HeroStat label="Min. Investment" value={fmtInr(fundDetails?.minInvestment ?? null)} />
+            <HeroStat label="Min. Investment" value={fmtInr(fundDetails?.minInvestment ?? null)} help={COMPARE_ROW_HELP["Min Investment"]} />
             <HeroStat
               label="Expense Ratio"
               value={expenseRatioDisplay}
               last
+              help={COMPARE_ROW_HELP["Expense Ratio (TER)"]}
             />
           </div>
           </div>{/* end hero content */}

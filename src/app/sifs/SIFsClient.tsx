@@ -12,9 +12,11 @@ import { useCompareTray } from "@/components/ui/CompareTray";
 import { useWatchlist, rememberPendingWatchlistAdd } from "@/hooks/useWatchlist";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { Plus, Check, Bookmark } from "lucide-react";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { RETURN_PERIOD_HELP, METRIC_HELP, CATEGORY_FILTER_HELP } from "@/lib/controlHelp";
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
-const CATEGORIES = ["All", "Equity", "Hybrid"] as const;
+const CATEGORIES = ["All", "Equity", "Hybrid", "Debt"] as const;
 type SortKey = "return1m" | "return3m" | "return1y" | "sharpe" | "drawdown" | "nav" | "name";
 
 function shortName(name: string) {
@@ -141,9 +143,9 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   });
   const [sortKey, setSortKey] = useState<SortKey>("return1m");
   const [sortAsc, setSortAsc] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(() => searchParams.get("amc") !== null);
   const [strategyFilter, setStrategyFilter] = useState("All");
-  const [amcFilter, setAmcFilter] = useState("All");
+  const [amcFilter, setAmcFilter] = useState(() => searchParams.get("amc") ?? "All");
   const [pageSize, setPageSize] = useState(10);
   const [page, setPage] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
@@ -159,7 +161,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     [funds]);
 
   const amcs = useMemo(() =>
-    ["All", ...Array.from(new Set(funds.map((f) => f.amc))).sort()],
+    ["All", ...Array.from(new Set(funds.map((f) => f.amc).filter(Boolean))).sort()],
     [funds]);
 
   function toggleSort(key: SortKey) {
@@ -209,17 +211,21 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     return { avg, best, worst, count: filtered.length };
   }, [filtered, period]);
 
-  const categoryAverages = useMemo(() => getCategoryAverages(funds), [funds]);
+  const categoryAverages = useMemo(() =>
+    getCategoryAverages(category === "All" ? funds : funds.filter((f) => f.category === category)),
+    [funds, category]);
 
   function SortBtn({ col, label }: { col: SortKey; label: string }) {
     const active = sortKey === col;
-    return (
+    const btn = (
       <button onClick={() => toggleSort(col)}
         className={`flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest transition-colors ${active ? "text-primary" : "text-muted hover:text-body"}`}>
         {label}
         <ArrowUpDown className={`size-3 ${active ? "opacity-100" : "opacity-40"}`} />
       </button>
     );
+    const help = METRIC_HELP[label] ?? RETURN_PERIOD_HELP[label];
+    return help ? <HelpTip {...help} side="bottom">{btn}</HelpTip> : btn;
   }
 
   return (
@@ -228,8 +234,12 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
       {/* Header */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Universe</p>
-        <h1 className="text-[32px] font-bold text-heading tracking-[-0.3px] mb-1">All SIFs</h1>
-        <p className="text-[15px] text-muted">Every Specialised Investment Fund — verified NAV, returns, and risk from AMFI.</p>
+        <h1 className="text-[32px] font-bold text-heading tracking-[-0.3px] mb-1">{category === "All" ? "All SIFs" : `All ${category} SIFs`}</h1>
+        <p className="text-[15px] text-muted">
+          {category === "All"
+            ? "Every Specialised Investment Fund — verified NAV, returns, and risk from AMFI."
+            : `Every ${category} Specialised Investment Fund — verified NAV, returns, and risk from AMFI.`}
+        </p>
       </div>
 
       {/* Stats bar */}
@@ -283,21 +293,26 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
 
           {/* Period */}
           <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
-            {PERIODS.map((p) => (
-              <button key={p} onClick={() => { setPeriod(p); setPage(1); }}
-                className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${period === p ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
-                {p}
-              </button>
-            ))}
+            {PERIODS.map((p) => {
+              const btn = (
+                <button onClick={() => { setPeriod(p); setPage(1); }}
+                  className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${period === p ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
+                  {p}
+                </button>
+              );
+              return <HelpTip key={p} {...RETURN_PERIOD_HELP[p]}>{btn}</HelpTip>;
+            })}
           </div>
 
           {/* Category */}
           <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
             {CATEGORIES.map((c) => (
-              <button key={c} onClick={() => { setCategory(c); setPage(1); }}
-                className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${category === c ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
-                {c}
-              </button>
+              <HelpTip key={c} {...CATEGORY_FILTER_HELP[c]}>
+                <button onClick={() => { setCategory(c); setPage(1); }}
+                  className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${category === c ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
+                  {c}
+                </button>
+              </HelpTip>
             ))}
           </div>
 

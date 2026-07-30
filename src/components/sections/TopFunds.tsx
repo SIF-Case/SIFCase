@@ -9,8 +9,10 @@ import { AuthModal } from "@/components/auth/AuthModal";
 import { trackActivity } from "@/components/UserTracker";
 import { fundHref } from "@/lib/slugify";
 import { FundCTAModal } from "@/components/ui/FundCTAModal";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { RETURN_PERIOD_HELP, METRIC_HELP, CATEGORY_FILTER_HELP } from "@/lib/controlHelp";
 
-const FILTERS = ["All", "Hybrid", "Equity"] as const;
+const FILTERS = ["All", "Hybrid", "Equity", "Debt"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const PERIODS: PeriodKey[] = ["1M", "3M", "6M", "1Y", "SI"];
@@ -226,22 +228,26 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
           {/* Stats row */}
           <div className="flex items-center gap-3">
             {[
-              { label: `${period} RETURN`, value: fmtRet(periodRet), color: retColor(periodRet) },
+              { label: `${period} RETURN`, helpKey: "Return", value: fmtRet(periodRet), color: retColor(periodRet) },
               {
                 label: "SHARPE",
+                helpKey: "Sharpe",
                 value: fund.sharpes?.[period] != null ? fund.sharpes[period]!.toFixed(2) : "—",
                 color: (fund.sharpes?.[period] ?? 0) >= 1 ? "#00b370" : (fund.sharpes?.[period] ?? 0) >= 0 ? "#f59e0b" : "#f00013",
               },
               {
                 label: "DRAWDOWN",
+                helpKey: "Drawdown",
                 value: fund.drawdowns?.[period] != null ? `${fund.drawdowns[period]!.toFixed(2)}%` : "—",
                 color: "#f00013",
               },
             ].map((s) => (
               <div key={s.label} className="flex flex-col gap-1">
-                <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
-                  {s.label}
-                </span>
+                <HelpTip {...METRIC_HELP[s.helpKey]} side="bottom">
+                  <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
+                    {s.label}
+                  </span>
+                </HelpTip>
                 <span
                   className="nums"
                   style={{ color: s.color, fontSize: 14, fontWeight: 500, letterSpacing: "0.3px" }}
@@ -255,11 +261,15 @@ function FundCard({ fund, period, onRequireAuth }: { fund: FundRow; period: Peri
 
         {/* NAV / AUM */}
         <div className="flex flex-col items-end gap-1 flex-shrink-0" style={{ minWidth: 90 }}>
-          <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>NAV</span>
+          <HelpTip {...METRIC_HELP.NAV} align="right" side="bottom">
+            <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>NAV</span>
+          </HelpTip>
           <span className="nums" style={{ color: "#000", fontSize: 13, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
             ₹ {fund.nav.toFixed(4)}
           </span>
-          <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>AUM</span>
+          <HelpTip {...METRIC_HELP.AUM} align="right" side="bottom">
+            <span style={{ color: "#90a5ba", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px" }}>AUM</span>
+          </HelpTip>
           <span className="nums" style={{ color: "#000", fontSize: 13, fontWeight: 700, letterSpacing: "0.3px", whiteSpace: "nowrap" }}>
             {fund.aum != null ? `₹ ${fund.aum.toFixed(0)} Cr` : "—"}
           </span>
@@ -351,7 +361,7 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
     setAuthOpen(true);
   }
 
-  const amcs = ["All", ...Array.from(new Set(funds.map((f) => f.amc))).sort()];
+  const amcs = ["All", ...Array.from(new Set(funds.map((f) => f.amc).filter(Boolean))).sort()];
 
   useEffect(() => {
     if (!amcOpen) return;
@@ -405,30 +415,32 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
               className="flex items-center gap-1"
               style={{ padding: 4, borderRadius: 24, border: "1px solid #8a99ad" }}
             >
-              {PERIODS.map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 34,
-                    height: 27,
-                    borderRadius: 24,
-                    border: period === p ? "1px solid rgba(110,208,255,0.2)" : "none",
-                    background: period === p ? "#3b8bb1" : "transparent",
-                    color: period === p ? "#fff" : "#8a99ad",
-                    fontFamily: "inherit",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
+              {PERIODS.map((p) => {
+                const btn = (
+                  <button
+                    onClick={() => setPeriod(p)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 34,
+                      height: 27,
+                      borderRadius: 24,
+                      border: period === p ? "1px solid rgba(110,208,255,0.2)" : "none",
+                      background: period === p ? "#3b8bb1" : "transparent",
+                      color: period === p ? "#fff" : "#8a99ad",
+                      fontFamily: "inherit",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+                return <HelpTip key={p} {...RETURN_PERIOD_HELP[p]}>{btn}</HelpTip>;
+              })}
             </div>
 
             {/* AMC dropdown */}
@@ -491,26 +503,27 @@ export function TopFunds({ funds }: { funds: FundRow[] }) {
               style={{ padding: 4, borderRadius: 24, border: "1px solid #8a99ad" }}
             >
               {FILTERS.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "6px 11px 5px",
-                    borderRadius: 24,
-                    border: filter === f ? "1px solid #4599c1" : "none",
-                    background: filter === f ? "#3b8bb1" : "transparent",
-                    color: filter === f ? "#fff" : "#4b5563",
-                    fontFamily: "inherit",
-                    fontSize: filter === f ? 10 : 11,
-                    fontWeight: filter === f ? 700 : 500,
-                    cursor: "pointer",
-                  }}
-                >
-                  {f}
-                </button>
+                <HelpTip key={f} {...CATEGORY_FILTER_HELP[f]}>
+                  <button
+                    onClick={() => setFilter(f)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "6px 11px 5px",
+                      borderRadius: 24,
+                      border: filter === f ? "1px solid #4599c1" : "none",
+                      background: filter === f ? "#3b8bb1" : "transparent",
+                      color: filter === f ? "#fff" : "#4b5563",
+                      fontFamily: "inherit",
+                      fontSize: filter === f ? 10 : 11,
+                      fontWeight: filter === f ? 700 : 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {f}
+                  </button>
+                </HelpTip>
               ))}
             </div>
           </div>

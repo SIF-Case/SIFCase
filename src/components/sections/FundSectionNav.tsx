@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { FUND_TAB_HELP } from "@/lib/controlHelp";
+
+const TAB_HELP_KEY: Record<string, string> = {
+  performance: "performance",
+  "risk-analytics": "risk",
+  portfolio: "portfolio",
+  "fund-manager": "manager",
+  documents: "documents",
+};
 
 // Sticky in-page navigation for the fund detail page. All sections are rendered
 // on the page; clicking an item smooth-scrolls to that section and a scrollspy
@@ -58,12 +68,11 @@ export function FundSectionNav() {
 
   return (
     <div className="sticky top-16 z-30">
-      <div className="bg-white border border-[#E2E8EE] rounded-[14px] shadow-[0_4px_16px_rgba(11,31,58,0.06)] flex gap-1 p-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+      <div className="bg-white border border-[#E2E8EE] rounded-[14px] shadow-[0_4px_16px_rgba(11,31,58,0.06)] flex flex-wrap gap-1 p-1.5">
         {ITEMS.map((i) => {
           const on = active === i.id;
-          return (
+          const btn = (
             <button
-              key={i.id}
               onClick={() => go(i.id)}
               className={`flex-1 whitespace-nowrap flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-[10px] text-[13px] font-semibold transition-colors ${on ? "bg-[#0E2A47] text-white" : "text-[#6B8299] hover:bg-[#EEF2F8] hover:text-[#0E2A47]"
                 }`}
@@ -79,6 +88,8 @@ export function FundSectionNav() {
               )}
             </button>
           );
+          const help = FUND_TAB_HELP[TAB_HELP_KEY[i.id]];
+          return help ? <HelpTip key={i.id} {...help} side="bottom" className="flex-1">{btn}</HelpTip> : <div key={i.id} className="flex-1">{btn}</div>;
         })}
       </div>
     </div>

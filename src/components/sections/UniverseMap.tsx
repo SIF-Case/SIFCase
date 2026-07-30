@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { FundRow } from "@/lib/sifData";
 import { fundHref } from "@/lib/slugify";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { CATEGORY_FILTER_HELP } from "@/lib/controlHelp";
 
 function computeVol(navs: number[]): number {
   if (navs.length < 3) return 0;
@@ -16,12 +18,13 @@ function computeVol(navs: number[]): number {
 const CATEGORY_COLOR: Record<string, string> = {
   Equity: "var(--color-primary)",
   Hybrid: "var(--color-caution)",
+  Debt: "var(--color-positive)",
 };
 
 type Props = { funds: FundRow[] };
 
 export function UniverseMap({ funds }: Props) {
-  const [filter, setFilter] = useState<"All" | "Equity" | "Hybrid">("All");
+  const [filter, setFilter] = useState<"All" | "Equity" | "Hybrid" | "Debt">("All");
   const [hover, setHover] = useState<string | null>(null);
 
   const data = useMemo(() =>
@@ -68,17 +71,18 @@ export function UniverseMap({ funds }: Props) {
             </p>
           </div>
           <div className="inline-flex p-1 rounded-full border border-rule-strong bg-white">
-            {(["All", "Equity", "Hybrid"] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setFilter(k)}
-                className={`h-8 px-4 rounded-full text-[12px] font-medium transition inline-flex items-center gap-1.5 ${
-                  filter === k ? "bg-primary text-white" : "text-muted hover:text-body"
-                }`}
-              >
-                {k !== "All" && <span className="size-1.5 rounded-full" style={{ background: CATEGORY_COLOR[k] }} />}
-                {k}
-              </button>
+            {(["All", "Equity", "Hybrid", "Debt"] as const).map((k) => (
+              <HelpTip key={k} {...CATEGORY_FILTER_HELP[k]}>
+                <button
+                  onClick={() => setFilter(k)}
+                  className={`h-8 px-4 rounded-full text-[12px] font-medium transition inline-flex items-center gap-1.5 ${
+                    filter === k ? "bg-primary text-white" : "text-muted hover:text-body"
+                  }`}
+                >
+                  {k !== "All" && <span className="size-1.5 rounded-full" style={{ background: CATEGORY_COLOR[k] }} />}
+                  {k}
+                </button>
+              </HelpTip>
             ))}
           </div>
         </div>
@@ -166,7 +170,7 @@ export function UniverseMap({ funds }: Props) {
           <div className="mt-2 flex flex-wrap items-center gap-4 px-2 text-[10px] font-mono uppercase tracking-widest text-muted">
             <span>Bubble size = AUM (where available)</span>
             <span className="ml-auto flex items-center gap-3">
-              {(["Equity", "Hybrid"] as const).map((c) => (
+              {(["Equity", "Hybrid", "Debt"] as const).map((c) => (
                 <span key={c} className="inline-flex items-center gap-1.5">
                   <span className="size-2 rounded-full" style={{ background: CATEGORY_COLOR[c] }} /> {c}
                 </span>

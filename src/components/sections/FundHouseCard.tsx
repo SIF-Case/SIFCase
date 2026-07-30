@@ -9,6 +9,8 @@ import { RiskMeter, RISK_LABELS } from "@/components/ui/RiskMeter";
 import { cn } from "@/lib/utils";
 import { fundHref } from "@/lib/slugify";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { HelpTip } from "@/components/ui/HelpTip";
+import { COMPARE_PERIOD_HELP, METRIC_HELP } from "@/lib/controlHelp";
 
 type ChartPeriod = "1M" | "3M" | "6M" | "1Y" | "SI" | "Custom";
 const CHART_PERIODS: ChartPeriod[] = ["1M", "3M", "6M", "1Y", "SI"];
@@ -81,9 +83,11 @@ function ReturnStat({ label, value }: { label: string; value: number | null }) {
 }
 
 function MetricItem({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
+  const help = METRIC_HELP[label];
+  const labelEl = <span className="text-[12px] sm:text-[13px] text-muted">{label}</span>;
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[12px] sm:text-[13px] text-muted">{label}</span>
+      {help ? <HelpTip {...help}>{labelEl}</HelpTip> : labelEl}
       <span className={cn("text-[12px] sm:text-[13px] font-semibold", negative ? "text-loss" : "text-heading")}>{value}</span>
     </div>
   );
@@ -386,20 +390,22 @@ export function FundHouseCard({ fund, active = true }: { fund: FundRow; active?:
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 mt-6 gap-3">
           <p className="text-[11px] font-medium text-[#6B8299] tracking-wider">NAV HISTORY · SOURCE: AMFI</p>
           <div className="flex items-center gap-1 flex-wrap">
-            {CHART_PERIODS.map((p) => (
-              <button
-                key={p}
-                onClick={() => { setPeriod(p); setCustomRange(null); }}
-                className={cn(
-                  "px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors",
-                  period === p
-                    ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
-                    : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
-                )}
-              >
-                {p}
-              </button>
-            ))}
+            {CHART_PERIODS.map((p) => {
+              const btn = (
+                <button
+                  onClick={() => { setPeriod(p); setCustomRange(null); }}
+                  className={cn(
+                    "px-[11px] py-[5px] rounded-[6px] border text-[12px] font-medium transition-colors",
+                    period === p
+                      ? "bg-[#0E9F8E] text-white border-[#0E9F8E]"
+                      : "bg-white text-[#6B8299] border-[#E2E8EE] hover:text-[#3D5166]"
+                  )}
+                >
+                  {p}
+                </button>
+              );
+              return <HelpTip key={p} {...COMPARE_PERIOD_HELP[p]}>{btn}</HelpTip>;
+            })}
             <DateRangePicker
               minDate={fund.sparklineDates.SI[0]}
               maxDate={fund.sparklineDates.SI[fund.sparklineDates.SI.length - 1]}
