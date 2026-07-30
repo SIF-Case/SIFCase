@@ -137,10 +137,18 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [period, setPeriod] = useState<PeriodKey>("SI");
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>(() => {
-    const c = searchParams.get("category") as typeof CATEGORIES[number] | null;
-    return c && CATEGORIES.includes(c) ? c : "All";
+  // Empty array means "All" — multiple categories can be active at once (e.g.
+  // the homepage's "Income investor" card links to ?category=Hybrid,Debt).
+  const [categories, setCategories] = useState<string[]>(() => {
+    const raw = searchParams.get("category");
+    if (!raw) return [];
+    return raw.split(",").map((s) => s.trim()).filter((s) => CATEGORIES.includes(s as any) && s !== "All");
   });
+
+  function toggleCategory(c: typeof CATEGORIES[number]) {
+    if (c === "All") { setCategories([]); return; }
+    setCategories((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]);
+  }
   const [sortKey, setSortKey] = useState<SortKey>("return1m");
   const [sortAsc, setSortAsc] = useState(false);
   const [showFilters, setShowFilters] = useState(() => searchParams.get("amc") !== null);
@@ -172,7 +180,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
 
   const filtered = useMemo(() => {
     let list = funds.filter((f) => {
-      if (category !== "All" && f.category !== category) return false;
+      if (categories.length && !categories.includes(f.category)) return false;
       if (strategyFilter !== "All" && f.strategy !== strategyFilter) return false;
       if (amcFilter !== "All" && f.amc !== amcFilter) return false;
       if (search) {
@@ -197,7 +205,7 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
     });
 
     return list;
-  }, [funds, search, period, category, strategyFilter, amcFilter, sortKey, sortAsc]);
+  }, [funds, search, period, categories, strategyFilter, amcFilter, sortKey, sortAsc]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -212,8 +220,10 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
   }, [filtered, period]);
 
   const categoryAverages = useMemo(() =>
-    getCategoryAverages(category === "All" ? funds : funds.filter((f) => f.category === category)),
-    [funds, category]);
+    getCategoryAverages(categories.length === 0 ? funds : funds.filter((f) => categories.includes(f.category))),
+    [funds, categories]);
+
+  const categoryLabel = categories.length === 0 ? null : categories.join(" & ");
 
   function SortBtn({ col, label }: { col: SortKey; label: string }) {
     const active = sortKey === col;
@@ -234,11 +244,11 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
       {/* Header */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest text-primary mb-1">Universe</p>
-        <h1 className="text-[32px] font-bold text-heading tracking-[-0.3px] mb-1">{category === "All" ? "All SIFs" : `All ${category} SIFs`}</h1>
+        <h1 className="text-[32px] font-bold text-heading tracking-[-0.3px] mb-1">{categoryLabel ? `All ${categoryLabel} SIFs` : "All SIFs"}</h1>
         <p className="text-[15px] text-muted">
-          {category === "All"
-            ? "Every Specialised Investment Fund — verified NAV, returns, and risk from AMFI."
-            : `Every ${category} Specialised Investment Fund — verified NAV, returns, and risk from AMFI.`}
+          {categoryLabel
+            ? `Every ${categoryLabel} Specialised Investment Fund — verified NAV, returns, and risk from AMFI.`
+            : "Every Specialised Investment Fund — verified NAV, returns, and risk from AMFI."}
         </p>
       </div>
 
@@ -306,14 +316,17 @@ export function SIFsClient({ funds }: { funds: FundRow[] }) {
 
           {/* Category */}
           <div className="flex items-center gap-0.5 bg-surface border border-rule rounded-full p-0.5">
-            {CATEGORIES.map((c) => (
-              <HelpTip key={c} {...CATEGORY_FILTER_HELP[c]}>
-                <button onClick={() => { setCategory(c); setPage(1); }}
-                  className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${category === c ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
-                  {c}
-                </button>
-              </HelpTip>
-            ))}
+            {CATEGORIES.map((c) => {
+              const active = c === "All" ? categories.length === 0 : categories.includes(c);
+              return (
+                <HelpTip key={c} {...CATEGORY_FILTER_HELP[c]}>
+                  <button onClick={() => { toggleCategory(c); setPage(1); }}
+                    className={`h-7 px-3 text-[11.5px] font-semibold rounded-full transition-all ${active ? "bg-primary text-white shadow-sm" : "text-muted hover:text-body"}`}>
+                    {c}
+                  </button>
+                </HelpTip>
+              );
+            })}
           </div>
 
           {/* More filters */}

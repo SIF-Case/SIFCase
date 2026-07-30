@@ -27,8 +27,8 @@ const INVESTOR_TYPES = [
   {
     Icon: IndianRupee,
     title: "Income investor",
-    description: "Hybrid SIFs designed for steadier, regular returns",
-    href: "/sifs?category=Hybrid",
+    description: "Hybrid and Debt SIFs designed for steadier, regular returns",
+    href: "/sifs?category=Hybrid,Debt",
   },
 ];
 

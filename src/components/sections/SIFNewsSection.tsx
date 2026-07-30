@@ -17,7 +17,7 @@ export async function SIFNewsSection() {
   if (items.length === 0) return null;
 
   return (
-    <section className="bg-white pt-section pb-16">
+    <section className="bg-white pt-section pb-10">
       <div className="max-w-[1320px] mx-auto px-6 lg:px-8">
         <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
           <div>
