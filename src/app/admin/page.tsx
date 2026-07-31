@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import Link from "next/link";
 import { Users, Database, Activity, Clock, CheckCircle, XCircle, AlertTriangle, Newspaper } from "lucide-react";
 import { DataQualityPanel, runDataQualityChecks } from "@/components/admin/DataQualityPanel";
+import { getLatestMonthlyAum, getLatestMonthlyAumAttempt } from "@/lib/monthlyAumFetcher";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function AdminDashboard() {
   };
   const isReinvestmentOption = (option: unknown) => /reinvest/i.test(String(option ?? ""));
 
-  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, latestNews, incompleteSchemes, dataQuality] = await Promise.all([
+  const [totalUsers, newUsers, totalAdmins, totalSchemes, totalNavs, recentLogs, latestNews, incompleteSchemes, dataQuality, latestMonthlyAumAttempt, latestMonthlyAum] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: last7Days } }),
     User.countDocuments({ isAdmin: true }),
@@ -47,7 +48,11 @@ export default async function AdminDashboard() {
     }, { projection: { schemeCode: 1, schemeName: 1, amc: 1, isinGrowth: 1, isinReinvestment: 1, option: 1, companyName: 1, companyName_short: 1, brandName: 1 } })
       .sort({ schemeCode: 1 }).toArray(),
     runDataQualityChecks(db),
+    getLatestMonthlyAumAttempt(),
+    getLatestMonthlyAum(),
   ]);
+
+  const monthlyAumMissing = !!latestMonthlyAumAttempt && !latestMonthlyAumAttempt.docFound;
 
   type FlaggedScheme = { schemeCode: string; schemeName: string; missing: string[] };
   const redFlags: FlaggedScheme[] = incompleteSchemes.map((s) => ({
@@ -91,6 +96,19 @@ export default async function AdminDashboard() {
 
       {/* Data Quality */}
       <DataQualityPanel result={dataQuality} />
+
+      {/* Monthly AUM status */}
+      {monthlyAumMissing && (
+        <div className="bg-amber-50 border border-amber-200 rounded-[14px] p-4 mb-8 flex items-center gap-3">
+          <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+          <p className="text-[13px] text-amber-800">
+            No AUM doc found for <strong>{latestMonthlyAumAttempt?.periodLabel}</strong>.
+            {latestMonthlyAum
+              ? <> Showing previous month&apos;s value: <strong>₹{latestMonthlyAum.totalAumCr?.toLocaleString("en-IN")} Cr</strong> ({latestMonthlyAum.periodLabel}).</>
+              : " No previous month's value available either."}
+          </p>
+        </div>
+      )}
 
       {/* Red Flags */}
       {redFlags.length > 0 && (

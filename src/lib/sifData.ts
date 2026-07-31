@@ -28,6 +28,9 @@ export interface SnapshotStats {
   aumAsOfLabel: string | null;
   categoryBreakdown: { equity: number; hybrid: number; debt: number };
   nfosInPipeline: number;
+  /** Grand Total AUM (₹ Cr) from AMFI's monthly SIF report, latest month that parsed successfully. */
+  monthlyAumCr: number | null;
+  monthlyAumAsOfLabel: string | null;
 }
 
 export interface SIFRow {
@@ -241,13 +244,14 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
   const { schemes, navs } = await getCollections();
   const Nfo = (await import("@/models/Nfo")).default;
   const SifAum = (await import("@/models/SifAum")).default;
+  const { getLatestMonthlyAum } = await import("@/lib/monthlyAumFetcher");
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
   const [
     totalSchemes, totalRegular, totalGrowthRegular, totalNavRecords, amcList, fundNames,
-    latestNavRecord, growthSchemes, latestAum, nfosInPipeline,
+    latestNavRecord, growthSchemes, latestAum, nfosInPipeline, latestMonthlyAum,
   ] = await Promise.all([
     schemes.countDocuments(),
     schemes.countDocuments({ plan: "Regular" }),
@@ -259,6 +263,7 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
     schemes.find({ plan: "Regular", option: "Growth" }, { projection: { fundName: 1, strategy: 1, _id: 0 } }).toArray(),
     SifAum.findOne({}).sort({ fetchedAt: -1 }).lean(),
     Nfo.countDocuments({ published: true, closeDate: { $gte: startOfToday } }),
+    getLatestMonthlyAum(),
   ]);
 
   const categoryBreakdown = { equity: 0, hybrid: 0, debt: 0 };
@@ -287,6 +292,8 @@ async function _getSnapshotStats(): Promise<SnapshotStats> {
     aumAsOfLabel,
     categoryBreakdown,
     nfosInPipeline,
+    monthlyAumCr: latestMonthlyAum?.totalAumCr ?? (totalAUM ? Math.round(totalAUM / 1e7) : null),
+    monthlyAumAsOfLabel: latestMonthlyAum?.periodLabel ?? aumAsOfLabel,
   };
 }
 

@@ -46,7 +46,10 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
   const hybrid = stats?.categoryBreakdown.hybrid ?? 0;
   const debt = stats?.categoryBreakdown.debt ?? 0;
   const schemeTotal = equity + hybrid + debt;
-  const aumCr = stats?.totalAUM ? Math.round(stats.totalAUM / 1e7) : null;
+  const monthlyAumCr = stats?.monthlyAumCr ?? null;
+  const aumLabel = monthlyAumCr != null
+    ? `₹${monthlyAumCr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`
+    : "—";
 
   // Composition bar widths — guard against a zero total on first load.
   const pctOf = (n: number) => (schemeTotal > 0 ? (n / schemeTotal) * 100 : 0);
@@ -127,7 +130,7 @@ export function Hero({ stats }: { stats?: SnapshotStats; topFund?: FundRow; allF
               className="flex flex-wrap items-start justify-between gap-6 pt-5 sm:gap-10"
               style={{ borderTop: `1px solid ${LINE}` }}
             >
-              <Stat value="₹17,858 Cr" label="AUM tracked" />
+              <Stat value={aumLabel} label="AUM tracked" />
               <Stat value={String(stats?.uniqueAMCs ?? "—")} label="AMCs" />
               <Stat value={String(schemeTotal || "—")} label="Schemes" />
               <Stat value="Daily" label="NAV updates" />
