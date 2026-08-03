@@ -1,4 +1,7 @@
 {
+  // files:true makes ts-node load the ambient .d.ts files listed in "include"
+  // (src/types/**) instead of only the entry script's import graph.
+  "ts-node": { "files": true },
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["es2020"],
@@ -15,6 +18,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["scripts/**/*.ts", "src/models/**/*.ts", "src/lib/mongodb.ts"],
+  "include": ["scripts/**/*.ts", "src/models/**/*.ts", "src/lib/mongodb.ts", "src/types/**/*.d.ts"],
   "exclude": ["node_modules"]
 }

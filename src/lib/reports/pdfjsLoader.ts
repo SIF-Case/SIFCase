@@ -43,6 +43,25 @@ class DOMMatrixStub {
 
 let modulePromise: Promise<PdfjsModule> | null = null;
 
+// In Node, pdfjs runs its worker on the main thread and loads it with
+// `await import(GlobalWorkerOptions.workerSrc)`, whose specifier defaults to the
+// relative "./pdf.worker.mjs" and is marked webpackIgnore. Neither the bundler
+// nor Vercel's file tracer can follow that, so pdf.worker.mjs is missing from
+// the deployed function and every parse dies with
+// "Setting up fake worker failed: Cannot find module …/pdf.worker.mjs".
+//
+// pdf.mjs checks `globalThis.pdfjsWorker` first (see #mainThreadWorkerMessageHandler),
+// so importing the worker here by a literal specifier — traceable, and it also
+// pulls the file into the deployment — skips that dynamic import completely.
+async function importPdfjs(): Promise<PdfjsModule> {
+  const [pdfjs, worker] = await Promise.all([
+    import("pdfjs-dist/legacy/build/pdf.mjs"),
+    import("pdfjs-dist/legacy/build/pdf.worker.mjs"),
+  ]);
+  (globalThis as Record<string, unknown>).pdfjsWorker = worker;
+  return pdfjs;
+}
+
 // Lazily import pdf.mjs so the stub is installed before its module body runs.
 export function loadPdfjs(): Promise<PdfjsModule> {
   if (!modulePromise) {
@@ -51,7 +70,7 @@ export function loadPdfjs(): Promise<PdfjsModule> {
     if (!g.Path2D) g.Path2D = class Path2DStub {};
     // Don't cache a failed import — a transient module-load error would
     // otherwise poison every later report request on the same warm instance.
-    modulePromise = import("pdfjs-dist/legacy/build/pdf.mjs").catch((e) => {
+    modulePromise = importPdfjs().catch((e) => {
       modulePromise = null;
       throw e;
     });

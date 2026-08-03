@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   // without a worker; when bundled, its fake-worker fallback tries to import a
   // pdf.worker chunk that doesn't exist → "Setting up fake worker failed".
   serverExternalPackages: ["pdfjs-dist"],
+  // pdfjs resolves its worker at runtime through a specifier the tracer can't
+  // follow, so the report function shipped without pdf.worker.mjs and failed in
+  // production only ("Setting up fake worker failed"). pdfjsLoader.ts imports
+  // the worker explicitly; this guarantees the file lands in the bundle
+  // regardless of how the tracer treats an external package.
+  outputFileTracingIncludes: {
+    "/api/admin/nav-records/report": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+  },
   // Rewrite barrel imports to deep imports so a single icon or chart doesn't
   // pull its whole package into the client bundle.
   experimental: {
