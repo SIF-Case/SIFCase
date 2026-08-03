@@ -109,6 +109,7 @@ export async function buildReportModel(
     asOfShort: amfiMeta.asOfShort,
     year: meta.year,
     monthUpper: meta.monthLabel.toUpperCase(),
+    reportMonthShort: meta.monthShort,
     snapshotAum,
     snapshotNetFlow,
     nsrMobilised,

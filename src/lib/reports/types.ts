@@ -96,6 +96,9 @@ export interface PerformanceDisplay {
 export interface ReportModel {
   monthLabel: string; monthShort: string; asOfLong: string; asOfShort: string; year: number;
   monthUpper: string;
+  // Running header ("… | Jul 2026 | Page 1"). Always the month the report is
+  // FOR, unlike monthShort/asOfShort which follow the AMFI data's month.
+  reportMonthShort: string;
   snapshotAum: string;
   snapshotNetFlow: string;
   nsrMobilised: string;
