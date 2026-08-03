@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasAnyPageAccess } from "@/lib/adminAuth";
 import { buildReportModel, reportFileName } from "@/lib/reports/buildReportData";
 import { renderReport } from "@/lib/reports/renderDocx";
+import { AmfiMonthUnavailableError } from "@/lib/reports/amfiUniverse";
 
 const ALLOWED_PAGES = ["funds", "schemes"];
 
@@ -10,14 +11,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   let toDate = "";
+  let usePreviousMonthUniverse = false;
   try {
     const body = await req.json();
     toDate = String(body.toDate || "");
+    usePreviousMonthUniverse = body.usePreviousMonthUniverse === true;
   } catch { /* fallthrough */ }
   if (!toDate) return NextResponse.json({ error: "toDate required" }, { status: 400 });
 
   try {
-    const model = await buildReportModel(toDate);
+    const model = await buildReportModel(toDate, { usePreviousMonthUniverse });
     const buf = renderReport(model);
     return new NextResponse(new Uint8Array(buf), {
       status: 200,
@@ -27,6 +30,19 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e) {
+    // AMFI hasn't published this month yet — recoverable. 409 carries the month
+    // labels so the admin UI can offer "use <previous month> figures instead?".
+    if (e instanceof AmfiMonthUnavailableError) {
+      return NextResponse.json(
+        {
+          code: "AMFI_MONTH_UNAVAILABLE",
+          error: `AMFI has not published the ${e.monthLabel} SIF report yet.`,
+          monthLabel: e.monthLabel,
+          previousMonthLabel: e.previousMonthLabel,
+        },
+        { status: 409 },
+      );
+    }
     const msg = e instanceof Error ? e.message : "Report generation failed";
     // AMFI-prefixed errors (source PDF unavailable / failed reconciliation) are
     // actionable data-availability feedback for the admin, so surface them as

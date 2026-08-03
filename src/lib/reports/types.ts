@@ -99,6 +99,9 @@ export interface ReportModel {
   snapshotAum: string;
   snapshotNetFlow: string;
   nsrMobilised: string;
+  // Cover-page asterisk note, set only when the industry figures came from the
+  // previous month because AMFI had not published the requested month yet.
+  aumFootnote: string | null;
   universe: UniverseDisplay;
   perf: PerformanceDisplay;
   prose: Prose;

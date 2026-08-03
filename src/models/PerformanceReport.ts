@@ -9,6 +9,11 @@ export interface IPerformanceReport extends Document {
   pdfUrl: string;
   pdfFilename: string;
   published: boolean;
+  // Homepage banner copy. Blank means "use the built-in default" — see
+  // BANNER_DEFAULTS in components/sections/PerformanceReportBanner.tsx.
+  bannerTitle: string;
+  unlockHeading: string;
+  unlockSubtext: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +28,10 @@ const PerformanceReportSchema = new Schema<IPerformanceReport>(
     pdfUrl: { type: String, default: "" },
     pdfFilename: { type: String, default: "" },
     published: { type: Boolean, default: false },
+    bannerTitle: { type: String, default: "" },
+    unlockHeading: { type: String, default: "" },
+    // May contain the {count} token, replaced with the live SIF count.
+    unlockSubtext: { type: String, default: "" },
   },
   { timestamps: true },
 );

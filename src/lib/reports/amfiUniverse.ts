@@ -1,7 +1,8 @@
 import type { UniverseData, UniverseCategory, NsrScheme, CategoryKey } from "./types";
-// NOTE: legacy build works in Node without a worker.
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { monthMetaFromDate } from "./monthMeta";
+// NOTE: legacy build works in Node without a worker. Imported lazily via
+// loadPdfjs() so the DOMMatrix stub is in place first — see pdfjsLoader.ts.
+import { loadPdfjs } from "./pdfjsLoader";
+import { monthMetaFromDate, previousMonthToDate } from "./monthMeta";
 
 // Report display order + canonical labels + match patterns (regex on the row label).
 const CATS: { key: CategoryKey; label: string; match: RegExp }[] = [
@@ -155,6 +156,7 @@ function round2(n: number): number { return Math.round(n * 100) / 100; }
 // and ordering left-to-right. Produces one string per visual line — the shape
 // parseUniverseText expects.
 export async function extractPdfLines(data: Uint8Array): Promise<string> {
+  const { getDocument } = await loadPdfjs();
   const loadingTask = getDocument({ data, useWorkerFetch: false, useSystemFonts: true });
   const doc = await loadingTask.promise;
   try {
@@ -190,16 +192,65 @@ export async function extractPdfLines(data: Uint8Array): Promise<string> {
   }
 }
 
-export async function fetchUniverse(toDate: string): Promise<UniverseData> {
-  const meta = monthMetaFromDate(toDate);
+// AMFI publishes the month's SIF report a few weeks into the following month, so
+// a report run for a just-ended month often finds nothing at the URL. That is a
+// recoverable condition — the admin is asked whether to reuse the previous
+// month's industry figures — so it gets its own error type the API can map to a
+// confirmation prompt instead of a hard failure.
+export class AmfiMonthUnavailableError extends Error {
+  constructor(readonly monthLabel: string, readonly previousMonthLabel: string) {
+    super(`AMFI report for ${monthLabel} is not published yet`);
+    this.name = "AmfiMonthUnavailableError";
+  }
+}
+
+export interface UniverseFetch {
+  data: UniverseData;
+  // Month the figures actually came from when it isn't the requested month.
+  fallbackMonthLabel: string | null;
+}
+
+// Returns null when AMFI has no report at that URL; throws for any other
+// transport/HTTP failure (those are not "wait for next month" situations).
+async function fetchAmfiPdf(url: string, monthLabel: string): Promise<Uint8Array | null> {
   // Cap the AMFI fetch so a stalled portal can't hold the report request open.
-  const res = await fetch(meta.amfiUrl, { cache: "no-store", signal: AbortSignal.timeout(30_000) } as RequestInit);
+  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) } as RequestInit);
+  if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`AMFI report for ${meta.monthLabel} unavailable (HTTP ${res.status}) at ${meta.amfiUrl}`);
+    throw new Error(`AMFI report for ${monthLabel} unavailable (HTTP ${res.status}) at ${url}`);
   }
   const buf = new Uint8Array(await res.arrayBuffer());
-  const lines = await extractPdfLines(buf);
-  return parseUniverseText(lines, meta.monthLabel);
+  // AMFI's portal answers a missing month with 404 + an HTML page today, but a
+  // 200 that isn't a PDF means the same thing — not published. Treat it as
+  // missing so the admin gets the fallback prompt instead of a pdfjs parse error.
+  const isPdf = buf.length > 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
+  return isPdf ? buf : null;
+}
+
+async function parsePdf(buf: Uint8Array, monthLabel: string): Promise<UniverseData> {
+  return parseUniverseText(await extractPdfLines(buf), monthLabel);
+}
+
+export async function fetchUniverse(
+  toDate: string,
+  opts: { usePreviousMonth?: boolean } = {},
+): Promise<UniverseFetch> {
+  const meta = monthMetaFromDate(toDate);
+  const prevMeta = monthMetaFromDate(previousMonthToDate(toDate));
+
+  if (!opts.usePreviousMonth) {
+    const buf = await fetchAmfiPdf(meta.amfiUrl, meta.monthLabel);
+    if (buf) return { data: await parsePdf(buf, meta.monthLabel), fallbackMonthLabel: null };
+    throw new AmfiMonthUnavailableError(meta.monthLabel, prevMeta.monthLabel);
+  }
+
+  // Explicit admin opt-in: use the previous month's report. Only one month back —
+  // older figures are too stale to caption as the current industry picture.
+  const prevBuf = await fetchAmfiPdf(prevMeta.amfiUrl, prevMeta.monthLabel);
+  if (!prevBuf) {
+    throw new Error(`AMFI reports for both ${meta.monthLabel} and ${prevMeta.monthLabel} are unavailable`);
+  }
+  return { data: await parsePdf(prevBuf, prevMeta.monthLabel), fallbackMonthLabel: prevMeta.monthLabel };
 }
 
 // NSR rows: category label, wrapped scheme names, count, mobilised.

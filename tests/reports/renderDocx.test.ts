@@ -6,6 +6,7 @@ import type { ReportModel } from "@/lib/reports/types";
 const model: ReportModel = {
   monthLabel: "June 2026", monthShort: "Jun 2026", asOfLong: "30th Jun 2026", asOfShort: "Jun 30, 2026", year: 2026,
   monthUpper: "JUNE 2026", snapshotAum: "17,858", snapshotNetFlow: "3,782", nsrMobilised: "1,740.00",
+  aumFootnote: null,
   universe: {
     monthLabel: "June 2026",
     categories: [
@@ -39,4 +40,16 @@ assert.ok(text.includes('w:val="1A6E3A"'), "strong dark green (+18.57%/+5.31%/+5
 assert.ok(text.includes('w:val="27AE60"'), "positive green (+2.43%)");
 // no leftover unfilled tags:
 assert.ok(!/\{[#\/]?(universe|perf|prose|monthLabel|monthShort|asOf)/.test(text));
+// no footnote paragraph when the month's own AMFI data was used:
+assert.ok(!text.includes("AMFI SIF report for"), "no stale-data note on a normal month");
+
+// stale-data note lands on the cover, i.e. before the first page break:
+const note = "*AUM figures are as per the AMFI SIF report for May 2026.";
+const staleText = new PizZip(renderReport({ ...model, aumFootnote: note }))
+  .file("word/document.xml")!.asText();
+const noteAt = staleText.indexOf(note);
+assert.ok(noteAt > -1, "footnote rendered");
+assert.ok(noteAt < staleText.indexOf('w:type="page"'), "footnote sits on the cover page");
+assert.ok(staleText.slice(noteAt - 400, noteAt).includes('w:sz w:val="14"'), "footnote is 7pt");
+
 console.log("OK renderDocx");

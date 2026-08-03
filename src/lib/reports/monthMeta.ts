@@ -11,6 +11,15 @@ function ordinal(d: number): string {
   return d + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+// Last calendar day of the month before `toDate`, as YYYY-MM-DD. Used when AMFI
+// has not published the requested month's SIF report yet and the admin opts to
+// fall back to the previous month's industry figures.
+export function previousMonthToDate(toDate: string): string {
+  const dt = new Date(toDate + "T00:00:00Z");
+  const prevLast = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 0));
+  return prevLast.toISOString().slice(0, 10);
+}
+
 export function monthMetaFromDate(toDate: string): MonthMeta {
   const dt = new Date(toDate + "T00:00:00Z");
   const y = dt.getUTCFullYear();

@@ -60,6 +60,28 @@ function recolorPercentRuns(xml: string): string {
   });
 }
 
+function escapeXml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// The cover page ends at the document's first explicit page break. Insert the
+// stale-data note as the last paragraph before it — 7pt italic grey, so it reads
+// as a footnote rather than body copy. Done here instead of via a template tag
+// because the .docx template has no placeholder for it and an empty tag would
+// otherwise leave a blank line on every normal month's cover.
+function insertCoverFootnote(xml: string, note: string): string {
+  const breakAt = xml.indexOf('w:type="page"');
+  if (breakAt === -1) return xml;
+  const paraStart = xml.lastIndexOf("<w:p ", breakAt);
+  if (paraStart === -1) return xml;
+  const para =
+    `<w:p><w:pPr><w:spacing w:before="120" w:after="0"/>` +
+    `<w:rPr><w:i/><w:color w:val="6B7280"/><w:sz w:val="14"/><w:szCs w:val="14"/></w:rPr></w:pPr>` +
+    `<w:r><w:rPr><w:i/><w:color w:val="6B7280"/><w:sz w:val="14"/><w:szCs w:val="14"/></w:rPr>` +
+    `<w:t xml:space="preserve">${escapeXml(note)}</w:t></w:r></w:p>`;
+  return xml.slice(0, paraStart) + para + xml.slice(paraStart);
+}
+
 export function renderReport(model: ReportModel): Buffer {
   const zip = new PizZip(readFileSync(TEMPLATE));
   const doc = new Docxtemplater(zip, {
@@ -70,6 +92,8 @@ export function renderReport(model: ReportModel): Buffer {
   });
   doc.render(model as unknown as Record<string, unknown>);
   const out = doc.getZip();
-  out.file("word/document.xml", recolorPercentRuns(out.file("word/document.xml")!.asText()));
+  let xml = recolorPercentRuns(out.file("word/document.xml")!.asText());
+  if (model.aumFootnote) xml = insertCoverFootnote(xml, model.aumFootnote);
+  out.file("word/document.xml", xml);
   return out.generate({ type: "nodebuffer", compression: "DEFLATE" });
 }

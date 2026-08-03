@@ -1281,19 +1281,19 @@ export interface LatestReportSummary {
   label: string;
   summary: string;
   niftyReturn: number | null;
+  // Banner copy overrides set per report in /admin/settings; "" = use default.
+  bannerTitle: string;
+  unlockHeading: string;
+  unlockSubtext: string;
   data: MonthlyPerformanceData | null;
 }
 
 /** Latest published monthly report plus its live-computed performance data, for the homepage banner. */
 async function _getLatestPublishedReport(): Promise<LatestReportSummary | null> {
-  // HARDCODED: June 2026 Report (no database needed)
-  const report = {
-    monthKey: "2026-06",
-    slug: "june-2026",
-    label: "June 2026",
-    summary: "Comprehensive performance analysis of all Specialised Investment Funds for June 2026.",
-    niftyReturn: null,
-  };
+  await connectDB();
+  const PerformanceReport = (await import("@/models/PerformanceReport")).default;
+  const report = await PerformanceReport.findOne({ published: true }).sort({ monthKey: -1 }).lean();
+  if (!report) return null;
 
   const data = await getMonthlyPerformanceData(report.monthKey);
 
@@ -1301,8 +1301,11 @@ async function _getLatestPublishedReport(): Promise<LatestReportSummary | null> 
     monthKey: report.monthKey,
     slug: report.slug,
     label: report.label,
-    summary: report.summary,
-    niftyReturn: report.niftyReturn,
+    summary: report.summary ?? "",
+    niftyReturn: report.niftyReturn ?? null,
+    bannerTitle: report.bannerTitle ?? "",
+    unlockHeading: report.unlockHeading ?? "",
+    unlockSubtext: report.unlockSubtext ?? "",
     data,
   };
 }

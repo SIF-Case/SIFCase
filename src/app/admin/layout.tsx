@@ -35,7 +35,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {/* min-h-0 lets this flex child shrink below its content height, which is
+            what makes overflow-y-auto actually scroll — without it the nav grows
+            past the viewport and the last links (Settings, Logout) are cut off. */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5 admin-nav-scroll">
           {visiblePages.map(({ href, label, icon: Icon }) => (
             <Link key={href} href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors">

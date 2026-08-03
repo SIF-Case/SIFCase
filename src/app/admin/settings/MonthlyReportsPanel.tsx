@@ -13,6 +13,9 @@ type Report = {
   pdfUrl: string;
   pdfFilename: string;
   published: boolean;
+  bannerTitle: string;
+  unlockHeading: string;
+  unlockSubtext: string;
   updatedAt: string;
 };
 
@@ -23,12 +26,26 @@ type FormState = {
   pdfUrl: string;
   pdfFilename: string;
   published: boolean;
+  bannerTitle: string;
+  unlockHeading: string;
+  unlockSubtext: string;
+};
+
+// Shown as placeholders and used by the homepage when a field is left blank —
+// keep in sync with BANNER_DEFAULTS in PerformanceReportBanner.tsx.
+const BANNER_PLACEHOLDERS = {
+  bannerTitle: "SIF Performance, Fund By Fund",
+  unlockHeading: "Unlock the full report",
+  unlockSubtext: "Get scheme-by-scheme returns for all {count} SIFs, free.",
 };
 
 function emptyForm(): FormState {
   const now = new Date();
   const monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  return { monthKey, summary: "", niftyReturn: "", pdfUrl: "", pdfFilename: "", published: false };
+  return {
+    monthKey, summary: "", niftyReturn: "", pdfUrl: "", pdfFilename: "", published: false,
+    bannerTitle: "", unlockHeading: "", unlockSubtext: "",
+  };
 }
 
 function toFormState(r: Report): FormState {
@@ -39,6 +56,9 @@ function toFormState(r: Report): FormState {
     pdfUrl: r.pdfUrl,
     pdfFilename: r.pdfFilename,
     published: r.published,
+    bannerTitle: r.bannerTitle ?? "",
+    unlockHeading: r.unlockHeading ?? "",
+    unlockSubtext: r.unlockSubtext ?? "",
   };
 }
 
@@ -116,6 +136,9 @@ export default function MonthlyReportsPanel() {
         pdfUrl: form.pdfUrl,
         pdfFilename: form.pdfFilename,
         published: form.published,
+        bannerTitle: form.bannerTitle.trim(),
+        unlockHeading: form.unlockHeading.trim(),
+        unlockSubtext: form.unlockSubtext.trim(),
       };
       if (isNew) body.monthKey = form.monthKey;
 
@@ -242,6 +265,32 @@ export default function MonthlyReportsPanel() {
                 <input type="number" step="0.01" value={form.niftyReturn}
                   onChange={e => setForm(f => ({ ...f, niftyReturn: e.target.value }))}
                   placeholder="e.g. 1.85" className={inputCls} />
+              </div>
+
+              <div className="mb-5 pt-4 border-t border-rule">
+                <p className="text-[12px] font-semibold text-heading mb-0.5">Homepage banner copy</p>
+                <p className="text-[11px] text-faint mb-3">Leave blank to use the default wording shown in each box.</p>
+
+                <div className="mb-3">
+                  <label className={labelCls}>Banner headline</label>
+                  <input value={form.bannerTitle} onChange={e => setForm(f => ({ ...f, bannerTitle: e.target.value }))}
+                    placeholder={BANNER_PLACEHOLDERS.bannerTitle} className={inputCls} />
+                </div>
+
+                <div className="mb-3">
+                  <label className={labelCls}>Unlock card heading</label>
+                  <input value={form.unlockHeading} onChange={e => setForm(f => ({ ...f, unlockHeading: e.target.value }))}
+                    placeholder={BANNER_PLACEHOLDERS.unlockHeading} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Unlock card sub-line</label>
+                  <input value={form.unlockSubtext} onChange={e => setForm(f => ({ ...f, unlockSubtext: e.target.value }))}
+                    placeholder={BANNER_PLACEHOLDERS.unlockSubtext} className={inputCls} />
+                  <p className="text-[11px] text-faint mt-1">
+                    <code className="font-mono">{"{count}"}</code> is replaced with the live SIF count.
+                  </p>
+                </div>
               </div>
 
               <div className="mb-5">

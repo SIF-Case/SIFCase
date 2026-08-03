@@ -1,4 +1,4 @@
-import { monthMetaFromDate } from "./monthMeta";
+import { monthMetaFromDate, previousMonthToDate } from "./monthMeta";
 import { fetchUniverse } from "./amfiUniverse";
 import { computeReportPerformance } from "./navPerformance";
 import { generateProse } from "./aiProse";
@@ -57,10 +57,17 @@ function fmtNsrRow(r: NsrScheme): NsrSchemeDisplay {
   return { category: r.category, schemeNames: r.schemeNames, count: r.count, mobilisedCr: commaInt(r.mobilisedCr) };
 }
 
-export async function buildReportModel(toDate: string): Promise<ReportModel> {
+export async function buildReportModel(
+  toDate: string,
+  opts: { usePreviousMonthUniverse?: boolean } = {},
+): Promise<ReportModel> {
   const meta = monthMetaFromDate(toDate);
-  const [universe, perfRaw] = await Promise.all([fetchUniverse(toDate), computeReportPerformance(toDate)]);
-  const prose = await generateProse(meta.monthLabel, universe, perfRaw);
+  const [universeFetch, perfRaw] = await Promise.all([
+    fetchUniverse(toDate, { usePreviousMonth: opts.usePreviousMonthUniverse }),
+    computeReportPerformance(toDate),
+  ]);
+  const universe = universeFetch.data;
+  const prose = await generateProse(universe.monthLabel, universe, perfRaw);
 
   const perf: PerformanceDisplay = {
     equity: fmtRows(perfRaw.equity), hybrid: fmtRows(perfRaw.hybrid), debt: fmtRows(perfRaw.debt),
@@ -85,16 +92,29 @@ export async function buildReportModel(toDate: string): Promise<ReportModel> {
     },
   };
 
+  // Every template tag below is either report-identity (title, subtitle, file
+  // name — always the requested month) or an AMFI-data caption. The AMFI
+  // captions — "as on {asOfShort}" under TOTAL AUM, "for {monthShort}" under
+  // NET INFLOWS, "Source: AMFI Monthly SIF Report — {monthLabel}", "N new
+  // schemes launched in {monthLabel}" — must name the month the figures came
+  // from, otherwise a fallback report states June's numbers as July's.
+  const amfiMeta = universeFetch.fallbackMonthLabel
+    ? monthMetaFromDate(previousMonthToDate(toDate))
+    : meta;
+
   return {
-    monthLabel: meta.monthLabel,
-    monthShort: meta.monthShort,
+    monthLabel: amfiMeta.monthLabel,
+    monthShort: amfiMeta.monthShort,
     asOfLong: meta.asOfLong,
-    asOfShort: meta.asOfShort,
+    asOfShort: amfiMeta.asOfShort,
     year: meta.year,
     monthUpper: meta.monthLabel.toUpperCase(),
     snapshotAum,
     snapshotNetFlow,
     nsrMobilised,
+    aumFootnote: universeFetch.fallbackMonthLabel
+      ? `*AUM, folio, flow and new-scheme figures are as per the AMFI SIF report for ${universeFetch.fallbackMonthLabel}; AMFI had not published the ${meta.monthLabel} report at the time this report was generated. Scheme performance is as on ${meta.asOfLong}.`
+      : null,
     universe: universeFmt,
     perf,
     prose,

@@ -333,14 +333,32 @@ export default function NavRecordsPage() {
   }
 
   // ── Report export ──────────────────────────────────────────────────────
+  function postReport(usePreviousMonthUniverse: boolean) {
+    return fetch(`/api/admin/nav-records/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toDate, plan, option, usePreviousMonthUniverse }),
+    });
+  }
+
   async function downloadReport() {
     setReporting(true);
     try {
-      const res = await fetch(`/api/admin/nav-records/report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toDate, plan, option }),
-      });
+      let res = await postReport(false);
+      // 409 = AMFI hasn't published this month's SIF report yet. Offer to build
+      // the report on the previous month's industry figures instead; the docx
+      // then carries a footnote saying so.
+      if (res.status === 409) {
+        const j = await res.json().catch(() => ({}));
+        if (j.code !== "AMFI_MONTH_UNAVAILABLE") throw new Error(j.error || "Report failed");
+        const ok = window.confirm(
+          `AMFI has not published the ${j.monthLabel} SIF report yet.\n\n` +
+            `Generate the report using ${j.previousMonthLabel} AUM, folio and flow figures instead?\n\n` +
+            `The report will note that industry data is from ${j.previousMonthLabel}. Scheme performance still uses ${toDate}.`,
+        );
+        if (!ok) return;
+        res = await postReport(true);
+      }
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || "Report failed");

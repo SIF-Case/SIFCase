@@ -9,6 +9,20 @@ import { AuthModal } from "@/components/auth/AuthModal";
 
 const PENDING_KEY = "sif:pendingReportDownload";
 
+// Fallbacks for the per-report copy set in /admin/settings → Monthly
+// Performance Reports. A blank field there means "use these".
+export const BANNER_DEFAULTS = {
+  bannerTitle: "SIF Performance, Fund By Fund",
+  unlockHeading: "Unlock the full report",
+  unlockSubtext: "Get scheme-by-scheme returns for all {count} SIFs, free.",
+};
+
+// {count} in the unlock sub-line is replaced with the live SIF count so the
+// number can't go stale when schemes are added.
+function fillCount(text: string, count: number): string {
+  return text.replace(/\{count\}/g, String(count));
+}
+
 function startDownload(slug: string) {
   window.location.href = `/api/reports/${slug}/download`;
 }
@@ -79,9 +93,14 @@ function ReportPreviewCard({
       <div className="absolute inset-0 z-10 flex items-center justify-center p-6" style={{ background: "rgba(255,255,255,0.25)" }}>
         <div className="bg-white rounded-[16px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] p-6 text-center w-full max-w-[420px] border border-gray-100 flex flex-col items-center">
           <Lock className="size-6 text-[#334155] mb-4" strokeWidth={1.5} />
-          <h3 className="text-[19px] font-semibold text-[#0f172a] mb-1.5 tracking-tight">Unlock the full report</h3>
+          <h3 className="text-[19px] font-semibold text-[#0f172a] mb-1.5 tracking-tight">
+            {report.unlockHeading || BANNER_DEFAULTS.unlockHeading}
+          </h3>
           <p className="text-[14px] text-[#475569] mb-6">
-            Get scheme-by-scheme returns for all {report.data?.funds.length ?? 21} SIFs, free.
+            {fillCount(
+              report.unlockSubtext || BANNER_DEFAULTS.unlockSubtext,
+              report.data?.funds.length ?? 21,
+            )}
           </p>
           
           <button 
@@ -171,7 +190,7 @@ export function PerformanceReportBanner({
         <div className="report-banner-left">
           <div className="report-banner-header">
             <p className="report-banner-label">MONTHLY REPORT · {data.label}</p>
-            <h2 className="report-banner-title">SIF Performance, Fund By Fund</h2>
+            <h2 className="report-banner-title">{report.bannerTitle || BANNER_DEFAULTS.bannerTitle}</h2>
           </div>
 
           <div className="report-banner-actions">
