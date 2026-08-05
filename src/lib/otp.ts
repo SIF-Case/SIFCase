@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import { after } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import EmailOtp, { type EmailOtpPurpose } from "@/models/EmailOtp";
 import PhoneOtp from "@/models/PhoneOtp";
@@ -38,8 +39,6 @@ export async function issueEmailOtp(opts: {
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
 
-  await sendOtpEmail(opts.email, otp);
-
   await EmailOtp.findOneAndUpdate(
     { key: opts.key, purpose: opts.purpose },
     {
@@ -50,6 +49,14 @@ export async function issueEmailOtp(opts: {
       expiresAt: new Date(Date.now() + OTP_TTL_MS),
     },
     { upsert: true },
+  );
+
+  // OTP is already stored — don't make the caller wait on the SMTP round-trip.
+  // `after` keeps the function alive past the response so the send isn't killed mid-flight.
+  after(() =>
+    sendOtpEmail(opts.email, otp).catch((err) => {
+      console.error("Failed to send OTP email:", err);
+    }),
   );
 
   return { ok: true };
@@ -101,12 +108,16 @@ export async function issuePhoneOtp(phone: string): Promise<PhoneIssueResult> {
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
 
-  await sendOtpSms(phone, otp);
-
   await PhoneOtp.findOneAndUpdate(
     { phone },
     { otpHash, attempts: 0, expiresAt: new Date(Date.now() + OTP_TTL_MS) },
     { upsert: true },
+  );
+
+  after(() =>
+    sendOtpSms(phone, otp).catch((err) => {
+      console.error("Failed to send OTP SMS:", err);
+    }),
   );
 
   return { ok: true };
